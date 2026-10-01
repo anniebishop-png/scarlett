@@ -1385,6 +1385,12 @@
     return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'x';
   }
 
+  // Deterministic ids linking a clientOps row to its mirrored board task, so the "Reporting due"
+  // and "Invoice client" tasks created below can be found again later (to close them out, delete
+  // them if the ops row is removed, etc.) without storing a second id anywhere.
+  function opsReportingTaskId(showId, slug){ return 'opstask_reporting_' + showId + '_' + slug; }
+  function opsInvoicingTaskId(showId, slug){ return 'opstask_invoicing_' + showId + '_' + slug; }
+
   function deriveShowDivision(show, client){
     if(client === 'US Open') return 'Content - US Open';
     if(show.discipline === 'Jumping') return 'Content - Jumping';
@@ -1417,7 +1423,8 @@
     if(!canEdit) return;
     const today = toDateStr(new Date());
     const reportingDue = addDays(show.weekId, 20); // ~2 weeks after the show's week wraps
-    const base = { client, showId: show.id, eventName: show.eventName, weekId: show.weekId };
+    const division = deriveShowDivision(show, client);
+    const base = { client, showId: show.id, eventName: show.eventName, weekId: show.weekId, division };
     const slug = slugify(client);
 
     opsCol().doc('kickoff_' + show.id + '_' + slug).set(Object.assign({}, base, {
@@ -1431,6 +1438,14 @@
     opsCol().doc('invoicing_' + show.id + '_' + slug).set(Object.assign({}, base, {
       kind: 'invoicing', dueDate: '', status: 'blocked', notes: '',
     })).catch(()=>{});
+
+    // Also put "Reporting due" straight onto the board, on the schedule for the week it's due --
+    // not just the Client Ops page -- so it surfaces where the team already looks every week.
+    tasksCol().doc(opsReportingTaskId(show.id, slug)).set({
+      client, dateISO: reportingDue, title: 'Reporting due', tag: '', division, owners: [],
+      status: 'notstarted', notes: `Reporting for ${show.eventName}`,
+      weekId: mondayOf(reportingDue), showId: show.id, order: 96, calendarSynced: false,
+    }).catch(()=>{});
   }
 
   function removeClientWork(showId, client){
@@ -3304,7 +3319,13 @@
 
   function deleteOp(opId){
     if(!canEdit) return;
+    const op = opsRows.find(r=>r.id===opId);
     opsCol().doc(opId).delete().catch(()=>{});
+    if(op && op.showId){
+      const slug = slugify(op.client);
+      if(op.kind === 'reporting') tasksCol().doc(opsReportingTaskId(op.showId, slug)).delete().catch(()=>{});
+      if(op.kind === 'invoicing') tasksCol().doc(opsInvoicingTaskId(op.showId, slug)).delete().catch(()=>{});
+    }
   }
 
   function markOpDone(opId){
@@ -3312,15 +3333,29 @@
     if(!op) return;
     opsCol().doc(opId).update({status:'done', doneAt: toDateStr(new Date())}).catch(()=>{});
     if(op.kind === 'reporting'){
-      const invId = 'invoicing_' + op.showId + '_' + slugify(op.client);
+      const slug = slugify(op.client);
+      const invId = 'invoicing_' + op.showId + '_' + slug;
       const inv = opsRows.find(r=>r.id===invId);
       if(inv && inv.status === 'blocked'){
         opsCol().doc(invId).update({status:'pending', dueDate: toDateStr(new Date())}).catch(()=>{});
       }
+      // Close out "Reporting due" on the board, and open a task for Geogs to invoice the client
+      // now that reporting's done.
+      tasksCol().doc(opsReportingTaskId(op.showId, slug)).update({status:'done'}).catch(()=>{});
+      const today = toDateStr(new Date());
+      tasksCol().doc(opsInvoicingTaskId(op.showId, slug)).set({
+        client: op.client, dateISO: today, title: 'Invoice client', tag: '', division: op.division || '',
+        owners: ['Geogs'], status: 'notstarted', notes: `Invoicing for ${op.eventName || op.client}`,
+        weekId: mondayOf(today), showId: op.showId, order: 97, calendarSynced: false,
+      }).catch(()=>{});
     }
   }
   function markOpUndone(opId){
+    const op = opsRows.find(r=>r.id===opId);
     opsCol().doc(opId).update({status:'pending'}).catch(()=>{});
+    if(op && op.kind === 'reporting'){
+      tasksCol().doc(opsReportingTaskId(op.showId, slugify(op.client))).update({status:'notstarted'}).catch(()=>{});
+    }
   }
 
   document.getElementById('opsClientFilter').addEventListener('change', renderOps);
