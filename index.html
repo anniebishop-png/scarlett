@@ -89,8 +89,16 @@
   .header-btn:hover{background:rgba(255,255,255,.22);}
   .header-nav-btns{display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end;}
 
+  /* ---------- Shared cross-page nav (Board / Calendar / Client Ops / Delivery / Podcast / Reports) ---------- */
+  .global-nav{display:flex; flex-wrap:wrap; gap:8px;}
+  .global-nav-btn{background:none; border:1px solid var(--hairline-strong); color:var(--ink); padding:8px 13px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; white-space:nowrap;}
+  .global-nav-btn:hover{border-color:var(--navy);}
+  .global-nav-btn.active-nav{background:var(--navy); color:#fff; border-color:var(--navy); cursor:default;}
+  :root[data-theme="dark"] .global-nav-btn.active-nav{background:var(--gold); color:var(--navy-deep); border-color:var(--gold);}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .global-nav-btn.active-nav{background:var(--gold); color:var(--navy-deep); border-color:var(--gold);}}
+
   /* ---------- Reports ---------- */
-  .report-header{display:flex; align-items:center; justify-content:space-between; margin:4px 0 16px; gap:12px;}
+  .report-header{display:flex; align-items:center; flex-wrap:wrap; justify-content:space-between; margin:4px 0 16px; gap:12px;}
   .report-header h2{margin:0; font-size:18px; font-family:'Manrope',system-ui,sans-serif;}
   .report-controls{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:16px;}
   .quarter-nav{display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--hairline); border-radius:11px; padding:6px 10px;}
@@ -462,11 +470,11 @@
       <button class="today-btn" id="todayBtn">This week</button>
     </div>
     <div class="header-nav-btns">
-      <button class="header-btn" id="calendarBtn">Calendar</button>
-      <button class="header-btn" id="clientOpsBtn">Client Ops</button>
-      <button class="header-btn" id="deliveryBtn">Delivery Tracker</button>
-      <button class="header-btn" id="podcastBtn">Podcast</button>
-      <button class="header-btn" id="reportsBtn">Reports</button>
+      <button class="header-btn" id="calendarBtn" data-nav="calendar">Calendar</button>
+      <button class="header-btn" id="clientOpsBtn" data-nav="ops">Client Ops</button>
+      <button class="header-btn" id="deliveryBtn" data-nav="delivery">Delivery Tracker</button>
+      <button class="header-btn" id="podcastBtn" data-nav="podcast">Podcast</button>
+      <button class="header-btn" id="reportsBtn" data-nav="reports">Reports</button>
     </div>
   </header>
 
@@ -510,7 +518,14 @@
 
 <div class="app" id="reportApp" style="display:none;">
   <div class="report-header">
-    <button class="btn-ghost" id="backToBoardBtn">‹ Back to board</button>
+    <div class="global-nav">
+      <button class="global-nav-btn" data-nav="board">Board</button>
+      <button class="global-nav-btn" data-nav="calendar">Calendar</button>
+      <button class="global-nav-btn" data-nav="ops">Client Ops</button>
+      <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="reports">Reports</button>
+    </div>
     <h2>Delivered report</h2>
   </div>
   <div class="report-controls">
@@ -530,7 +545,14 @@
 
 <div class="app" id="opsApp" style="display:none;">
   <div class="report-header">
-    <button class="btn-ghost" id="backToBoardFromOpsBtn">‹ Back to board</button>
+    <div class="global-nav">
+      <button class="global-nav-btn" data-nav="board">Board</button>
+      <button class="global-nav-btn" data-nav="calendar">Calendar</button>
+      <button class="global-nav-btn" data-nav="ops">Client Ops</button>
+      <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="reports">Reports</button>
+    </div>
     <h2>Client Ops</h2>
   </div>
   <div class="report-controls">
@@ -544,7 +566,14 @@
 
 <div class="app" id="calendarApp" style="display:none;">
   <div class="report-header">
-    <button class="btn-ghost" id="backToBoardFromCalendarBtn">‹ Back to board</button>
+    <div class="global-nav">
+      <button class="global-nav-btn" data-nav="board">Board</button>
+      <button class="global-nav-btn" data-nav="calendar">Calendar</button>
+      <button class="global-nav-btn" data-nav="ops">Client Ops</button>
+      <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="reports">Reports</button>
+    </div>
     <h2>Show Calendar</h2>
   </div>
   <div class="report-controls">
@@ -562,7 +591,14 @@
 
 <div class="app" id="podcastApp" style="display:none;">
   <div class="report-header">
-    <button class="btn-ghost" id="backToBoardFromPodcastBtn">‹ Back to board</button>
+    <div class="global-nav">
+      <button class="global-nav-btn" data-nav="board">Board</button>
+      <button class="global-nav-btn" data-nav="calendar">Calendar</button>
+      <button class="global-nav-btn" data-nav="ops">Client Ops</button>
+      <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="reports">Reports</button>
+    </div>
     <h2>Podcast Schedule</h2>
   </div>
   <div class="report-controls">
@@ -575,7 +611,14 @@
 
 <div class="app" id="deliveryApp" style="display:none;">
   <div class="report-header">
-    <button class="btn-ghost" id="backToBoardFromDeliveryBtn">‹ Back to board</button>
+    <div class="global-nav">
+      <button class="global-nav-btn" data-nav="board">Board</button>
+      <button class="global-nav-btn" data-nav="calendar">Calendar</button>
+      <button class="global-nav-btn" data-nav="ops">Client Ops</button>
+      <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="reports">Reports</button>
+    </div>
     <h2>Delivery Tracker</h2>
   </div>
   <div class="report-controls">
@@ -3054,28 +3097,37 @@
     }
   }
 
-  document.getElementById('reportsBtn').addEventListener('click', () => {
-    document.getElementById('boardApp').style.display = 'none';
-    document.getElementById('reportApp').style.display = 'block';
-    refreshReportFilters();
-    renderQuarterLabel();
-    runReport();
-  });
-  document.getElementById('backToBoardBtn').addEventListener('click', () => {
-    document.getElementById('reportApp').style.display = 'none';
-    document.getElementById('boardApp').style.display = 'block';
-  });
-
-  document.getElementById('calendarBtn').addEventListener('click', () => {
-    document.getElementById('boardApp').style.display = 'none';
-    document.getElementById('calendarApp').style.display = 'block';
-    renderCalMonthLabel();
-    subscribeCalendarShows();
-  });
-  document.getElementById('backToBoardFromCalendarBtn').addEventListener('click', () => {
-    document.getElementById('calendarApp').style.display = 'none';
-    document.getElementById('boardApp').style.display = 'block';
-    if(unsubCalendarShows){ unsubCalendarShows(); unsubCalendarShows = null; }
+  // ---------------- cross-page nav ----------------
+  // One shared router for every "Board / Calendar / Client Ops / Delivery Tracker / Podcast /
+  // Reports" button, wherever it appears (the board header, or any of the other five pages'
+  // own nav row) -- so you can jump straight from one page to another without detouring back
+  // through the board first.
+  const APP_PAGES = {
+    board:    { el: 'boardApp' },
+    reports:  { el: 'reportApp',   onEnter: () => { refreshReportFilters(); renderQuarterLabel(); runReport(); } },
+    ops:      { el: 'opsApp',      onEnter: subscribeOps,      onLeave: unsubscribeOps },
+    calendar: { el: 'calendarApp', onEnter: () => { renderCalMonthLabel(); subscribeCalendarShows(); },
+                                    onLeave: () => { if(unsubCalendarShows){ unsubCalendarShows(); unsubCalendarShows = null; } } },
+    podcast:  { el: 'podcastApp',  onEnter: subscribePodcast,  onLeave: unsubscribePodcast },
+    delivery: { el: 'deliveryApp', onEnter: () => { subscribeDelivery(); subscribeContractClients(); },
+                                    onLeave: () => { unsubscribeDelivery(); unsubscribeContractClients(); } },
+  };
+  let currentAppPage = 'board';
+  function switchApp(target){
+    if(!APP_PAGES[target] || target === currentAppPage) return;
+    const leaving = APP_PAGES[currentAppPage];
+    if(leaving && leaving.onLeave) leaving.onLeave();
+    Object.values(APP_PAGES).forEach(p => { document.getElementById(p.el).style.display = 'none'; });
+    document.getElementById(APP_PAGES[target].el).style.display = 'block';
+    currentAppPage = target;
+    document.querySelectorAll('[data-nav]').forEach(btn => {
+      btn.classList.toggle('active-nav', btn.getAttribute('data-nav') === target);
+    });
+    const entering = APP_PAGES[target];
+    if(entering.onEnter) entering.onEnter();
+  }
+  document.querySelectorAll('[data-nav]').forEach(btn => {
+    btn.addEventListener('click', () => switchApp(btn.getAttribute('data-nav')));
   });
   document.getElementById('prevCalMonth').addEventListener('click', () => shiftCalMonth(-1));
   document.getElementById('nextCalMonth').addEventListener('click', () => shiftCalMonth(1));
@@ -3202,16 +3254,6 @@
     opsCol().doc(opId).update({status:'pending'}).catch(()=>{});
   }
 
-  document.getElementById('clientOpsBtn').addEventListener('click', () => {
-    document.getElementById('boardApp').style.display = 'none';
-    document.getElementById('opsApp').style.display = 'block';
-    subscribeOps();
-  });
-  document.getElementById('backToBoardFromOpsBtn').addEventListener('click', () => {
-    document.getElementById('opsApp').style.display = 'none';
-    document.getElementById('boardApp').style.display = 'block';
-    unsubscribeOps();
-  });
   document.getElementById('opsClientFilter').addEventListener('change', renderOps);
   document.getElementById('opsShowDone').addEventListener('change', renderOps);
 
@@ -3393,16 +3435,6 @@
   });
   document.getElementById('addEpisodeBtn').addEventListener('click', () => openEpisodeModal(null));
 
-  document.getElementById('podcastBtn').addEventListener('click', () => {
-    document.getElementById('boardApp').style.display = 'none';
-    document.getElementById('podcastApp').style.display = 'block';
-    subscribePodcast();
-  });
-  document.getElementById('backToBoardFromPodcastBtn').addEventListener('click', () => {
-    document.getElementById('podcastApp').style.display = 'none';
-    document.getElementById('boardApp').style.display = 'block';
-    unsubscribePodcast();
-  });
 
   // ---------------- client deliverables page ----------------
   function deliveryClientList(){
@@ -3771,18 +3803,6 @@
   });
   document.getElementById('addDeliveryBtn').addEventListener('click', () => openDeliveryModal(null));
 
-  document.getElementById('deliveryBtn').addEventListener('click', () => {
-    document.getElementById('boardApp').style.display = 'none';
-    document.getElementById('deliveryApp').style.display = 'block';
-    subscribeDelivery();
-    subscribeContractClients();
-  });
-  document.getElementById('backToBoardFromDeliveryBtn').addEventListener('click', () => {
-    document.getElementById('deliveryApp').style.display = 'none';
-    document.getElementById('boardApp').style.display = 'block';
-    unsubscribeDelivery();
-    unsubscribeContractClients();
-  });
   document.getElementById('deliveryClientFilter').addEventListener('change', renderDelivery);
 
   document.getElementById('prevQuarter').addEventListener('click', () => shiftQuarter(-1));
