@@ -498,6 +498,7 @@
       <div class="segmented" id="viewTabs">
         <button data-mode="client" class="active">By client</button>
         <button data-mode="division">By team</button>
+        <button data-mode="type">By type</button>
         <button data-mode="person">By person</button>
         <button data-mode="day">By day</button>
         <button data-mode="podcast">Podcast</button>
@@ -649,7 +650,10 @@
         <div class="field"><label>Team</label><select id="f_division"><option value="">—</option></select></div>
         <div class="field"><label>Date</label><input type="date" id="f_date" required></div>
       </div>
-      <div class="field"><label>Tag <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="f_tag" placeholder="e.g. Storytelling Graphic"></div>
+      <div class="field-row">
+        <div class="field"><label>Type <span style="text-transform:none;font-weight:500;">(optional)</span></label><select id="f_type"><option value="">—</option></select></div>
+        <div class="field"><label>Tag <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="f_tag" placeholder="e.g. Storytelling Graphic"></div>
+      </div>
       <div class="checkbox-row" id="recurRow">
         <input type="checkbox" id="f_recurring">
         <label for="f_recurring">Repeats weekly on this day</label>
@@ -1210,6 +1214,10 @@
     'Content - Eventing','Content - Jumping','Content - US Open','Eventing Manager','HP - Eventing',
     'HP - Jumping','Horse Sourcing',
   ];
+  // Task "Type" -- a second, independent categorization from Team: what kind of work a task is
+  // (content production vs. internal business-ops work), rather than which content vertical it
+  // belongs to. Deliberately a separate field/dropdown from Team, not folded into it.
+  const TASK_TYPE_LIST = ['Hustle', 'Finance', 'Client comms', 'Ops'];
   // The full FEI top-tier calendar (CCI4*+/CSI4*+), from the Master Sheet's "All Shows" tab —
   // used only to power the "pick from the FEI calendar" helper on the Add Show event field.
   const FEI_SHOWS_REFERENCE = [{"event":"Twin Rivers","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-09-14"},{"event":"Wooroloo WA","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-09-14"},{"event":"St Tropez","level":"CSIO5*-LLN","discipline":"Jumping","weekOf":"2026-09-14"},{"event":"São Paulo SP","level":"CSI4*-W","discipline":"Jumping","weekOf":"2026-09-14"},{"event":"Coatesville, PA","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-09-14"},{"event":"Christchurch","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-09-14"},{"event":"Camden NSW","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-09-14"},{"event":"Blenheim","level":"CCI4*-L, CCI4* 8+9yo horses-S","discipline":"Eventing","weekOf":"2026-09-14"},{"event":"Stable View","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-09-21"},{"event":"Lignières","level":"CCIO4*-NC-S","discipline":"Eventing","weekOf":"2026-09-21"},{"event":"Greenwich, CT","level":"CSI5*","discipline":"Jumping","weekOf":"2026-09-21"},{"event":"Gassin - St Tropez","level":"CSI4*","discipline":"Jumping","weekOf":"2026-09-21"},{"event":"Ballindenisk","level":"CCI4*-L, CCI4*-S","discipline":"Eventing","weekOf":"2026-09-21"},{"event":"Austria","level":"CSI5*","discipline":"Jumping","weekOf":"2026-09-21"},{"event":"Boekelo","level":"CCIO4*-NC-L","discipline":"Eventing","weekOf":"2026-09-28"},{"event":"Barcelona","level":"CSIO5*-LLN Final","discipline":"Jumping","weekOf":"2026-09-28"},{"event":"Funza","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-09-28"},{"event":"Little Downham","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-09-28"},{"event":"Woodside CA","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-09-28"},{"event":"Tetouan","level":"CSI4*-W","discipline":"Jumping","weekOf":"2026-09-28"},{"event":"Tamborine QLD","level":"CCI4*-L, CCI4*-S","discipline":"Eventing","weekOf":"2026-09-28"},{"event":"Perote","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-09-28"},{"event":"Oslo","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-10-05"},{"event":"Strzegom","level":"CCI4*-L, CCI4*-S","discipline":"Eventing","weekOf":"2026-10-05"},{"event":"Rome","level":"CSI5*","discipline":"Jumping","weekOf":"2026-10-05"},{"event":"Rabat","level":"CSIO4*-W","discipline":"Jumping","weekOf":"2026-10-05"},{"event":"Leesburg VA","level":"CCI4*-L, CCI4*-S","discipline":"Eventing","weekOf":"2026-10-05"},{"event":"Coapexpan","level":"CSI5*","discipline":"Jumping","weekOf":"2026-10-05"},{"event":"Bábolna","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-10-05"},{"event":"Amenia, NY","level":"CSI5*","discipline":"Jumping","weekOf":"2026-10-05"},{"event":"Elkton MD","level":"CCI5*-L, CCI3*-L","discipline":"Eventing","weekOf":"2026-10-12"},{"event":"El Jadida","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-10-12"},{"event":"Campo de Mayo BA","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-10-12"},{"event":"Albury NSW","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-10-12"},{"event":"Morghengo, Caltignaga (M,D)","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-10-12"},{"event":"Le Lion d'Angers","level":"CH-M-YH-CCI3*-L, CH-M-YH-CCI2*-L","discipline":"Eventing","weekOf":"2026-10-12"},{"event":"Tryon","level":"CSI5*","discipline":"Jumping","weekOf":"2026-10-12"},{"event":"Woodside CA","level":"CSI4*","discipline":"Jumping","weekOf":"2026-10-12"},{"event":"Upper Marlboro MD","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-10-19"},{"event":"Vejer de la Frontera","level":"CSI4*","discipline":"Jumping","weekOf":"2026-10-19"},{"event":"San Miguel de Allende","level":"CSI5*","discipline":"Jumping","weekOf":"2026-10-19"},{"event":"Saint Lô","level":"CSI4*","discipline":"Jumping","weekOf":"2026-10-19"},{"event":"Pratoni del Vivaro","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-10-19"},{"event":"Pau","level":"CCI5*-L","discipline":"Eventing","weekOf":"2026-10-19"},{"event":"Liège","level":"CSI4*","discipline":"Jumping","weekOf":"2026-10-19"},{"event":"Kronenberg","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-10-19"},{"event":"Fairburn, GA","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-10-19"},{"event":"Capel WA (M,D)","level":"CCI4*-L, CCI4*-S","discipline":"Eventing","weekOf":"2026-10-19"},{"event":"Temecula CA","level":"CCI4*-L","discipline":"Eventing","weekOf":"2026-10-26"},{"event":"Scone NSW","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-10-26"},{"event":"Rabat","level":"CSI5*","discipline":"Jumping","weekOf":"2026-10-26"},{"event":"Lyon","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-10-26"},{"event":"Christchurch","level":"CCI4*-L","discipline":"Eventing","weekOf":"2026-10-26"},{"event":"Vilamoura","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-02"},{"event":"Vejer de la Frontera","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-02"},{"event":"Verona","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-11-02"},{"event":"Taupo","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-11-02"},{"event":"Monterrey, La Silla","level":"CSI5*","discipline":"Jumping","weekOf":"2026-11-02"},{"event":"Maastricht","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-02"},{"event":"Toronto ON","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-11-09"},{"event":"Tacuarembo","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-11-09"},{"event":"Stuttgart","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-11-09"},{"event":"Myakka City, FL","level":"CCI4*-L, CCI4*-S","discipline":"Eventing","weekOf":"2026-11-09"},{"event":"Monterrey, La Silla","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-09"},{"event":"Dubai","level":"CSI5*","discipline":"Jumping","weekOf":"2026-11-09"},{"event":"Arcadia, CA","level":"CSI5*","discipline":"Jumping","weekOf":"2026-11-09"},{"event":"Arcadia, CA","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-11-16"},{"event":"Valencia","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-16"},{"event":"Sydney NSW","level":"CCI4*-L","discipline":"Eventing","weekOf":"2026-11-16"},{"event":"Rouen","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-16"},{"event":"Riyadh","level":"CSI5*","discipline":"Jumping","weekOf":"2026-11-16"},{"event":"Stockholm","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-23"},{"event":"Madrid","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-11-23"},{"event":"Wellington","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-23"},{"event":"Baicoi","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-30"},{"event":"Deodóro RJ","level":"CCI4*-S","discipline":"Eventing","weekOf":"2026-11-30"},{"event":"Hannover","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-30"},{"event":"Vilamoura","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-30"},{"event":"Thermal CA","level":"CSI5*","discipline":"Jumping","weekOf":"2026-11-30"},{"event":"Salzburg Arena Messezentrum","level":"CSI4*","discipline":"Jumping","weekOf":"2026-11-30"},{"event":"Riyadh","level":"CSI4*-W","discipline":"Jumping","weekOf":"2026-11-30"},{"event":"Perote","level":"CCI4*-L","discipline":"Eventing","weekOf":"2026-11-30"},{"event":"Paris","level":"CSI5*","discipline":"Jumping","weekOf":"2026-11-30"},{"event":"La Coruña","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-11-30"},{"event":"Geneva","level":"CSI5*","discipline":"Jumping","weekOf":"2026-12-07"},{"event":"Thermal CA","level":"CSI5*","discipline":"Jumping","weekOf":"2026-12-07"},{"event":"Riyadh","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-12-07"},{"event":"Puhinui","level":"CCI4*-L","discipline":"Eventing","weekOf":"2026-12-07"},{"event":"Poznan, MTP","level":"CSI4*-W","discipline":"Jumping","weekOf":"2026-12-07"},{"event":"Baicoi","level":"CSI4*","discipline":"Jumping","weekOf":"2026-12-07"},{"event":"London","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-12-14"},{"event":"Frankfurt","level":"CSI4*","discipline":"Jumping","weekOf":"2026-12-14"},{"event":"Mechelen","level":"CSI5*-W","discipline":"Jumping","weekOf":"2026-12-21"}];
@@ -1778,7 +1786,7 @@
   }
 
   function rowHtml(t){
-    const metaBits = [t.tag, (t.owners||[]).join(', ')].filter(Boolean).join(' · ');
+    const metaBits = [t.type, t.tag, (t.owners||[]).join(', ')].filter(Boolean).join(' · ');
     const showClient = groupMode !== 'client' && t.client;
     return `
       <div class="row" data-id="${t.id}">
@@ -1797,6 +1805,7 @@
   function groupKeyFor(t){
     if(groupMode==='client') return t.client || 'Unsorted';
     if(groupMode==='division') return t.division || 'Uncategorized';
+    if(groupMode==='type') return t.type || 'Uncategorized';
     if(groupMode==='day') return fmtDayLabel(t.dateISO);
     if(groupMode==='person') return null; // handled specially (multi-membership)
     return t.client || 'Unsorted';
@@ -1984,6 +1993,9 @@
 
     document.getElementById('f_division').innerHTML = '<option value="">—</option>' +
       DIVISION_ROSTER.map(c=>`<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('');
+
+    document.getElementById('f_type').innerHTML = '<option value="">—</option>' +
+      TASK_TYPE_LIST.map(c=>`<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('');
   }
 
   function updateTaskModalHints(){
@@ -2097,6 +2109,7 @@
     document.getElementById('f_date').value = t ? t.dateISO : currentWeekId;
     document.getElementById('f_title').value = t ? t.title : '';
     document.getElementById('f_tag').value = t ? (t.tag||'') : '';
+    document.getElementById('f_type').value = t ? (t.type||'') : '';
     document.getElementById('f_division').value = t ? (t.division||'') : '';
     selectedShowId = t ? (t.showId||'') : '';
     updateShowBtnLabel();
@@ -2171,6 +2184,7 @@
       dateISO: dateISO,
       title: document.getElementById('f_title').value.trim(),
       tag: document.getElementById('f_tag').value.trim(),
+      type: document.getElementById('f_type').value.trim(),
       division: document.getElementById('f_division').value.trim(),
       showId: selectedShowId,
       owners: selectedOwners.slice(),
@@ -2196,7 +2210,7 @@
       syncTaskToDelivery(editingTaskId, data);
     } else if(makeRecurring && canEdit){
       const template = {
-        client:data.client, title:data.title, tag:data.tag, division:data.division,
+        client:data.client, title:data.title, tag:data.tag, type:data.type, division:data.division,
         owners:data.owners, status:data.status, notes:data.notes,
         dayOfWeek: dayOfWeekIndex(dateISO), active:true,
       };
@@ -2848,7 +2862,7 @@
       if(tasks.some(t => t.id === occId)) return;
       const occData = {
         client: r.client, dateISO: addDays(currentWeekId, r.dayOfWeek), title: r.title,
-        tag: r.tag||'', division: r.division||'', owners: (r.owners||[]).slice(),
+        tag: r.tag||'', type: r.type||'', division: r.division||'', owners: (r.owners||[]).slice(),
         status: r.status||'notstarted', notes: r.notes||'', weekId: currentWeekId,
         recurringId: r.id, order: 90, calendarSynced: false,
       };
@@ -3076,10 +3090,10 @@
 
   async function exportReportCSV(){
     if(!reportRows.length) return;
-    const header = ['Client','Date','Title','Team','Owners','Tag'];
+    const header = ['Client','Date','Title','Team','Type','Owners','Tag'];
     const lines = [header.join(',')];
     reportRows.forEach(r => {
-      const cells = [r.client||'', r.dateISO||'', r.title||'', r.division||'', (r.owners||[]).join('/'), r.tag||''];
+      const cells = [r.client||'', r.dateISO||'', r.title||'', r.division||'', r.type||'', (r.owners||[]).join('/'), r.tag||''];
       lines.push(cells.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(','));
     });
     const blob = new Blob([lines.join('\n')], {type:'text/csv'});
