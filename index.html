@@ -668,6 +668,11 @@
       <div class="field"><label>Task title</label><input list="titleOptions" id="f_title" required placeholder="Pick a common one or type your own"></div>
       <div class="shows-hint" id="titleCmhHint" style="display:none;"></div>
       <datalist id="titleOptions"></datalist>
+      <div class="field" id="extraTasksField">
+        <label>Add more tasks <span style="text-transform:none;font-weight:500;">(optional — same client/team/owners, own title &amp; date each)</span></label>
+        <div id="extraTasksList"></div>
+        <button type="button" class="add-row-btn" id="addExtraTaskBtn" style="width:auto;padding:6px 2px;">+ Add another task</button>
+      </div>
       <div class="field-row">
         <div class="field" style="position:relative;">
           <label>Owner(s)</label>
@@ -2207,20 +2212,12 @@
     document.getElementById('f_status').value = t ? t.status : 'notstarted';
     document.getElementById('f_notes').value = t ? (t.notes||'') : '';
 
+    // "+ Add another task" only makes sense when adding fresh, never while editing one existing task.
+    document.getElementById('extraTasksList').innerHTML = '';
+    document.getElementById('extraTasksField').style.display = t ? 'none' : 'flex';
+
     document.getElementById('f_recurring').checked = false;
-    const recurRow = document.getElementById('recurRow');
-    const recurNote = document.getElementById('recurNote');
-    const stopBtn = document.getElementById('stopRecurBtn');
-    if(t && t.recurringId){
-      recurRow.style.display = 'none';
-      recurNote.style.display = 'flex';
-      recurNote.textContent = '↻ Part of a weekly series — editing this only changes this week\'s task.';
-      stopBtn.style.display = 'inline-block';
-    } else {
-      recurRow.style.display = 'flex';
-      recurNote.style.display = 'none';
-      stopBtn.style.display = 'none';
-    }
+    updateRecurRowVisibility();
     updateTaskModalHints();
     document.getElementById('taskOverlay').hidden = false;
   }
@@ -2283,6 +2280,61 @@
     });
   }
 
+  // Plain single-task add (no Graphics - Full / Clip explosion, no recurring) -- the "else" branch
+  // of the taskForm submit handler, pulled out so both the primary task and any "+ Add another
+  // task" rows below it can go through the exact same add path.
+  function addOneTask(data){
+    data.order = tasks.length;
+    data.calendarSynced = false;
+    if(canEdit){
+      tasksCol().add(data).then(ref => {
+        if(data.weekId === currentWeekId){ data.id = ref.id; tasks.push(data); renderGroups(); }
+        syncTaskToDelivery(ref.id, data);
+      }).catch(()=>{});
+    } else {
+      data.id = 'local-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+      if(data.weekId === currentWeekId){ tasks.push(data); renderGroups(); }
+    }
+  }
+
+  // One row in the Add task modal's "+ Add another task" list -- its own title + date, sharing
+  // everything else (client/team/owners/status/notes) with the task above it. Add-mode only.
+  function addExtraTaskRow(title, dateISO){
+    const row = document.createElement('div');
+    row.className = 'extra-date-row';
+    row.innerHTML = `<input type="text" class="extra-task-title" list="titleOptions" placeholder="Task title" value="${escapeAttr(title||'')}">
+      <input type="date" class="extra-task-date" value="${dateISO||''}">
+      <button type="button" class="chip-x" title="Remove this task">✕</button>`;
+    row.querySelector('button').addEventListener('click', () => { row.remove(); updateRecurRowVisibility(); });
+    document.getElementById('extraTasksList').appendChild(row);
+    updateRecurRowVisibility();
+  }
+  document.getElementById('addExtraTaskBtn').addEventListener('click', () => {
+    addExtraTaskRow('', document.getElementById('f_date').value || currentWeekId);
+  });
+
+  // Shows/hides the "Repeats weekly on this day" option: hidden while editing a task that's already
+  // part of a weekly series (its own note/Stop-repeating button show instead), and also hidden
+  // whenever any "+ Add another task" rows are present, since "repeats weekly" doesn't make sense
+  // for a batch of different tasks.
+  function updateRecurRowVisibility(){
+    const recurRow = document.getElementById('recurRow');
+    const recurNote = document.getElementById('recurNote');
+    const stopBtn = document.getElementById('stopRecurBtn');
+    const t = editingTaskId ? tasks.find(x=>x.id===editingTaskId) : null;
+    if(t && t.recurringId){
+      recurRow.style.display = 'none';
+      recurNote.style.display = 'flex';
+      recurNote.textContent = '↻ Part of a weekly series — editing this only changes this week\'s task.';
+      stopBtn.style.display = 'inline-block';
+      return;
+    }
+    recurNote.style.display = 'none';
+    stopBtn.style.display = 'none';
+    const hasExtras = !editingTaskId && document.getElementById('extraTasksList').children.length > 0;
+    recurRow.style.display = hasExtras ? 'none' : 'flex';
+  }
+
   document.getElementById('taskForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const client = document.getElementById('f_client').value.trim();
@@ -2301,20 +2353,19 @@
     };
     if(!data.client || !data.title || !data.dateISO){ closeTaskModal(); return; }
 
+    // Any "+ Add another task" rows -- same client/team/owners/status/notes as above, own title +
+    // date each -- only apply when adding fresh, never while editing one existing task.
+    const extraTasks = !editingTaskId ? Array.from(document.querySelectorAll('#extraTasksList .extra-date-row')).map(row => ({
+      title: row.querySelector('.extra-task-title').value.trim(),
+      dateISO: row.querySelector('.extra-task-date').value,
+    })).filter(r => r.title && r.dateISO) : [];
+    const makeRecurring = !editingTaskId && !extraTasks.length && document.getElementById('f_recurring').checked;
+
     if(!editingTaskId && data.title === 'Graphics - Full'){
       spawnFullGraphicsPackage(data);
-      closeTaskModal();
-      return;
-    }
-    if(!editingTaskId && data.client === 'Clip'){
+    } else if(!editingTaskId && data.client === 'Clip'){
       spawnClipWeekTask(data);
-      closeTaskModal();
-      return;
-    }
-
-    const makeRecurring = !editingTaskId && document.getElementById('f_recurring').checked;
-
-    if(editingTaskId){
+    } else if(editingTaskId){
       const t = tasks.find(x=>x.id===editingTaskId);
       Object.assign(t, data);
       renderGroups();
@@ -2335,22 +2386,18 @@
         });
       }).catch(()=>{});
     } else {
-      data.order = tasks.length;
-      data.calendarSynced = false;
-      if(canEdit){
-        tasksCol().add(data).then(ref => {
-          if(data.weekId === currentWeekId){
-            data.id = ref.id;
-            tasks.push(data);
-            renderGroups();
-          }
-          syncTaskToDelivery(ref.id, data);
-        }).catch(()=>{});
-      } else {
-        data.id = 'local-' + Date.now();
-        if(data.weekId === currentWeekId){ tasks.push(data); renderGroups(); }
-      }
+      addOneTask(data);
     }
+
+    // Each extra row goes through the same Graphics - Full / Clip explosion rules as the task above,
+    // just never recurring (ambiguous which of several tasks would repeat weekly).
+    extraTasks.forEach(r => {
+      const extraData = Object.assign({}, data, {title: r.title, dateISO: r.dateISO, weekId: mondayOf(r.dateISO)});
+      if(extraData.title === 'Graphics - Full') spawnFullGraphicsPackage(extraData);
+      else if(extraData.client === 'Clip') spawnClipWeekTask(extraData);
+      else addOneTask(extraData);
+    });
+
     closeTaskModal();
   });
 
