@@ -409,17 +409,22 @@
 <body>
 <style>
   .login-screen{ position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px; z-index:50; }
-  .login-card{ background:var(--surface); border-radius:16px; width:100%; max-width:380px; padding:32px 28px; box-shadow:0 20px 50px rgba(0,0,0,.18); text-align:center; }
-  .login-card h1{ margin:0 0 6px; font-family:Manrope, Inter, sans-serif; font-size:28px; color:var(--navy); letter-spacing:.04em; }
-  .login-sub{ color:var(--ink-2); font-size:14px; margin:0 0 20px; line-height:1.5; }
+  .login-card{
+    background:linear-gradient(155deg,var(--navy) 0%,var(--navy-deep) 100%);
+    border-radius:16px; width:100%; max-width:380px; padding:32px 28px;
+    box-shadow:0 20px 50px rgba(0,0,0,.3); text-align:center;
+  }
+  .login-card h1{ margin:0 0 6px; font-family:Manrope, Inter, sans-serif; font-size:28px; color:var(--gold); letter-spacing:.04em; }
+  .login-sub{ color:rgba(255,255,255,.78); font-size:14px; margin:0 0 20px; line-height:1.5; }
   .login-card .field{ text-align:left; margin-bottom:14px; }
-  .login-card label{ display:block; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-2); margin-bottom:6px; }
-  .login-card input{ width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--hairline-strong); border-radius:8px; font-size:15px; background:var(--surface-2); color:var(--ink); }
+  .login-card label{ display:block; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:rgba(255,255,255,.65); margin-bottom:6px; }
+  .login-card input{ width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid rgba(255,255,255,.2); border-radius:8px; font-size:15px; background:rgba(255,255,255,.08); color:#fff; }
+  .login-card input::placeholder{ color:rgba(255,255,255,.4); }
   .login-card .btn-primary{ width:100%; margin-top:4px; }
   .login-status{ margin-top:14px; font-size:13px; line-height:1.5; }
-  .login-status.error{ color:var(--st-blocked-text); }
-  .login-status.ok{ color:var(--st-done-text); }
-  .login-hint{ margin:16px 0 0; font-size:12px; color:var(--ink-muted); }
+  .login-status.error{ color:#F0A6A5; }
+  .login-status.ok{ color:#7FDD82; }
+  .login-hint{ margin:16px 0 0; font-size:12px; color:rgba(255,255,255,.5); }
 </style>
 <div id="loginScreen" class="login-screen">
   <div class="login-card">
