@@ -415,19 +415,30 @@
     box-shadow:0 20px 50px rgba(0,0,0,.3); text-align:center;
   }
   .login-card h1{ margin:0 0 6px; font-family:Manrope, Inter, sans-serif; font-size:28px; color:var(--gold); letter-spacing:.04em; }
-  .login-sub{ color:rgba(255,255,255,.78); font-size:14px; margin:0 0 24px; line-height:1.5; }
-  .login-card .btn-primary{ width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:12px 16px; font-size:14px; }
+  .login-sub{ color:rgba(255,255,255,.78); font-size:14px; margin:0 0 20px; line-height:1.5; }
+  .login-card .field{ text-align:left; margin-bottom:14px; }
+  .login-card label{ display:block; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:rgba(255,255,255,.65); margin-bottom:6px; }
+  .login-card input{ width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid rgba(255,255,255,.2); border-radius:8px; font-size:15px; background:rgba(255,255,255,.08); color:#fff; }
+  .login-card input::placeholder{ color:rgba(255,255,255,.4); }
+  .login-card .btn-primary{ width:100%; margin-top:4px; }
   .login-status{ margin-top:14px; font-size:13px; line-height:1.5; }
   .login-status.error{ color:#F0A6A5; }
   .login-status.ok{ color:#7FDD82; }
+  .login-toggle{ margin:14px 0 0; font-size:13px; }
+  .login-toggle a{ color:var(--gold); text-decoration:underline; cursor:pointer; }
   .login-hint{ margin:16px 0 0; font-size:12px; color:rgba(255,255,255,.5); }
 </style>
 <div id="loginScreen" class="login-screen">
   <div class="login-card">
     <h1>B.E.C.S</h1>
-    <p class="login-sub">EquiRatings' internal ops tracker. Sign in with your EquiRatings Google account to continue.</p>
-    <button type="button" class="btn-primary" id="googleSignInBtn">Sign in with Google</button>
+    <p class="login-sub" id="loginModeSub">Sign in with your EquiRatings email to continue.</p>
+    <form id="authForm">
+      <div class="field"><label>Email</label><input type="email" id="authEmail" placeholder="you@equiratings.com" required autocomplete="email"></div>
+      <div class="field"><label>Password</label><input type="password" id="authPassword" placeholder="••••••••" required minlength="6" autocomplete="current-password"></div>
+      <button type="submit" class="btn-primary" id="authSubmitBtn">Sign in</button>
+    </form>
     <div id="loginStatus" class="login-status" hidden></div>
+    <p class="login-toggle"><a href="#" id="authModeToggle">Need an account? Create one</a></p>
     <p class="login-hint">Only @equiratings.com addresses can sign in.</p>
   </div>
 </div>
@@ -3804,17 +3815,39 @@
     el.textContent = msg || '';
     el.className = 'login-status' + (kind ? ' ' + kind : '');
   }
-  document.getElementById('googleSignInBtn').addEventListener('click', async () => {
-    const btn = document.getElementById('googleSignInBtn');
+  let authMode = 'signin';
+  function updateAuthModeUI(){
+    document.getElementById('authSubmitBtn').textContent = authMode === 'signin' ? 'Sign in' : 'Create account';
+    document.getElementById('authModeToggle').textContent = authMode === 'signin' ? 'Need an account? Create one' : 'Already have an account? Sign in';
+    document.getElementById('loginModeSub').textContent = authMode === 'signin'
+      ? 'Sign in with your EquiRatings email to continue.'
+      : 'Create an account with your EquiRatings email to get started.';
+  }
+  document.getElementById('authModeToggle').addEventListener('click', (e) => {
+    e.preventDefault();
+    authMode = authMode === 'signin' ? 'signup' : 'signin';
+    setLoginStatus('');
+    updateAuthModeUI();
+  });
+  updateAuthModeUI();
+
+  document.getElementById('authForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const btn = document.getElementById('authSubmitBtn');
     btn.disabled = true;
-    const { error } = await supabaseClient.auth.signInWithOAuth({
-      provider: 'google', options: { redirectTo: window.location.origin }
-    });
+    const originalLabel = btn.textContent;
+    btn.textContent = authMode === 'signin' ? 'Signing in…' : 'Creating account…';
+    const { error } = authMode === 'signin'
+      ? await supabaseClient.auth.signInWithPassword({ email, password })
+      : await supabaseClient.auth.signUp({ email, password });
+    btn.disabled = false;
+    btn.textContent = originalLabel;
     if(error){
-      setLoginStatus(error.message || 'Something went wrong starting Google sign-in — try again.', 'error');
-      btn.disabled = false;
+      setLoginStatus(error.message || 'Something went wrong — try again.', 'error');
     }
-    // on success the browser is redirected to Google immediately, nothing else to do here
+    // on success the onAuthStateChange listener below shows the app
   });
 
   let appStarted = false;
