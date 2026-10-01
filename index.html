@@ -355,8 +355,7 @@
   }
   .field-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   .field textarea{resize:vertical; min-height:52px;}
-  .field select#f_client, .field select#f_division{cursor:pointer;}
-  .field input#f_client_new{margin-top:6px;}
+  .field select#f_division{cursor:pointer;}
   .owners-btn{width:100%; text-align:left; font:inherit; font-size:13.5px; padding:9px 11px; border-radius:9px; border:1px solid var(--hairline-strong); background:var(--bg); color:var(--ink); cursor:pointer;}
   .owners-btn:hover{border-color:var(--navy);}
   .owners-pop{position:absolute; top:100%; left:0; right:0; margin-top:4px; background:var(--surface); border:1px solid var(--hairline-strong); border-radius:10px; box-shadow:var(--shadow); z-index:30; max-height:220px; overflow-y:auto; padding:6px;}
@@ -636,8 +635,8 @@
       <div class="field-row">
         <div class="field">
           <label>Client / group</label>
-          <select id="f_client" required></select>
-          <input id="f_client_new" placeholder="New client name">
+          <input id="f_client" list="clientOptions" required placeholder="Type or pick a client" autocomplete="off">
+          <datalist id="clientOptions"></datalist>
         </div>
         <div class="field" style="position:relative;">
           <label>Event <span style="text-transform:none;font-weight:500;">(optional)</span></label>
@@ -743,7 +742,8 @@
       <div class="field-row">
         <div class="field"><label>Event / show name</label>
           <input type="text" id="as_name" required placeholder="e.g. Blenheim Palace">
-          <select id="as_fei_pick" style="margin-top:6px;"><option value="">Or pick from the FEI calendar…</option></select>
+          <input type="text" id="as_fei_pick" list="feiPickOptions" style="margin-top:6px;" placeholder="Or search the FEI calendar… (e.g. type &quot;Lee&quot; for Leesburg)" autocomplete="off">
+          <datalist id="feiPickOptions"></datalist>
         </div>
         <div class="field"><label>Date</label><input type="date" id="as_date" required></div>
       </div>
@@ -757,6 +757,7 @@
       </div>
       <div class="field">
         <label>Client(s) <span style="text-transform:none;font-weight:500;">(optional)</span></label>
+        <input type="text" id="addShowClientsSearch" placeholder="Search clients…" autocomplete="off" style="margin-bottom:6px;">
         <div class="owners-pop-static" id="addShowClientsList"></div>
       </div>
       <div class="field">
@@ -1976,16 +1977,11 @@
 
   // ---------------- modal ----------------
   function refreshFormOptions(){
-    const clientSel = document.getElementById('f_client');
     const allClients = new Set(CLIENT_ORDER.concat(CLIENT_ROSTER)); tasks.forEach(t=>t.client && allClients.add(t.client));
     showsWeek.forEach(s => (s.clients||[]).forEach(c => c && allClients.add(c)));
     const orderedClients = [...allClients].sort((a,b)=>a.localeCompare(b));
-    clientSel.innerHTML = `<option value="">— Select client —</option>`
-      + orderedClients.map(c=>`<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('')
-      + `<option value="__new__">+ Add new client…</option>`;
-    document.getElementById('f_client_new').style.display = 'none';
-    document.getElementById('f_client_new').value = '';
-    document.getElementById('f_client_new').required = false;
+    document.getElementById('clientOptions').innerHTML =
+      orderedClients.map(c=>`<option value="${escapeAttr(c)}">`).join('');
 
     document.getElementById('f_division').innerHTML = '<option value="">—</option>' +
       DIVISION_ROSTER.map(c=>`<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('');
@@ -1993,8 +1989,7 @@
 
   function updateTaskModalHints(){
     const division = document.getElementById('f_division').value;
-    let client = document.getElementById('f_client').value;
-    if(client === '__new__') client = document.getElementById('f_client_new').value.trim();
+    const client = document.getElementById('f_client').value.trim();
     updateTitleOptionsList(Array.from(new Set(deliveryItemsFor(division, client).concat(GENERAL_TASK_ITEMS))));
     const hint = document.getElementById('titleCmhHint');
     const text = clipHintText(client);
@@ -2002,16 +1997,11 @@
     hint.style.display = text ? 'block' : 'none';
   }
 
-  document.getElementById('f_client').addEventListener('change', function(){
-    const isNew = this.value === '__new__';
-    document.getElementById('f_client_new').style.display = isNew ? 'block' : 'none';
-    document.getElementById('f_client_new').required = isNew;
-    if(isNew) document.getElementById('f_client_new').focus();
+  document.getElementById('f_client').addEventListener('input', function(){
     // US Open content always lives under its own team, never Content - Eventing
-    if(this.value === 'US Open') document.getElementById('f_division').value = 'Content - US Open';
+    if(this.value.trim() === 'US Open') document.getElementById('f_division').value = 'Content - US Open';
     updateTaskModalHints();
   });
-  document.getElementById('f_client_new').addEventListener('input', updateTaskModalHints);
   document.getElementById('f_division').addEventListener('change', updateTaskModalHints);
 
   function updateOwnersBtnLabel(){
@@ -2089,16 +2079,7 @@
     document.getElementById('modalTitle').textContent = t ? 'Edit task' : 'Add task';
     document.getElementById('deleteTaskBtn').style.display = t ? 'inline-block' : 'none';
     refreshFormOptions();
-    const clientSel = document.getElementById('f_client');
-    const desiredClient = t ? t.client : '';
-    clientSel.value = desiredClient;
-    if(clientSel.value !== desiredClient){
-      // client isn't one of the known options yet — fall back to "add new" with it prefilled
-      clientSel.value = '__new__';
-      document.getElementById('f_client_new').style.display = 'block';
-      document.getElementById('f_client_new').required = true;
-      document.getElementById('f_client_new').value = desiredClient;
-    }
+    document.getElementById('f_client').value = t ? t.client : '';
     document.getElementById('f_date').value = t ? t.dateISO : currentWeekId;
     document.getElementById('f_title').value = t ? t.title : '';
     document.getElementById('f_tag').value = t ? (t.tag||'') : '';
@@ -2168,8 +2149,7 @@
 
   document.getElementById('taskForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    let client = document.getElementById('f_client').value;
-    if(client === '__new__') client = document.getElementById('f_client_new').value.trim();
+    const client = document.getElementById('f_client').value.trim();
     const dateISO = document.getElementById('f_date').value;
     const data = {
       client: client,
@@ -2610,24 +2590,27 @@
     options.sort((a,b) => a.label.localeCompare(b.label));
     return options;
   }
+  // A text input + <datalist> instead of a <select> -- the browser filters the suggestion list
+  // live as you type (e.g. "Lee" surfaces "Leesburg VA") instead of making you scroll a long
+  // dropdown. Each suggestion's visible text is its disambiguated label (see buildFeiPickerOptions);
+  // picking one is detected by that exact label showing up in the field, same one-shot "insert"
+  // behavior as the old select -- it fills in the event/date/discipline, then clears itself.
   function populateFeiPicker(){
-    const sel = document.getElementById('as_fei_pick');
+    const input = document.getElementById('as_fei_pick');
     const options = buildFeiPickerOptions();
-    sel.innerHTML = '<option value="">Or pick from the FEI calendar…</option>' +
-      options.map((o,i) => `<option value="${i}">${escapeHtml(o.label)}</option>`).join('');
-    sel._feiOptions = options;
+    document.getElementById('feiPickOptions').innerHTML =
+      options.map(o => `<option value="${escapeAttr(o.label)}">`).join('');
+    input._feiOptions = options;
   }
-  document.getElementById('as_fei_pick').addEventListener('change', function(){
-    if(!this.value) return;
-    const opt = this._feiOptions[parseInt(this.value, 10)];
-    if(opt){
-      document.getElementById('as_name').value = opt.event;
-      if(opt.weekOf) document.getElementById('as_date').value = opt.weekOf; // week-of date from the FEI reference sheet
-      const disciplineSel = document.getElementById('as_discipline');
-      disciplineSel.value = opt.discipline;
-      disciplineSel.dispatchEvent(new Event('change')); // reuses the existing discipline handler to refresh delivery items
-    }
-    this.value = ''; // reset to the placeholder so it always acts as a one-shot "insert" control
+  document.getElementById('as_fei_pick').addEventListener('input', function(){
+    const opt = (this._feiOptions||[]).find(o => o.label === this.value);
+    if(!opt) return; // still typing/filtering -- not a complete match yet
+    document.getElementById('as_name').value = opt.event;
+    if(opt.weekOf) document.getElementById('as_date').value = opt.weekOf; // week-of date from the FEI reference sheet
+    const disciplineSel = document.getElementById('as_discipline');
+    disciplineSel.value = opt.discipline;
+    disciplineSel.dispatchEvent(new Event('change')); // reuses the existing discipline handler to refresh delivery items
+    this.value = ''; // reset to empty so it always acts as a one-shot "insert" control
   });
 
   let addShowSelected = [];
@@ -2641,8 +2624,13 @@
   }
   function renderAddShowClientsList(){
     const list = document.getElementById('addShowClientsList');
-    list.innerHTML = knownClientRoster().map(c => `
-      <label><input type="checkbox" value="${escapeAttr(c)}" ${addShowSelected.includes(c)?'checked':''}> ${escapeHtml(c)}</label>`).join('');
+    // Checked state lives in addShowSelected regardless of what's currently filtered into view, so
+    // narrowing the list down while typing never loses a client that's already ticked off-screen.
+    const q = (document.getElementById('addShowClientsSearch').value || '').trim().toLowerCase();
+    const roster = knownClientRoster().filter(c => !q || c.toLowerCase().includes(q));
+    list.innerHTML = roster.length ? roster.map(c => `
+      <label><input type="checkbox" value="${escapeAttr(c)}" ${addShowSelected.includes(c)?'checked':''}> ${escapeHtml(c)}</label>`).join('')
+      : `<div class="shows-hint" style="padding:6px 2px;">No clients match "${escapeHtml(q)}".</div>`;
     list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       cb.addEventListener('change', () => {
         if(cb.checked){ if(!addShowSelected.includes(cb.value)) addShowSelected.push(cb.value); }
@@ -2651,6 +2639,7 @@
       });
     });
   }
+  document.getElementById('addShowClientsSearch').addEventListener('input', renderAddShowClientsList);
   document.getElementById('addShowNewClient').addEventListener('input', renderAddShowDeliverables);
   // Delivery items are a checkbox list so several can be picked at once, filtered to the chosen
   // discipline — unless the client has a fixed list (see CLIENT_FIXED_ITEMS), in which case the
@@ -2685,9 +2674,11 @@
     addShowSelected = [];
     addShowDeliverables = [];
     document.getElementById('as_name').value = '';
+    document.getElementById('as_fei_pick').value = '';
     document.getElementById('as_date').value = currentWeekId;
     document.getElementById('as_discipline').value = '';
     document.getElementById('addShowNewClient').value = '';
+    document.getElementById('addShowClientsSearch').value = '';
     document.getElementById('addShowCustomDeliverable').value = '';
     document.getElementById('as_wantOps').checked = true;
     document.getElementById('addShowDeliverablesDefaultHint').textContent =
