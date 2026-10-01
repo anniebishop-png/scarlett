@@ -2952,13 +2952,16 @@
       if(weekShows.length) weeks.push({weekId, shows: weekShows});
       weekId = addDays(weekId, 7);
     }
-    listEl.innerHTML = weeks.map(w => `<div class="report-group">
+    listEl.innerHTML = weeks.map(w => {
+      const activeCount = w.shows.filter(s => (s.clients||[]).length > 0).length;
+      return `<div class="report-group">
       <div class="report-group-head">
         <span class="cal-week-head-range">${escapeHtml(fmtWeekRange(w.weekId))}${w.weekId===CURRENT_WEEK?' <span class="cal-week-tag">This week</span>':''}</span>
-        <span>${w.shows.length} show${w.shows.length===1?'':'s'}</span>
+        <span>${w.shows.length} show${w.shows.length===1?'':'s'}, ${activeCount} active</span>
       </div>
       <div class="chip-row cal-week-chips">${w.shows.map(showChipHtml).join('')}</div>
-    </div>`).join('');
+    </div>`;
+    }).join('');
     document.getElementById('calEmptyNote').hidden = weeks.length > 0;
     attachCalendarChipHandlers();
   }
