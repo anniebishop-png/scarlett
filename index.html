@@ -1244,12 +1244,18 @@
   // Unlike other clients' delivery items (which all land on the show week's Monday), FEI - Nations
   // Cup's three items are each pinned to their own day relative to that Monday (dayOffset 0) — the
   // Wednesday and Sunday of the competition week itself, and the Monday of the week after it wraps.
-  // Looked up by spawnDeliveryTasks() and the fixNationsCupTaskDates() self-heal.
+  // Looked up by spawnDeliveryTasks() and the fixFixedDayTaskDates() self-heal.
   const NATIONS_CUP_DAY_OFFSETS = {
     'Wednesday Preview Article': 2,
     'Sunday Insights': 6,
     'Monday Review Article': 7,
   };
+  // Clip (ClipMyHorse.TV) shows run Wed-Sun, not Monday -- its delivery tasks (and anything manually
+  // added with Clip as the client) are pinned to that Wednesday instead of landing on the Monday
+  // every other client's items default to. Looked up by spawnDeliveryTasks(), the f_client modal
+  // listener, and the fixFixedDayTaskDates() self-heal.
+  const CLIP_DAY_OFFSET = 2;
+  const CLIP_DATE_NOTE = 'Wed–Sun';
   const EVENTING_ITEMS = [
     'Article','Graphics - Full','Pod - Preview/Review','Media Guide','Video / Reel',
     'Fan Guide +','Fan Guide','Graphics - Light','Graphics - Bespoke',
@@ -1405,14 +1411,17 @@
     const division = deriveShowDivision(show, client);
     list.forEach((title, i) => {
       // FEI - Nations Cup's items each carry their own day (see NATIONS_CUP_DAY_OFFSETS) instead of
-      // all landing on the show week's Monday like every other client's delivery items do.
-      const dayOffset = client === 'FEI - Nations Cup' ? NATIONS_CUP_DAY_OFFSETS[title] : null;
+      // all landing on the show week's Monday like every other client's delivery items do. Clip
+      // (ClipMyHorse.TV) shows run Wed-Sun, so its items are all pinned to that Wednesday instead.
+      const dayOffset = client === 'FEI - Nations Cup' ? NATIONS_CUP_DAY_OFFSETS[title]
+        : client === 'Clip' ? CLIP_DAY_OFFSET
+        : null;
       const dateISO = dayOffset != null ? addDays(show.weekId, dayOffset) : show.weekId;
       const weekId = mondayOf(dateISO);
       const id = 'dt_' + show.id + '_' + slugify(client) + '_' + slugify(title);
       tasksCol().doc(id).set({
         client, dateISO, title, tag: '', division, owners: [],
-        status: 'notstarted', notes: '', weekId, showId: show.id,
+        status: 'notstarted', notes: client === 'Clip' ? CLIP_DATE_NOTE : '', weekId, showId: show.id,
         order: 95 + i, calendarSynced: false,
       }).catch(()=>{});
       syncTaskToDelivery(id, {client, dateISO, title, division, status: 'notstarted'});
@@ -2085,6 +2094,15 @@
   document.getElementById('f_client').addEventListener('input', function(){
     // US Open content always lives under its own team, never Content - Eventing
     if(this.value.trim() === 'US Open') document.getElementById('f_division').value = 'Content - US Open';
+    // Clip (ClipMyHorse.TV) shows run Wed-Sun, not Monday -- when picking Clip on a new task (never
+    // while editing an existing one), move the date to that Wednesday instead of leaving it wherever
+    // it defaulted to, and note the range if nothing's been typed in Notes yet.
+    if(this.value.trim() === 'Clip' && !editingTaskId){
+      const dateEl = document.getElementById('f_date');
+      dateEl.value = addDays(mondayOf(dateEl.value || currentWeekId), CLIP_DAY_OFFSET);
+      const notesEl = document.getElementById('f_notes');
+      if(!notesEl.value.trim()) notesEl.value = CLIP_DATE_NOTE;
+    }
     updateTaskModalHints();
   });
   document.getElementById('f_division').addEventListener('change', updateTaskModalHints);
@@ -2860,7 +2878,7 @@
       tasks = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
       renderGroups();
       ensureRecurringOccurrences();
-      fixNationsCupTaskDates();
+      fixFixedDayTaskDates();
       document.getElementById('footNote').textContent = 'This board is shared and live — changes anyone on the team makes here show up for everyone instantly.';
     }, () => {
       document.getElementById('footNote').textContent = 'Could not load this week\'s tasks — try reopening the board.';
@@ -2873,7 +2891,7 @@
       showsWeek = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
       showsWeek.sort((a,b) => (a.eventName||'').localeCompare(b.eventName||''));
       renderChips();
-      fixNationsCupTaskDates();
+      fixFixedDayTaskDates();
     }, () => {});
   }
   // Powers the Add task Event picker with any show from the viewed week onward — not just the
@@ -2885,19 +2903,31 @@
     unsubUpcomingShows = showsCol().where('weekId','>=', currentWeekId).onSnapshot(snap => {
       upcomingShows = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
       upcomingShows.sort((a,b) => (a.weekId||'').localeCompare(b.weekId||'') || (a.eventName||'').localeCompare(b.eventName||''));
-      fixNationsCupTaskDates();
+      fixFixedDayTaskDates();
     }, () => {});
   }
-  // Self-heals any FEI - Nations Cup delivery task whose date doesn't match its fixed day (see
-  // NATIONS_CUP_DAY_OFFSETS) — e.g. ones spawned before that cadence was in place, which had all
-  // landed on the show week's Monday instead. Mirrors the ensureRecurringOccurrences() pattern:
-  // runs quietly whenever tasks or show data refresh, no manual fix needed.
-  function fixNationsCupTaskDates(){
+  // Self-heals any delivery task for a fixed-day client (FEI - Nations Cup, Clip) whose date
+  // doesn't match its fixed day (see NATIONS_CUP_DAY_OFFSETS / CLIP_DAY_OFFSET) -- e.g. ones spawned
+  // before that cadence was in place, which had all landed on the show week's Monday instead.
+  // Mirrors the ensureRecurringOccurrences() pattern: runs quietly whenever tasks or show data
+  // refresh, no manual fix needed.
+  function fixFixedDayTaskDates(){
     if(!canEdit || !db) return;
     tasks.filter(t => t.client === 'FEI - Nations Cup' && t.showId && NATIONS_CUP_DAY_OFFSETS[t.title]).forEach(t => {
       const show = showsWeek.find(s => s.id === t.showId) || upcomingShows.find(s => s.id === t.showId);
       if(!show) return;
       const correctDate = addDays(show.weekId, NATIONS_CUP_DAY_OFFSETS[t.title]);
+      const correctWeekId = mondayOf(correctDate);
+      if(t.dateISO === correctDate && t.weekId === correctWeekId) return;
+      tasksCol().doc(t.id).update({dateISO: correctDate, weekId: correctWeekId}).catch(()=>{});
+      syncTaskToDelivery(t.id, {client: t.client, dateISO: correctDate, title: t.title, division: t.division, status: t.status});
+    });
+    // Same self-heal for Clip delivery tasks spawned before the Wed-Sun cadence was in place (they
+    // landed on the show week's Monday like any other client's items).
+    tasks.filter(t => t.client === 'Clip' && t.showId).forEach(t => {
+      const show = showsWeek.find(s => s.id === t.showId) || upcomingShows.find(s => s.id === t.showId);
+      if(!show) return;
+      const correctDate = addDays(show.weekId, CLIP_DAY_OFFSET);
       const correctWeekId = mondayOf(correctDate);
       if(t.dateISO === correctDate && t.weekId === correctWeekId) return;
       tasksCol().doc(t.id).update({dateISO: correctDate, weekId: correctWeekId}).catch(()=>{});
