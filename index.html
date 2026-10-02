@@ -513,6 +513,7 @@
         <button data-mode="podcast">Podcast</button>
       </div>
       <div style="display:flex; gap:8px;">
+        <button class="btn-ghost" id="downloadWeekBtn">Download</button>
         <button class="btn-ghost" id="bulkAddBtn">Bulk add</button>
         <button class="btn-primary" id="addTaskBtn">+ Add task</button>
       </div>
@@ -2413,6 +2414,34 @@
   });
 
   document.getElementById('addTaskBtn').addEventListener('click', () => openTaskModal(null));
+
+  // ---------------- download week ----------------
+  function exportWeekTasksCSV(){
+    if(!tasks.length) return;
+    const header = ['Client','Date','Title','Team','Owners','Status','Tag','Notes'];
+    const lines = [header.join(',')];
+    tasks.slice().sort((a,b) => (a.dateISO||'').localeCompare(b.dateISO||'')).forEach(t => {
+      const cells = [t.client||'', t.dateISO||'', t.title||'', t.division||'', (t.owners||[]).join('/'), t.status||'', t.tag||'', t.notes||''];
+      lines.push(cells.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(','));
+    });
+    const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+    const filename = `equiratings-tasks-week-of-${currentWeekId}.csv`;
+    const btn = document.getElementById('downloadWeekBtn');
+    const originalLabel = btn.textContent;
+    try{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch(err){
+      btn.textContent = 'Download failed';
+      setTimeout(() => { btn.textContent = originalLabel; }, 2200);
+    }
+  }
+  document.getElementById('downloadWeekBtn').addEventListener('click', exportWeekTasksCSV);
 
   // ---------------- bulk add ----------------
   let bulkParsedRows = [];
