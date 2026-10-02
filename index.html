@@ -645,6 +645,10 @@
   </div>
   <div class="report-controls">
     <div class="segmented" id="podcastMonthTabs"></div>
+    <div class="segmented" id="podcastSortTabs">
+      <button type="button" data-sort="date" class="active">Date</button>
+      <button type="button" data-sort="lead">Person</button>
+    </div>
     <button class="btn-primary" id="addEpisodeBtn" style="margin-left:auto;">+ Add episode</button>
   </div>
   <div id="podcastResults"></div>
@@ -1033,6 +1037,7 @@
       </div>
       <div class="modal-actions">
         <div class="left">
+          <button type="button" class="btn-ghost" id="assignPodcastTaskBtn" style="display:none;">Assign task</button>
           <button type="button" class="btn-ghost" id="deleteEpisodeBtn" style="display:none;color:var(--st-blocked-text);border-color:var(--st-blocked-text);">Delete</button>
         </div>
         <div class="right">
@@ -1281,6 +1286,7 @@
   let unsubPodcast = null;
   let editingEpisodeId = null;
   let podcastMonthFilter = null; // 'YYYY-MM' or null for all
+  let podcastSortBy = 'date';    // 'date' (chronological) or 'lead' (grouped by person)
   let hustleOpportunities = []; // new-business pipeline, loaded when that page is open
   let unsubHustle = null;
   let editingHustleId = null;
@@ -3776,7 +3782,25 @@
       resultsEl.innerHTML = '<div class="report-empty">No episodes here yet — add one to get started.</div>';
       return;
     }
-    resultsEl.innerHTML = `<div class="report-group">` + rows.map(podcastRowHtml).join('') + `</div>`;
+    if(podcastSortBy === 'lead'){
+      const byLead = new Map();
+      rows.forEach(ep => { const k = ep.lead || 'Unassigned'; if(!byLead.has(k)) byLead.set(k, []); byLead.get(k).push(ep); });
+      const leadKeys = [...byLead.keys()].sort((a,b) => {
+        if(a==='Unassigned') return 1;
+        if(b==='Unassigned') return -1;
+        return a.localeCompare(b);
+      });
+      resultsEl.innerHTML = leadKeys.map(lead => {
+        const items = byLead.get(lead).slice().sort((a,b) => (a.date||'').localeCompare(b.date||''));
+        return `<div class="report-group">
+          <div class="report-group-head"><span>${escapeHtml(lead)}</span><span>${items.length} episode${items.length===1?'':'s'}</span></div>
+          ${items.map(podcastRowHtml).join('')}
+        </div>`;
+      }).join('');
+    } else {
+      rows = rows.slice().sort((a,b) => (a.date||'').localeCompare(b.date||''));
+      resultsEl.innerHTML = `<div class="report-group">` + rows.map(podcastRowHtml).join('') + `</div>`;
+    }
     bindPodcastRowEvents(resultsEl, podcastEpisodes);
   }
 
@@ -3803,6 +3827,7 @@
     document.getElementById('e_status').value = ep && ep.status ? ep.status : 'planned';
     document.getElementById('e_notes').value = ep ? (ep.notes||'') : '';
     document.getElementById('deleteEpisodeBtn').style.display = ep ? 'inline-block' : 'none';
+    document.getElementById('assignPodcastTaskBtn').style.display = ep ? 'inline-block' : 'none';
     // multi-date / weekly-repeat options only make sense when adding a brand new episode
     document.getElementById('episodeExtraDatesList').innerHTML = '';
     document.getElementById('e_repeat_weekly').checked = false;
@@ -3865,6 +3890,40 @@
     closeEpisodeModal();
   });
   document.getElementById('addEpisodeBtn').addEventListener('click', () => openEpisodeModal(null));
+
+  // "Assign task" on an existing episode opens the normal Add-task modal, pre-filled from this
+  // episode's current form values, so the resulting task lives on the Board like any other and
+  // shows up on whatever week/day it's dated (defaults to the episode's own release date).
+  document.getElementById('assignPodcastTaskBtn').addEventListener('click', () => {
+    const platform = document.getElementById('e_platform').value;
+    const title = document.getElementById('e_title').value.trim();
+    const brand = document.getElementById('e_brand').value.trim();
+    const date = document.getElementById('e_date').value;
+    const lead = document.getElementById('e_lead').value;
+    closeEpisodeModal();
+    openTaskModal(null);
+    document.getElementById('f_client').value = brand || platform;
+    document.getElementById('f_title').value = title || (platform + ' episode');
+    document.getElementById('f_tag').value = 'Podcast';
+    const podcastDivisionMap = {
+      'Eventing Podcast': 'Content - Eventing',
+      'Jumping Podcast': 'Content - Jumping',
+      'USEA': 'Content - Eventing',
+      'US Open': 'Content - US Open',
+    };
+    document.getElementById('f_division').value = podcastDivisionMap[platform] || '';
+    if(date) document.getElementById('f_date').value = date;
+    if(lead && TEAM_ROSTER.some(p => p.name === lead)){ selectedOwners = [lead]; updateOwnersBtnLabel(); }
+  });
+
+  // Sort toggle: chronological by release date, or grouped by lead
+  document.querySelectorAll('#podcastSortTabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      podcastSortBy = btn.getAttribute('data-sort');
+      document.querySelectorAll('#podcastSortTabs button').forEach(b => b.classList.toggle('active', b===btn));
+      renderPodcast();
+    });
+  });
 
   // ---------------- hustle pipeline page ----------------
   function subscribeHustle(){
