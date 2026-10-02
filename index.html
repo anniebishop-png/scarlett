@@ -437,6 +437,130 @@
     .row .avatar-stack{grid-area:avatars;}
     .row-menu-btn{grid-area:menu;}
   }
+
+  /* =====================================================================
+     Scarlett refresh (Oct 2026): week pulse, motion, row states, delivery progress
+     ===================================================================== */
+  :root{ --ease-out: cubic-bezier(.2,.75,.2,1); --overdue:#D03B3B; }
+
+  /* Header: richer gradient with a soft gold light in the corner */
+  header.top{
+    position:relative; overflow:hidden; isolation:isolate;
+    background:
+      radial-gradient(120% 140% at 100% 0%, rgba(232,182,84,.20) 0%, rgba(232,182,84,0) 42%),
+      radial-gradient(90% 120% at 0% 100%, rgba(42,120,214,.18) 0%, rgba(42,120,214,0) 50%),
+      linear-gradient(155deg,var(--navy) 0%,var(--navy-deep) 100%);
+    padding:24px 26px 22px; border-radius:0 0 24px 24px;
+    box-shadow:0 14px 40px -18px rgba(14,34,51,.55);
+  }
+  header.top::after{ /* fine diagonal texture, like a raked arena surface */
+    content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:.07;
+    background:repeating-linear-gradient(115deg, #fff 0 1px, transparent 1px 14px);
+    -webkit-mask-image:linear-gradient(90deg, transparent 0%, #000 55%, #000 100%);
+            mask-image:linear-gradient(90deg, transparent 0%, #000 55%, #000 100%);
+  }
+  .header-btn{transition:background .18s ease, border-color .18s ease, color .18s ease, transform .18s var(--ease-out);}
+  .header-btn:hover{border-color:rgba(232,182,84,.55);}
+  .motion .header-btn:active{transform:scale(.97);}
+  .week-nav button{transition:background .18s ease;}
+
+  /* ---------- Week pulse ---------- */
+  .pulse{flex-basis:100%; display:grid; grid-template-columns:auto 1fr; gap:22px; align-items:center;
+    margin-top:6px; padding-top:18px; border-top:1px solid rgba(255,255,255,.12);}
+  .pulse[hidden]{display:none;}
+  .pulse-figure{display:flex; align-items:baseline; gap:2px; font-family:'Manrope',system-ui,sans-serif; color:#fff; line-height:.9;}
+  .pulse-figure .pulse-pct{font-size:56px; font-weight:800; letter-spacing:-.035em; font-variant-numeric:tabular-nums;}
+  .pulse-figure .pulse-sign{font-size:24px; font-weight:800; color:var(--gold);}
+  .pulse-body{display:flex; flex-direction:column; gap:10px; min-width:0;}
+  .pulse-line{color:rgba(255,255,255,.86); font-size:14px; font-weight:600;}
+  .pulse-line strong{color:#fff;}
+  .pulse-rail{position:relative; display:flex; height:12px; border-radius:999px; overflow:hidden;
+    background:rgba(255,255,255,.10); box-shadow:inset 0 1px 2px rgba(0,0,0,.25);}
+  .pulse-seg{height:100%; flex:0 0 var(--w); transform-origin:left center;}
+  .pulse-seg + .pulse-seg{box-shadow:-2px 0 0 0 var(--navy-deep);}
+  .pulse-seg.done{background:linear-gradient(90deg,#2FBE33,#7FDD82);}
+  .pulse-seg.inprogress{background:linear-gradient(90deg,#2A78D6,#6FAAF0);}
+  .pulse-seg.notstarted{background:rgba(255,255,255,.28);}
+  .pulse-legend{display:flex; flex-wrap:wrap; gap:6px 16px; font-size:12px; color:rgba(255,255,255,.7); font-weight:600;}
+  .pulse-legend .k{display:inline-flex; align-items:center; gap:6px;}
+  .pulse-legend .k i{width:8px; height:8px; border-radius:50%; display:inline-block;}
+  .pulse-legend .k.done i{background:#2FBE33;} .pulse-legend .k.inprogress i{background:#4C93E5;} .pulse-legend .k.notstarted i{background:rgba(255,255,255,.45);}
+  .pulse-legend .k.overdue{color:#F7B5B4;} .pulse-legend .k.overdue i{background:#E5605F; box-shadow:0 0 0 3px rgba(229,96,95,.25);}
+  .pulse-empty{color:rgba(255,255,255,.7); font-size:13.5px; font-weight:600;}
+  @media (max-width:560px){ .pulse{grid-template-columns:1fr; gap:10px;} .pulse-figure .pulse-pct{font-size:44px;} }
+
+  /* ---------- Tabs, panels, cards ---------- */
+  .show-tab{position:relative; transition:background .18s ease, color .18s ease, border-color .18s ease, transform .18s var(--ease-out);}
+  .motion .show-tab:active{transform:scale(.97);}
+  .show-tab.active{box-shadow:0 8px 18px -10px rgba(22,50,74,.7);}
+  .show-tab.active::after{content:""; position:absolute; left:14px; right:14px; bottom:4px; height:2px; border-radius:2px; background:var(--gold);}
+  :root[data-theme="dark"] .show-tab.active::after{background:var(--navy-deep);}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .show-tab.active::after{background:var(--navy-deep);}}
+  .panel{border-radius:18px; box-shadow:var(--shadow);}
+  .panel-head h4, .info-card h3{font-family:'Manrope',system-ui,sans-serif; letter-spacing:-.01em;}
+  .info-card{border-radius:16px; transition:border-color .2s ease;}
+  .info-card:hover{border-color:var(--hairline-strong);}
+  .segmented button{transition:background .18s ease, color .18s ease, box-shadow .18s ease;}
+  .btn-primary{transition:transform .15s var(--ease-out), box-shadow .2s ease, filter .2s ease;}
+  .btn-primary:hover{filter:brightness(1.05); box-shadow:0 6px 16px -6px rgba(200,150,58,.75);}
+  .motion .btn-primary:active{transform:scale(.97);}
+  .report-stat{border-radius:14px; position:relative; overflow:hidden;}
+  .report-stat::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--gold);}
+  .report-stat .num{font-size:26px; letter-spacing:-.02em; font-variant-numeric:tabular-nums;}
+
+  /* ---------- Task rows: today / overdue / done states ---------- */
+  .row{transition:background .15s ease;}
+  .row::before{content:""; position:absolute; left:0; top:8px; bottom:8px; width:3px; border-radius:0 3px 3px 0; background:transparent; transition:background .18s ease;}
+  .row:hover::before{background:var(--hairline-strong);}
+  .row.is-today::before{background:var(--gold);}
+  .row.is-today .day{color:var(--gold-deep); font-weight:800;}
+  .row.is-overdue::before{background:var(--overdue);}
+  .row.is-overdue .day{color:var(--overdue); font-weight:800;}
+  .row .flag-overdue{display:inline-block; margin-top:2px; font-size:9.5px; font-weight:800; color:var(--overdue); letter-spacing:.02em;}
+  .row.is-done .title{color:var(--ink-2); text-decoration:line-through; text-decoration-color:var(--hairline-strong);}
+  .pill{transition:background .2s ease, color .2s ease;}
+  .pill-btn{background:none; padding:0; border-radius:999px;}
+
+  /* ---------- Delivery tracker progress ---------- */
+  .del-overview{display:flex; align-items:center; gap:18px; background:var(--surface); border:1px solid var(--hairline); border-radius:18px; padding:16px 20px; margin-bottom:14px; box-shadow:var(--shadow);}
+  .del-ring{--p:0; width:76px; height:76px; flex:none; position:relative;}
+  .del-ring svg{width:100%; height:100%; transform:rotate(-90deg);}
+  .del-ring .track{stroke:var(--hairline); }
+  .del-ring .fill{stroke:var(--gold); stroke-linecap:round;}
+  .motion .del-ring .fill{transition:stroke-dashoffset .9s var(--ease-out);}
+  .del-ring.complete .fill{stroke:var(--st-done-dot);}
+  .del-ring .val{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Manrope',system-ui,sans-serif; font-weight:800; font-size:18px; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .del-overview-text h3{margin:0 0 4px; font-family:'Manrope',system-ui,sans-serif; font-size:17px; letter-spacing:-.01em;}
+  .del-overview-text p{margin:0; color:var(--ink-2); font-size:12.5px; line-height:1.5;}
+  .del-cat-progress{display:flex; align-items:center; gap:10px; font-variant-numeric:tabular-nums;}
+  .del-bar{width:90px; height:6px; border-radius:999px; background:var(--hairline); overflow:hidden;}
+  .del-bar span{display:block; height:100%; width:var(--w); border-radius:999px; background:var(--gold);}
+  .del-bar.complete span{background:var(--st-done-dot);}
+  @media (max-width:560px){ .del-bar{width:56px;} }
+
+  /* ---------- Motion: switched off for now. Set SCARLETT_MOTION = true in the script to turn it back on ---------- */
+  @media (prefers-reduced-motion: no-preference){
+    .motion .app.view-enter{animation:viewIn .42s var(--ease-out) both;}
+    @keyframes viewIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
+
+    .motion .pulse.grow .pulse-seg{animation:segGrow .9s var(--ease-out) both;}
+    .motion .pulse.grow .pulse-seg:nth-child(2){animation-delay:.08s;}
+    .motion .pulse.grow .pulse-seg:nth-child(3){animation-delay:.16s;}
+    @keyframes segGrow{from{transform:scaleX(0);} to{transform:scaleX(1);}}
+
+    .motion .row.just-changed .pill{animation:pillPop .55s var(--ease-out);}
+    @keyframes pillPop{0%{transform:scale(.8);} 55%{transform:scale(1.12); box-shadow:0 0 0 6px rgba(232,182,84,.28);} 100%{transform:scale(1); box-shadow:0 0 0 0 rgba(232,182,84,0);}}
+
+    .motion .row.is-overdue .flag-overdue{animation:overduePulse 2.6s ease-in-out infinite;}
+    @keyframes overduePulse{0%,100%{opacity:1;} 50%{opacity:.55;}}
+
+    .motion .overlay:not([hidden]){animation:fadeIn .2s ease both;}
+    .motion .overlay:not([hidden]) .modal{animation:modalIn .28s var(--ease-out) both;}
+    @keyframes fadeIn{from{opacity:0;} to{opacity:1;}}
+    @keyframes modalIn{from{opacity:0; transform:translateY(12px) scale(.98);} to{opacity:1; transform:none;}}
+  }
+  .overlay{backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);}
+  :focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
 </style>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -505,6 +629,7 @@
       <button class="header-btn" id="hustleBtn" data-nav="hustle">Hustle</button>
       <button class="header-btn" id="reportsBtn" data-nav="reports">Reports</button>
     </div>
+    <div class="pulse" id="weekPulse" aria-live="polite" hidden></div>
   </header>
 
   <main>
@@ -2075,9 +2200,17 @@
   function rowHtml(t){
     const metaBits = [t.tag, (t.owners||[]).join(', ')].filter(Boolean).join(' · ');
     const showClient = groupMode !== 'client' && t.client;
+    const todayStr = toDateStr(new Date());
+    const isDone = t.status === 'done';
+    const isOverdue = !isDone && t.dateISO && t.dateISO < todayStr;
+    const isToday = !isDone && t.dateISO === todayStr;
+    const prevStatus = lastSeenStatus.get(t.id);
+    const justChanged = prevStatus !== undefined && prevStatus !== t.status;
+    lastSeenStatus.set(t.id, t.status);
+    const stateCls = [isDone?'is-done':'', isOverdue?'is-overdue':'', isToday?'is-today':'', justChanged?'just-changed':''].filter(Boolean).join(' ');
     return `
-      <div class="row" data-id="${t.id}">
-        <div class="day">${fmtDayLabel(t.dateISO)}</div>
+      <div class="row ${stateCls}" data-id="${t.id}">
+        <div class="day">${fmtDayLabel(t.dateISO)}${isOverdue ? '<br><span class="flag-overdue">Overdue</span>' : ''}</div>
         <div class="title-block" data-open="${t.id}">
           ${showClient ? `<span class="client-chip">${escapeHtml(t.client)}</span>` : ''}
           <div class="title">${escapeHtml(t.title)}</div>
@@ -2112,6 +2245,7 @@
   }
 
   function renderGroups(){
+    renderPulse();
     if(groupMode === 'podcast'){
       document.getElementById('statusFilters').style.display = 'none';
       renderPodcastWeekTab();
@@ -3296,6 +3430,99 @@
     renderWeekNav(); renderChips(); renderStatusFilters(); renderGroups();
   }
 
+  // ---------------- Scarlett refresh helpers ----------------
+  // Motion (count-ups, page slide-ins, pill pops, ring fills) is built but switched off for now.
+  // Flip this to true to bring it all back.
+  const SCARLETT_MOTION = false;
+  if(SCARLETT_MOTION) document.documentElement.classList.add('motion');
+  const REDUCE_MOTION = !SCARLETT_MOTION || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const lastSeenStatus = new Map();   // task id -> status, so a changed pill can pop
+  let pulseLastWeek = null;
+
+  function animateCount(el, to, opts){
+    const suffix = (opts && opts.suffix) || '';
+    if(REDUCE_MOTION || !isFinite(to)){ el.textContent = to + suffix; return; }
+    const from = parseInt(el.getAttribute('data-count-from') || '0', 10) || 0;
+    const dur = 700, t0 = performance.now();
+    el.setAttribute('data-count-from', String(to));
+    function tick(now){
+      const k = Math.min(1, (now - t0) / dur);
+      const eased = 1 - Math.pow(1 - k, 3);
+      el.textContent = Math.round(from + (to - from) * eased) + suffix;
+      if(k < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  function animateNums(root){
+    root.querySelectorAll('.num').forEach(el => {
+      const n = parseInt(el.textContent, 10);
+      if(String(n) === el.textContent.trim()){ el.textContent = '0'; animateCount(el, n); }
+    });
+  }
+  ['reportSummary','opsSummary'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) new MutationObserver(() => animateNums(el)).observe(el, {childList:true});
+  });
+
+  function renderPulse(){
+    const el = document.getElementById('weekPulse');
+    if(!el) return;
+    const total = tasks.length;
+    el.hidden = false;
+    if(!total){
+      el.classList.remove('grow');
+      el.innerHTML = `<div class="pulse-empty">Nothing on the board for this week yet.</div>`;
+      pulseLastWeek = currentWeekId;
+      return;
+    }
+    const today = toDateStr(new Date());
+    const c = {done:0, inprogress:0, notstarted:0};
+    let overdue = 0;
+    tasks.forEach(t => {
+      const st = c.hasOwnProperty(t.status) ? t.status : 'notstarted';
+      c[st]++;
+      if(st !== 'done' && t.dateISO && t.dateISO < today) overdue++;
+    });
+    const pct = Math.round(c.done / total * 100);
+    const w = k => (c[k] / total * 100).toFixed(2) + '%';
+    const segs = ['done','inprogress','notstarted'].filter(k => c[k])
+      .map(k => `<span class="pulse-seg ${k}" style="--w:${w(k)}"></span>`).join('');
+    const left = total - c.done;
+    const line = left === 0 ? `Everything on this week's board is done.`
+      : `<strong>${left}</strong> of ${total} task${total===1?'':'s'} still to finish this week`;
+    const prev = el.querySelector('.pulse-pct');
+    const prevPct = prev ? prev.getAttribute('data-count-from') : null;
+    el.innerHTML = `
+      <div class="pulse-figure"><span class="pulse-pct" ${prevPct!=null?`data-count-from="${prevPct}"`:''}>${prevPct!=null?prevPct:0}</span><span class="pulse-sign">%</span></div>
+      <div class="pulse-body">
+        <div class="pulse-line">${line}</div>
+        <div class="pulse-rail" role="img" aria-label="${c.done} done, ${c.inprogress} in progress, ${c.notstarted} not started">${segs}</div>
+        <div class="pulse-legend">
+          <span class="k done"><i></i>${c.done} done</span>
+          <span class="k inprogress"><i></i>${c.inprogress} in progress</span>
+          <span class="k notstarted"><i></i>${c.notstarted} not started</span>
+          ${overdue ? `<span class="k overdue"><i></i>${overdue} overdue</span>` : ''}
+        </div>
+      </div>`;
+    // Grow the rail only when a week is first shown, not on every live update
+    el.classList.toggle('grow', pulseLastWeek !== currentWeekId);
+    pulseLastWeek = currentWeekId;
+    animateCount(el.querySelector('.pulse-pct'), pct);
+  }
+
+  function ringHtml(done, target){
+    const r = 32, circ = 2 * Math.PI * r;
+    const p = target ? Math.min(1, done / target) : 0;
+    return `<div class="del-ring ${p>=1?'complete':''}">
+      <svg viewBox="0 0 76 76" aria-hidden="true">
+        <circle class="track" cx="38" cy="38" r="${r}" fill="none" stroke-width="7"></circle>
+        <circle class="fill" cx="38" cy="38" r="${r}" fill="none" stroke-width="7"
+          stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${circ.toFixed(2)}" data-offset="${(circ*(1-p)).toFixed(2)}"></circle>
+      </svg>
+      <span class="val">${Math.round(p*100)}%</span>
+    </div>`;
+  }
+
   function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function escapeAttr(s){ return escapeHtml(s); }
 
@@ -3535,7 +3762,9 @@
     const leaving = APP_PAGES[currentAppPage];
     if(leaving && leaving.onLeave) leaving.onLeave();
     Object.values(APP_PAGES).forEach(p => { document.getElementById(p.el).style.display = 'none'; });
-    document.getElementById(APP_PAGES[target].el).style.display = 'block';
+    const enteringEl = document.getElementById(APP_PAGES[target].el);
+    enteringEl.style.display = 'block';
+    enteringEl.classList.remove('view-enter'); void enteringEl.offsetWidth; enteringEl.classList.add('view-enter');
     currentAppPage = target;
     document.querySelectorAll('[data-nav]').forEach(btn => {
       btn.classList.toggle('active-nav', btn.getAttribute('data-nav') === target);
@@ -4292,11 +4521,31 @@
     rows.forEach(r => { const k = r.category || 'Uncategorized'; if(!byCategory.has(k)) byCategory.set(k, []); byCategory.get(k).push(r); });
     const catKeys = [...byCategory.keys()].sort((a,b) => deliveryCategoryOrder(clientFilter,a) - deliveryCategoryOrder(clientFilter,b) || a.localeCompare(b));
 
-    resultsEl.innerHTML = catKeys.map(cat => {
+    // Contract-level overview: delivered vs. target across every category that has one
+    let ovDone = 0, ovTarget = 0, ovItems = 0, ovDelivered = 0;
+    catKeys.forEach(cat => {
+      const its = byCategory.get(cat);
+      const tgt = deliveryCategoryTarget(clientFilter, cat);
+      const dc = its.filter(r => r.status === 'delivered').length;
+      ovItems += its.length; ovDelivered += dc;
+      if(tgt){ ovTarget += tgt; ovDone += Math.min(dc, tgt); }
+    });
+    const ringDone = ovTarget ? ovDone : ovDelivered;
+    const ringTotal = ovTarget || ovItems;
+    const overviewHtml = `<div class="del-overview">
+      ${ringHtml(ringDone, ringTotal)}
+      <div class="del-overview-text">
+        <h3>${escapeHtml(clientFilter)}</h3>
+        <p>${ringDone} of ${ringTotal} ${ovTarget ? 'contracted deliverables' : 'items'} delivered across ${catKeys.length} categor${catKeys.length===1?'y':'ies'}.</p>
+      </div>
+    </div>`;
+
+    resultsEl.innerHTML = overviewHtml + catKeys.map(cat => {
       const items = byCategory.get(cat).slice().sort((a,b) => (a.date||'').localeCompare(b.date||''));
       const target = deliveryCategoryTarget(clientFilter, cat);
       const deliveredCount = items.filter(r => r.status === 'delivered').length;
-      const countLabel = target ? `${deliveredCount}/${target} delivered` : `${items.length} item${items.length===1?'':'s'}`;
+      const barOf = target || items.length;
+      const countLabel = `<span class="del-cat-progress"><span class="del-bar ${deliveredCount>=barOf?'complete':''}"><span style="--w:${Math.min(100, Math.round(deliveredCount/barOf*100))}%"></span></span>${deliveredCount}/${barOf} delivered</span>`;
       const isOpen = deliveryExpandedCategories.has(cat);
       return `<div class="report-group">
         <div class="report-group-head del-cat-head" data-toggle-category="${escapeAttr(cat)}">
@@ -4326,6 +4575,18 @@
         </div>
       </div>`;
     }).join('');
+
+    const ringFill = resultsEl.querySelector('.del-ring .fill');
+    if(ringFill){
+      const off = ringFill.getAttribute('data-offset');
+      if(REDUCE_MOTION || renderDelivery.lastClient === clientFilter){
+        // same client re-rendering (e.g. a category toggled): no replay
+        ringFill.style.transition = 'none'; ringFill.style.strokeDashoffset = off;
+      } else {
+        requestAnimationFrame(() => requestAnimationFrame(() => { ringFill.style.strokeDashoffset = off; }));
+      }
+      renderDelivery.lastClient = clientFilter;
+    }
 
     resultsEl.querySelectorAll('[data-toggle-category]').forEach(head => {
       head.addEventListener('click', () => {
