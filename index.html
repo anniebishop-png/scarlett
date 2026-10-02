@@ -512,7 +512,10 @@
         <button data-mode="day">By day</button>
         <button data-mode="podcast">Podcast</button>
       </div>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <label class="checkbox-row" style="margin:0;">
+          <input type="checkbox" id="downloadMineOnly"> <span style="font-size:12.5px;font-weight:600;color:var(--ink);">Mine only</span>
+        </label>
         <button class="btn-ghost" id="downloadWeekBtn">Download</button>
         <button class="btn-ghost" id="bulkAddBtn">Bulk add</button>
         <button class="btn-primary" id="addTaskBtn">+ Add task</button>
@@ -1110,6 +1113,14 @@
   // ---------------- state ----------------
   let db = null;
   let canEdit = true; // optimistic; flips false if db unavailable
+  let currentUserName = null; // TEAM_ROSTER name matched from the signed-in email, for "Mine only" filtering
+  function nameFromEmail(email){
+    if(!email) return null;
+    const first = email.split('@')[0].split(/[._-]/)[0].toLowerCase();
+    if(!first) return null;
+    const match = TEAM_ROSTER.find(p => p.name.split(' ')[0].toLowerCase() === first);
+    return match ? match.name : null;
+  }
   const CURRENT_WEEK = mondayOf(toDateStr(new Date())); // Monday of today's week — always fresh on load, not a fixed date
   let currentWeekId = CURRENT_WEEK;
 
@@ -2417,17 +2428,26 @@
 
   // ---------------- download week ----------------
   function exportWeekTasksCSV(){
-    if(!tasks.length) return;
+    const btn = document.getElementById('downloadWeekBtn');
+    const originalLabel = btn.textContent;
+    const mineOnly = document.getElementById('downloadMineOnly').checked;
+    if(mineOnly && !currentUserName){
+      btn.textContent = "Can't match your name";
+      setTimeout(() => { btn.textContent = originalLabel; }, 2200);
+      return;
+    }
+    const rows = mineOnly ? tasks.filter(t => (t.owners||[]).includes(currentUserName)) : tasks;
+    if(!rows.length) return;
     const header = ['Client','Date','Title','Team','Owners','Status','Tag','Notes'];
     const lines = [header.join(',')];
-    tasks.slice().sort((a,b) => (a.dateISO||'').localeCompare(b.dateISO||'')).forEach(t => {
+    rows.slice().sort((a,b) => (a.dateISO||'').localeCompare(b.dateISO||'')).forEach(t => {
       const cells = [t.client||'', t.dateISO||'', t.title||'', t.division||'', (t.owners||[]).join('/'), t.status||'', t.tag||'', t.notes||''];
       lines.push(cells.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(','));
     });
     const blob = new Blob([lines.join('\n')], {type:'text/csv'});
-    const filename = `equiratings-tasks-week-of-${currentWeekId}.csv`;
-    const btn = document.getElementById('downloadWeekBtn');
-    const originalLabel = btn.textContent;
+    const filename = mineOnly
+      ? `equiratings-tasks-week-of-${currentWeekId}-${currentUserName.toLowerCase().replace(/\s+/g,'-')}.csv`
+      : `equiratings-tasks-week-of-${currentWeekId}.csv`;
     try{
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -4149,6 +4169,7 @@
     if(session){
       showLoginScreen(false);
       startAppOnce();
+      currentUserName = nameFromEmail(session.user && session.user.email);
       recordLastActive(session.user && session.user.email); // bumped on every sign-in and token refresh
     } else {
       showLoginScreen(true);
