@@ -666,6 +666,10 @@
   </div>
   <div class="report-controls">
     <div class="segmented" id="hustleStageTabs"></div>
+    <div class="segmented" id="hustleSortTabs">
+      <button type="button" data-sort="name" class="active">Name</button>
+      <button type="button" data-sort="owner">Person</button>
+    </div>
     <button class="btn-primary" id="addHustleBtn" style="margin-left:auto;">+ Add opportunity</button>
   </div>
   <div id="hustleResults"></div>
@@ -1104,6 +1108,7 @@
       <div class="field"><label>Engage <span style="text-transform:none;font-weight:500;">(next check-in month, optional)</span></label><select id="h_engage"></select></div>
       <div class="modal-actions">
         <div class="left">
+          <button type="button" class="btn-ghost" id="assignHustleTaskBtn" style="display:none;">Assign task</button>
           <button type="button" class="btn-ghost" id="deleteHustleBtn" style="display:none;color:var(--st-blocked-text);border-color:var(--st-blocked-text);">Delete</button>
         </div>
         <div class="right">
@@ -1280,6 +1285,7 @@
   let unsubHustle = null;
   let editingHustleId = null;
   let hustleStageFilter = null; // one of HUSTLE_STAGES, or null for all
+  let hustleSortBy = 'name';    // 'name' (alphabetical) or 'owner' (grouped by person)
   let selectedDisciplines = []; // disciplines checked in the open hustle-opportunity form
   let deliveryItems = [];    // client deliverables/contract-fulfillment tracker, loaded when that page is open
   let unsubDelivery = null;
@@ -1381,7 +1387,7 @@
     'British Eventing','Burghley','Clip','DHS',
   ];
   const DIVISION_ROSTER = [
-    'Content - Eventing','Content - Jumping','Content - US Open','Eventing Manager','HP - Eventing',
+    'Business Development','Content - Eventing','Content - Jumping','Content - US Open','Eventing Manager','HP - Eventing',
     'HP - Jumping','Horse Sourcing','Management',
   ];
   // Generic internal-ops task titles -- always offered as Task title suggestions (see
@@ -3940,7 +3946,25 @@
       resultsEl.innerHTML = '<div class="report-empty">No opportunities here yet — add one to get started.</div>';
       return;
     }
-    resultsEl.innerHTML = `<div class="report-group">` + rows.map(hustleRowHtml).join('') + `</div>`;
+    if(hustleSortBy === 'owner'){
+      const byOwner = new Map();
+      rows.forEach(op => { const k = op.owner || 'Unassigned'; if(!byOwner.has(k)) byOwner.set(k, []); byOwner.get(k).push(op); });
+      const ownerKeys = [...byOwner.keys()].sort((a,b) => {
+        if(a==='Unassigned') return 1;
+        if(b==='Unassigned') return -1;
+        return a.localeCompare(b);
+      });
+      resultsEl.innerHTML = ownerKeys.map(owner => {
+        const items = byOwner.get(owner).slice().sort((a,b) => (a.opportunity||'').localeCompare(b.opportunity||''));
+        return `<div class="report-group">
+          <div class="report-group-head"><span>${escapeHtml(owner)}</span><span>${items.length} opportunit${items.length===1?'y':'ies'}</span></div>
+          ${items.map(hustleRowHtml).join('')}
+        </div>`;
+      }).join('');
+    } else {
+      rows = rows.slice().sort((a,b) => (a.opportunity||'').localeCompare(b.opportunity||''));
+      resultsEl.innerHTML = `<div class="report-group">` + rows.map(hustleRowHtml).join('') + `</div>`;
+    }
     bindHustleRowEvents(resultsEl, hustleOpportunities);
   }
 
@@ -3973,6 +3997,7 @@
     document.getElementById('h_end').value = op ? (op.end||'') : '';
     document.getElementById('h_engage').value = op ? (op.engage||'') : '';
     document.getElementById('deleteHustleBtn').style.display = op ? 'inline-block' : 'none';
+    document.getElementById('assignHustleTaskBtn').style.display = op ? 'inline-block' : 'none';
     document.getElementById('hustleOverlay').hidden = false;
   }
   function closeHustleModal(){
@@ -4011,6 +4036,32 @@
     closeHustleModal();
   });
   document.getElementById('addHustleBtn').addEventListener('click', () => openHustleModal(null));
+
+  // "Assign task" on an existing opportunity opens the normal Add-task modal, pre-filled from
+  // this opportunity's current form values (so any edits made before clicking carry over), so the
+  // resulting task lives on the Board like any other and shows up on whatever week/day it's dated.
+  document.getElementById('assignHustleTaskBtn').addEventListener('click', () => {
+    const opportunity = document.getElementById('h_opportunity').value.trim();
+    if(!opportunity) return;
+    const owner = document.getElementById('h_owner').value;
+    const nextAction = document.getElementById('h_nextAction').value;
+    closeHustleModal();
+    openTaskModal(null);
+    document.getElementById('f_client').value = opportunity;
+    document.getElementById('f_title').value = nextAction || 'Follow up';
+    document.getElementById('f_tag').value = 'Hustle';
+    document.getElementById('f_division').value = 'Business Development';
+    if(owner){ selectedOwners = [owner]; updateOwnersBtnLabel(); }
+  });
+
+  // Sort toggle: alphabetical by opportunity name, or grouped by owner
+  document.querySelectorAll('#hustleSortTabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      hustleSortBy = btn.getAttribute('data-sort');
+      document.querySelectorAll('#hustleSortTabs button').forEach(b => b.classList.toggle('active', b===btn));
+      renderHustle();
+    });
+  });
 
   // populate the Owner / Start / End / Engage selects once, up front
   document.getElementById('h_owner').innerHTML = '<option value="">—</option>' +
