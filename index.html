@@ -171,6 +171,29 @@
   .pc-status.recorded{color:var(--st-review-text);}
   .pc-status.edited{color:var(--st-done-text);}
 
+  /* ---------- Hustle pipeline ---------- */
+  .hs-row{display:flex; flex-direction:column; gap:7px; padding:14px 16px; border-bottom:1px solid var(--hairline); font-size:12.5px; cursor:pointer;}
+  .hs-row:last-child{border-bottom:none;}
+  .hs-row:hover{background:var(--surface-2);}
+  .hs-row-top{display:flex; align-items:center; gap:10px;}
+  .hs-stage{display:inline-flex; align-items:center; flex-shrink:0; padding:3px 9px; border-radius:999px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap;}
+  .hs-stage.prospect{background:var(--surface-2); color:var(--ink-2); border:1px solid var(--hairline-strong);}
+  .hs-stage.qualify{background:#E3E9FB; color:#2a3a8c;}
+  :root[data-theme="dark"] .hs-stage.qualify{background:#2a3a6c; color:#c9d4ff;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .hs-stage.qualify{background:#2a3a6c; color:#c9d4ff;}}
+  .hs-stage.present{background:var(--st-review-bg); color:var(--st-review-text);}
+  .hs-stage.close{background:var(--gold); color:#3A2A06;}
+  .hs-stage.won{background:var(--st-done-bg); color:var(--st-done-text);}
+  .hs-stage.lost{background:var(--st-blocked-bg); color:var(--st-blocked-text);}
+  .hs-owner{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.02em;}
+  .hs-del-btn{border:none; background:none; color:var(--ink-muted); opacity:.6; cursor:pointer; font-size:14px; line-height:1; padding:4px; margin-left:auto; flex-shrink:0;}
+  .hs-del-btn:hover{opacity:1; color:var(--st-blocked-text);}
+  .hs-title{color:var(--ink); font-weight:600; font-size:13.5px; line-height:1.4;}
+  .hs-meta{color:var(--ink-muted); font-size:11.5px; line-height:1.5;}
+  .hs-row-bottom{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+  .hs-next{color:var(--ink-2); font-size:11.5px; font-weight:600;}
+  .hs-window, .hs-engage{color:var(--ink-muted); font-size:11.5px;}
+
   /* ---------- Client deliverables ---------- */
   .del-row{display:flex; flex-direction:column; gap:7px; padding:14px 16px; border-bottom:1px solid var(--hairline); font-size:12.5px; cursor:pointer;}
   .del-row:last-child{border-bottom:none;}
@@ -479,6 +502,7 @@
       <button class="header-btn" id="clientOpsBtn" data-nav="ops">Client Ops</button>
       <button class="header-btn" id="deliveryBtn" data-nav="delivery">Delivery Tracker</button>
       <button class="header-btn" id="podcastBtn" data-nav="podcast">Podcast</button>
+      <button class="header-btn" id="hustleBtn" data-nav="hustle">Hustle</button>
       <button class="header-btn" id="reportsBtn" data-nav="reports">Reports</button>
     </div>
   </header>
@@ -538,6 +562,7 @@
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
     </div>
     <h2>Delivered report</h2>
@@ -565,6 +590,7 @@
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
     </div>
     <h2>Client Ops</h2>
@@ -586,6 +612,7 @@
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
     </div>
     <h2>Show Calendar</h2>
@@ -611,6 +638,7 @@
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
     </div>
     <h2>Podcast Schedule</h2>
@@ -623,6 +651,27 @@
   <footer class="note">Pulled in from the EquiRatings Podcast Schedule sheet — edits here are live and shared with the team, but don't sync back to the Google Sheet.</footer>
 </div>
 
+<div class="app" id="hustleApp" style="display:none;">
+  <div class="report-header">
+    <div class="global-nav">
+      <button class="global-nav-btn" data-nav="board">Board</button>
+      <button class="global-nav-btn" data-nav="calendar">Calendar</button>
+      <button class="global-nav-btn" data-nav="ops">Client Ops</button>
+      <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="hustle">Hustle</button>
+      <button class="global-nav-btn" data-nav="reports">Reports</button>
+    </div>
+    <h2>Hustle Pipeline</h2>
+  </div>
+  <div class="report-controls">
+    <div class="segmented" id="hustleStageTabs"></div>
+    <button class="btn-primary" id="addHustleBtn" style="margin-left:auto;">+ Add opportunity</button>
+  </div>
+  <div id="hustleResults"></div>
+  <footer class="note">New-business pipeline — prospects through won/lost, by stage. No pricing shown here.</footer>
+</div>
+
 <div class="app" id="deliveryApp" style="display:none;">
   <div class="report-header">
     <div class="global-nav">
@@ -631,6 +680,7 @@
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
     </div>
     <h2>Delivery Tracker</h2>
@@ -990,6 +1040,81 @@
   </div>
 </div>
 
+<div class="overlay" id="hustleOverlay" hidden>
+  <div class="modal">
+    <h3 id="hustleModalTitle">Add opportunity</h3>
+    <form id="hustleForm">
+      <div class="field"><label>Opportunity</label><input id="h_opportunity" placeholder="Opportunity name" required></div>
+      <div class="field-row">
+        <div class="field"><label>Stage</label>
+          <select id="h_stage">
+            <option value="1. Prospect">1. Prospect</option>
+            <option value="2. Qualify">2. Qualify</option>
+            <option value="3. Present">3. Present</option>
+            <option value="4. Close">4. Close</option>
+            <option value="5. Won">5. Won</option>
+            <option value="6. Lost">6. Lost</option>
+          </select>
+        </div>
+        <div class="field"><label>Owner</label><select id="h_owner"></select></div>
+      </div>
+      <div class="field"><label>Next action</label>
+        <select id="h_nextAction">
+          <option value="">—</option>
+          <option value="Identify Opportunity">Identify Opportunity</option>
+          <option value="Identify Key Contact">Identify Key Contact</option>
+          <option value="Engage Key Contact">Engage Key Contact</option>
+          <option value="Build Proposal">Build Proposal</option>
+          <option value="Present Proposal">Present Proposal</option>
+          <option value="Agree Terms">Agree Terms</option>
+          <option value="Sign Contract">Sign Contract</option>
+          <option value="Deliver">Deliver</option>
+          <option value="Report">Report</option>
+          <option value="Nurture">Nurture</option>
+          <option value="Parked">Parked</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Division</label>
+          <select id="h_division">
+            <option value="">—</option>
+            <option value="HP & Risk">HP &amp; Risk</option>
+            <option value="Sports Promo">Sports Promo</option>
+          </select>
+        </div>
+        <div class="field"><label>Service</label>
+          <select id="h_service">
+            <option value="">—</option>
+            <option value="Brand">Brand</option>
+            <option value="Event">Event</option>
+            <option value="HP">HP</option>
+            <option value="Media">Media</option>
+            <option value="Risk">Risk</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Discipline <span style="text-transform:none;font-weight:500;">(optional)</span></label>
+        <div class="owners-pop-static" id="hustleDisciplineList"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Start <span style="text-transform:none;font-weight:500;">(optional)</span></label><select id="h_start"></select></div>
+        <div class="field"><label>End <span style="text-transform:none;font-weight:500;">(optional)</span></label><select id="h_end"></select></div>
+      </div>
+      <div class="field"><label>Engage <span style="text-transform:none;font-weight:500;">(next check-in month, optional)</span></label><select id="h_engage"></select></div>
+      <div class="modal-actions">
+        <div class="left">
+          <button type="button" class="btn-ghost" id="deleteHustleBtn" style="display:none;color:var(--st-blocked-text);border-color:var(--st-blocked-text);">Delete</button>
+        </div>
+        <div class="right">
+          <button type="button" class="btn-ghost" id="cancelHustleBtn">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="overlay" id="deliveryOverlay" hidden>
   <div class="modal">
     <h3 id="deliveryModalTitle">Add item</h3>
@@ -1151,6 +1276,11 @@
   let unsubPodcast = null;
   let editingEpisodeId = null;
   let podcastMonthFilter = null; // 'YYYY-MM' or null for all
+  let hustleOpportunities = []; // new-business pipeline, loaded when that page is open
+  let unsubHustle = null;
+  let editingHustleId = null;
+  let hustleStageFilter = null; // one of HUSTLE_STAGES, or null for all
+  let selectedDisciplines = []; // disciplines checked in the open hustle-opportunity form
   let deliveryItems = [];    // client deliverables/contract-fulfillment tracker, loaded when that page is open
   let unsubDelivery = null;
   let editingDeliveryId = null;
@@ -1168,6 +1298,21 @@
   };
   const PODCAST_PLATFORMS = ['Eventing Podcast','Jumping Podcast','USEA','US Open'];
   const PODCAST_LEADS = ['Nicole','Annie','Diarm','Spike','Sam','Charlotte','Guest Lead'];
+
+  // ---------- Hustle pipeline (new-business tracker — mirrors the "27 Pipeline" sheet, minus value/pricing) ----------
+  const HUSTLE_STAGES = ['1. Prospect','2. Qualify','3. Present','4. Close','5. Won','6. Lost'];
+  const HUSTLE_STAGE_META = {
+    '1. Prospect': {short:'Prospect', cls:'prospect'},
+    '2. Qualify':  {short:'Qualify',  cls:'qualify'},
+    '3. Present':  {short:'Present',  cls:'present'},
+    '4. Close':    {short:'Close',    cls:'close'},
+    '5. Won':      {short:'Won',      cls:'won'},
+    '6. Lost':     {short:'Lost',     cls:'lost'},
+  };
+  const HUSTLE_DIVISIONS = ['HP & Risk','Sports Promo'];
+  const HUSTLE_SERVICES = ['Brand','Event','HP','Media','Risk'];
+  const HUSTLE_DISCIPLINES = ['Eventing','Jumping','Dressage'];
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
   const DELIVERY_STATUS_META = {
     notstarted: {label:'Not Started'},
@@ -1339,6 +1484,7 @@
   function showsCol(){ return db.collection('shows'); }
   function opsCol(){ return db.collection('clientOps'); }
   function podcastCol(){ return db.collection('podcastEpisodes'); }
+  function hustleCol(){ return db.collection('hustleOpportunities'); }
   function deliveryCol(){ return db.collection('deliveryItems'); }
   function contractClientsCol(){ return db.collection('contractClients'); }
   function teamActivityCol(){ return db.collection('teamActivity'); }
@@ -3367,6 +3513,7 @@
     calendar: { el: 'calendarApp', onEnter: () => { renderCalMonthLabel(); subscribeCalendarShows(); },
                                     onLeave: () => { if(unsubCalendarShows){ unsubCalendarShows(); unsubCalendarShows = null; } } },
     podcast:  { el: 'podcastApp',  onEnter: subscribePodcast,  onLeave: unsubscribePodcast },
+    hustle:   { el: 'hustleApp',   onEnter: subscribeHustle,   onLeave: unsubscribeHustle },
     delivery: { el: 'deliveryApp', onEnter: () => { subscribeDelivery(); subscribeContractClients(); },
                                     onLeave: () => { unsubscribeDelivery(); unsubscribeContractClients(); } },
   };
@@ -3712,6 +3859,166 @@
     closeEpisodeModal();
   });
   document.getElementById('addEpisodeBtn').addEventListener('click', () => openEpisodeModal(null));
+
+  // ---------------- hustle pipeline page ----------------
+  function subscribeHustle(){
+    if(unsubHustle) unsubHustle();
+    if(!db){ renderHustle(); return; }
+    unsubHustle = hustleCol().onSnapshot(snap => {
+      hustleOpportunities = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+      hustleOpportunities.sort((a,b) => (a.opportunity||'').localeCompare(b.opportunity||''));
+      renderHustleStageTabs();
+      renderHustle();
+    }, () => {});
+  }
+  function unsubscribeHustle(){ if(unsubHustle){ unsubHustle(); unsubHustle = null; } }
+
+  function hustleRowHtml(op){
+    const stageMeta = HUSTLE_STAGE_META[op.stage] || HUSTLE_STAGE_META['1. Prospect'];
+    const metaBits = [op.division, op.service, (op.discipline||[]).join(', ')].filter(Boolean).join(' · ');
+    const windowBits = [op.start, op.end].filter(Boolean).join(' – ');
+    return `<div class="hs-row" data-open-hustle="${op.id}">
+      <div class="hs-row-top">
+        <span class="hs-stage ${stageMeta.cls}">${escapeHtml(stageMeta.short)}</span>
+        ${op.owner ? `<span class="hs-owner" style="color:${ownerColor(op.owner)}">${escapeHtml(initials(op.owner))}</span>` : ''}
+        <button class="hs-del-btn" data-delete-hustle="${op.id}" title="Delete this opportunity">×</button>
+      </div>
+      <div class="hs-title">${escapeHtml(op.opportunity||'(untitled)')}</div>
+      ${metaBits ? `<div class="hs-meta">${escapeHtml(metaBits)}</div>` : ''}
+      <div class="hs-row-bottom">
+        <span class="hs-next">${escapeHtml(op.nextAction||'—')}</span>
+        ${windowBits ? `<span class="hs-window">${escapeHtml(windowBits)}</span>` : ''}
+        ${op.engage ? `<span class="hs-engage">Engage ${escapeHtml(op.engage)}</span>` : ''}
+      </div>
+    </div>`;
+  }
+  function bindHustleRowEvents(container, list){
+    container.querySelectorAll('[data-open-hustle]').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if(e.target.closest('[data-delete-hustle]')) return;
+        const op = list.find(x=>x.id===row.getAttribute('data-open-hustle'));
+        if(op) openHustleModal(op);
+      });
+    });
+    container.querySelectorAll('[data-delete-hustle]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if(!canEdit) return;
+        hustleCol().doc(btn.getAttribute('data-delete-hustle')).delete().catch(()=>{});
+      });
+    });
+  }
+
+  function renderHustleStageTabs(){
+    const tabsEl = document.getElementById('hustleStageTabs');
+    const counts = {};
+    hustleOpportunities.forEach(op => { counts[op.stage] = (counts[op.stage]||0) + 1; });
+    const btns = ['<button data-stage="" class="' + (hustleStageFilter ? '' : 'active') + '">All (' + hustleOpportunities.length + ')</button>']
+      .concat(HUSTLE_STAGES.map(s => {
+        const meta = HUSTLE_STAGE_META[s];
+        return `<button data-stage="${s}" class="${hustleStageFilter===s?'active':''}">${meta.short} (${counts[s]||0})</button>`;
+      }));
+    tabsEl.innerHTML = btns.join('');
+    tabsEl.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        hustleStageFilter = btn.getAttribute('data-stage') || null;
+        renderHustleStageTabs();
+        renderHustle();
+      });
+    });
+  }
+
+  function renderHustle(){
+    const resultsEl = document.getElementById('hustleResults');
+    if(!db){
+      resultsEl.innerHTML = '<div class="report-empty">Hustle pipeline needs the shared board connection — open this board from claude.ai to use it.</div>';
+      return;
+    }
+    let rows = hustleOpportunities.slice();
+    if(hustleStageFilter) rows = rows.filter(op => op.stage === hustleStageFilter);
+    if(!rows.length){
+      resultsEl.innerHTML = '<div class="report-empty">No opportunities here yet — add one to get started.</div>';
+      return;
+    }
+    resultsEl.innerHTML = `<div class="report-group">` + rows.map(hustleRowHtml).join('') + `</div>`;
+    bindHustleRowEvents(resultsEl, hustleOpportunities);
+  }
+
+  function renderHustleDisciplineList(){
+    const list = document.getElementById('hustleDisciplineList');
+    list.innerHTML = HUSTLE_DISCIPLINES.map(d =>
+      `<label><input type="checkbox" value="${escapeAttr(d)}" ${selectedDisciplines.includes(d)?'checked':''}> ${escapeHtml(d)}</label>`
+    ).join('');
+    list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const v = cb.value;
+        if(cb.checked){ if(!selectedDisciplines.includes(v)) selectedDisciplines.push(v); }
+        else { selectedDisciplines = selectedDisciplines.filter(x => x !== v); }
+      });
+    });
+  }
+
+  function openHustleModal(op){
+    editingHustleId = op ? op.id : null;
+    document.getElementById('hustleModalTitle').textContent = op ? 'Edit opportunity' : 'Add opportunity';
+    document.getElementById('h_opportunity').value = op ? (op.opportunity||'') : '';
+    document.getElementById('h_stage').value = op && op.stage ? op.stage : (hustleStageFilter || '1. Prospect');
+    document.getElementById('h_owner').value = op ? (op.owner||'') : '';
+    document.getElementById('h_nextAction').value = op ? (op.nextAction||'') : '';
+    document.getElementById('h_division').value = op ? (op.division||'') : '';
+    document.getElementById('h_service').value = op ? (op.service||'') : '';
+    selectedDisciplines = op ? (op.discipline||[]).slice() : [];
+    renderHustleDisciplineList();
+    document.getElementById('h_start').value = op ? (op.start||'') : '';
+    document.getElementById('h_end').value = op ? (op.end||'') : '';
+    document.getElementById('h_engage').value = op ? (op.engage||'') : '';
+    document.getElementById('deleteHustleBtn').style.display = op ? 'inline-block' : 'none';
+    document.getElementById('hustleOverlay').hidden = false;
+  }
+  function closeHustleModal(){
+    document.getElementById('hustleOverlay').hidden = true;
+    editingHustleId = null;
+  }
+
+  document.getElementById('hustleForm').addEventListener('submit', e => {
+    e.preventDefault();
+    if(!canEdit){ closeHustleModal(); return; }
+    const data = {
+      opportunity: document.getElementById('h_opportunity').value.trim(),
+      stage: document.getElementById('h_stage').value,
+      owner: document.getElementById('h_owner').value,
+      nextAction: document.getElementById('h_nextAction').value,
+      division: document.getElementById('h_division').value,
+      service: document.getElementById('h_service').value,
+      discipline: selectedDisciplines.slice(),
+      start: document.getElementById('h_start').value,
+      end: document.getElementById('h_end').value,
+      engage: document.getElementById('h_engage').value,
+    };
+    if(!data.opportunity){ closeHustleModal(); return; }
+    if(editingHustleId){
+      hustleCol().doc(editingHustleId).update(data).catch(()=>{});
+    } else {
+      hustleCol().add(data).catch(()=>{});
+    }
+    closeHustleModal();
+  });
+  document.getElementById('cancelHustleBtn').addEventListener('click', closeHustleModal);
+  document.getElementById('deleteHustleBtn').addEventListener('click', () => {
+    if(editingHustleId && canEdit){
+      hustleCol().doc(editingHustleId).delete().catch(()=>{});
+    }
+    closeHustleModal();
+  });
+  document.getElementById('addHustleBtn').addEventListener('click', () => openHustleModal(null));
+
+  // populate the Owner / Start / End / Engage selects once, up front
+  document.getElementById('h_owner').innerHTML = '<option value="">—</option>' +
+    TEAM_ROSTER.map(p => `<option value="${escapeAttr(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+  ['h_start','h_end','h_engage'].forEach(id => {
+    document.getElementById(id).innerHTML = '<option value="">—</option>' +
+      MONTH_NAMES.map(m => `<option value="${m}">${m}</option>`).join('');
+  });
 
 
   // ---------------- client deliverables page ----------------
