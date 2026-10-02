@@ -2199,7 +2199,7 @@
     document.getElementById('deleteTaskBtn').style.display = t ? 'inline-block' : 'none';
     refreshFormOptions();
     document.getElementById('f_client').value = t ? t.client : '';
-    document.getElementById('f_date').value = t ? t.dateISO : currentWeekId;
+    document.getElementById('f_date').value = t ? t.dateISO : toDateStr(new Date());
     document.getElementById('f_title').value = t ? t.title : '';
     document.getElementById('f_tag').value = t ? (t.tag||'') : '';
     document.getElementById('f_division').value = t ? (t.division||'') : '';
@@ -2367,10 +2367,21 @@
       spawnClipWeekTask(data);
     } else if(editingTaskId){
       const t = tasks.find(x=>x.id===editingTaskId);
+      // Moving a task's date into a different week than the one you're looking at saves fine, but
+      // the task then stops matching this week's query and quietly disappears from view -- which
+      // reads as "the edit didn't save". Jump the board to wherever the task actually landed instead,
+      // once the write has actually gone through (so the new week's own query doesn't race it).
+      const movedToWeek = data.weekId !== currentWeekId ? data.weekId : null;
       Object.assign(t, data);
       renderGroups();
-      if(canEdit) tasksCol().doc(editingTaskId).update(data).catch(()=>{});
       syncTaskToDelivery(editingTaskId, data);
+      if(canEdit){
+        tasksCol().doc(editingTaskId).update(data).then(() => {
+          if(movedToWeek) goToWeek(movedToWeek);
+        }).catch(()=>{});
+      } else if(movedToWeek){
+        goToWeek(movedToWeek);
+      }
     } else if(makeRecurring && canEdit){
       const template = {
         client:data.client, title:data.title, tag:data.tag, division:data.division,
