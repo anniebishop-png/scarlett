@@ -4324,11 +4324,21 @@
     });
   }
 
+  // The month to land on the first time the Podcast tab opens in a session (or if whatever was
+  // selected no longer has any episodes): today's month if there's anything scheduled in it,
+  // otherwise the nearest upcoming month, otherwise the most recent past one -- never just
+  // "whichever month happens to be earliest in the data", which could be months out of date.
+  function closestPodcastMonth(months, targetMonth){
+    if(!months.length) return null;
+    if(months.includes(targetMonth)) return targetMonth;
+    const upcoming = months.find(m => m > targetMonth);
+    return upcoming || months[months.length - 1];
+  }
   function renderPodcastMonthTabs(){
     const months = [...new Set(podcastEpisodes.map(e => (e.date||'').slice(0,7)).filter(Boolean))].sort();
     const tabsEl = document.getElementById('podcastMonthTabs');
     if(podcastMonthFilter && !months.includes(podcastMonthFilter)) podcastMonthFilter = null;
-    if(!podcastMonthFilter && months.length) podcastMonthFilter = months[0];
+    if(!podcastMonthFilter && months.length) podcastMonthFilter = closestPodcastMonth(months, toDateStr(new Date()).slice(0,7));
     const btns = ['<button data-month="" class="' + (podcastMonthFilter ? '' : 'active') + '">All</button>']
       .concat(months.map(m => {
         const label = new Date(m + '-01T00:00:00').toLocaleDateString('en-US', {month:'long', year:'numeric'});
