@@ -233,6 +233,8 @@
   .del-status.inprogress{color:var(--st-review-text);}
   .del-status.delivered{color:var(--st-done-text);}
   .del-owners{font-size:11.5px; font-weight:600; color:var(--ink-muted);}
+  .del-outstanding{display:flex; align-items:baseline; gap:7px; margin-bottom:14px; color:var(--ink-2); font-size:13px;}
+  .del-outstanding strong{font-family:var(--font-display); font-size:22px; color:var(--ink); letter-spacing:-.01em;}
   .del-synced{color:var(--ink-muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; opacity:.7;}
   .del-cat-head{cursor:pointer;}
   .del-cat-head .del-cat-label{display:flex; align-items:center; gap:7px;}
@@ -844,6 +846,7 @@
     <button class="btn-ghost" id="contractSetupToolbarBtn" style="display:none;">Set up contract</button>
     <button class="btn-primary" id="addDeliveryBtn" style="margin-left:auto;">+ Add item</button>
   </div>
+  <div class="del-outstanding" id="deliveryOutstandingCounter"></div>
   <div id="deliveryResults"></div>
 </div>
 
@@ -1283,16 +1286,24 @@
           <div class="owners-pop" id="categoryPop" hidden></div>
         </div>
       </div>
-      <div class="field" style="position:relative;">
-        <label>Team <span style="text-transform:none;font-weight:500;">(optional)</span></label>
-        <button type="button" class="owners-btn" id="deliveryOwnersBtn">Select team</button>
-        <div class="owners-pop" id="deliveryOwnersPop" hidden></div>
+      <div class="field-row">
+        <div class="field"><label>Team <span style="text-transform:none;font-weight:500;">(optional)</span></label><select id="d_division"><option value="">—</option></select></div>
+        <div class="field" style="position:relative;">
+          <label>Owner(s) <span style="text-transform:none;font-weight:500;">(optional)</span></label>
+          <button type="button" class="owners-btn" id="deliveryOwnersBtn">Select owners</button>
+          <div class="owners-pop" id="deliveryOwnersPop" hidden></div>
+        </div>
       </div>
       <div class="field-row">
         <div class="field"><label>Item <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="d_item" placeholder="e.g. Episode 13"></div>
         <div class="field"><label>Date <span style="text-transform:none;font-weight:500;">(optional)</span></label><input type="date" id="d_date"></div>
       </div>
       <div class="field"><label>Title <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="d_title"></div>
+      <div class="field" id="deliveryExtraTasksField">
+        <label>Add more tasks <span style="text-transform:none;font-weight:500;">(optional — same client/team/owners, own title &amp; date each)</span></label>
+        <div id="deliveryExtraTasksList"></div>
+        <button type="button" class="add-row-btn" id="addDeliveryExtraTaskBtn" style="width:auto;padding:6px 2px;">+ Add another task</button>
+      </div>
       <div class="field-row">
         <div class="field"><label>Graphics <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="d_graphics" placeholder="e.g. 2 promo posts"></div>
         <div class="field"><label>Status</label>
@@ -2016,7 +2027,7 @@
     const dateISO = item.date || currentWeekId;
     tasksCol().doc('spawn_del_' + deliveryId).set({
       client: item.client, dateISO, title: item.title || item.category, tag: item.category || '',
-      division: '', owners: (item.owners||[]).slice(), status: deliveryStatusToTaskStatus(item.status), notes: item.notes || '',
+      division: item.division || '', owners: (item.owners||[]).slice(), status: deliveryStatusToTaskStatus(item.status), notes: item.notes || '',
       weekId: mondayOf(dateISO), showId: '', order: 90, calendarSynced: false,
       sourceType: 'delivery', sourceId: deliveryId,
     }).catch(()=>{});
@@ -4602,6 +4613,24 @@
     if(!pop.hidden && e.target.id !== 'deliveryOwnersBtn' && !pop.contains(e.target)) pop.hidden = true;
   });
 
+  // One row in the Add item modal's own "+ Add another task" list -- same pattern as the Add task
+  // modal's addExtraTaskRow above: its own title + date, sharing this delivery item's client/team/
+  // owners. These become plain board tasks (via addOneTask below), not additional delivery-tracker
+  // line items -- the delivery item itself is the one contracted deliverable; these are the internal
+  // work needed to produce it.
+  function addDeliveryExtraTaskRow(title, dateISO){
+    const row = document.createElement('div');
+    row.className = 'extra-date-row';
+    row.innerHTML = `<input type="text" class="extra-task-title" list="titleOptions" placeholder="Task title" value="${escapeAttr(title||'')}">
+      <input type="date" class="extra-task-date" value="${dateISO||''}">
+      <button type="button" class="chip-x" title="Remove this task">✕</button>`;
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    document.getElementById('deliveryExtraTasksList').appendChild(row);
+  }
+  document.getElementById('addDeliveryExtraTaskBtn').addEventListener('click', () => {
+    addDeliveryExtraTaskRow('', document.getElementById('d_date').value || currentWeekId);
+  });
+
   function subscribeDelivery(){
     if(unsubDelivery) unsubDelivery();
     if(!db){ renderDelivery(); return; }
@@ -4654,8 +4683,25 @@
     btn.textContent = (contractClients[client] && contractClients[client].length) ? 'Edit contract' : 'Set up contract';
   }
 
+  // How many items still need delivering -- scoped to whichever client is picked, or across
+  // everyone when the filter is left on "All clients" (the one case the rest of renderDelivery
+  // shows nothing for, since there's no single client's list to display). Always on screen, even
+  // before a client's picked, so there's an at-a-glance number the way the board's own
+  // "X of Y tasks still to finish" line works.
+  function renderDeliveryOutstandingCounter(){
+    const el = document.getElementById('deliveryOutstandingCounter');
+    if(!db || !deliveryItems.length){ el.innerHTML = ''; return; }
+    const clientFilter = document.getElementById('deliveryClientFilter').value;
+    const scoped = clientFilter ? deliveryItems.filter(r => r.client === clientFilter) : deliveryItems;
+    if(!scoped.length){ el.innerHTML = ''; return; }
+    const outstanding = scoped.filter(r => r.status !== 'delivered').length;
+    const who = clientFilter ? `for ${escapeHtml(clientFilter)}` : 'across every client';
+    el.innerHTML = `<strong>${outstanding}</strong> item${outstanding===1?'':'s'} still to deliver ${who}`;
+  }
+
   function renderDelivery(){
     updateContractSetupToolbarBtn();
+    renderDeliveryOutstandingCounter();
     const resultsEl = document.getElementById('deliveryResults');
     if(!db){
       resultsEl.innerHTML = '<div class="report-empty">Delivery Tracker needs the shared board connection — open this board from claude.ai to use it.</div>';
@@ -4784,12 +4830,19 @@
     selectedDeliveryOwners = item ? (item.owners||[]).slice() : [];
     updateDeliveryOwnersBtnLabel();
     document.getElementById('deliveryOwnersPop').hidden = true;
+    document.getElementById('d_division').innerHTML = '<option value="">—</option>' +
+      DIVISION_ROSTER.map(c=>`<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('');
+    document.getElementById('d_division').value = item ? (item.division||'') : '';
     document.getElementById('d_item').value = item ? (item.item||'') : '';
     document.getElementById('d_date').value = item ? (item.date||'') : '';
     document.getElementById('d_title').value = item ? (item.title||'') : '';
     document.getElementById('d_graphics').value = item ? (item.graphics||'') : '';
     document.getElementById('d_status').value = item && item.status ? item.status : 'notstarted';
     document.getElementById('d_notes').value = item ? (item.notes||'') : '';
+    // "Add more tasks" only makes sense while adding fresh -- same rule as the Add task modal's
+    // own "+ Add another task" (see openTaskModal/updateRecurRowVisibility).
+    document.getElementById('deliveryExtraTasksList').innerHTML = '';
+    document.getElementById('deliveryExtraTasksField').style.display = item ? 'none' : 'flex';
     document.getElementById('deleteDeliveryBtn').style.display = item ? 'inline-block' : 'none';
     document.getElementById('deliveryOverlay').hidden = false;
   }
@@ -4885,6 +4938,7 @@
     }
     const base = {
       client: document.getElementById('d_client').value,
+      division: document.getElementById('d_division').value.trim(),
       owners: selectedDeliveryOwners.slice(),
       item: document.getElementById('d_item').value.trim(),
       date: document.getElementById('d_date').value,
@@ -4909,6 +4963,19 @@
         if(cat === 'Graphics - Full'){ spawnFullGraphicsDeliveryPackage(base); return; }
         const data = Object.assign({}, base, {category: cat});
         deliveryCol().add(data).then(ref => spawnTaskFromDelivery(ref.id, data)).catch(()=>{});
+      });
+      // "+ Add another task" rows -- same client/team/owners as above, own title + date each, same
+      // pattern as the Add task modal's own extra-task rows (see addExtraTaskRow/addOneTask). These
+      // land as plain board tasks alongside whichever delivery item(s) were just created above, not
+      // as further delivery-tracker line items of their own.
+      Array.from(document.querySelectorAll('#deliveryExtraTasksList .extra-date-row')).map(row => ({
+        title: row.querySelector('.extra-task-title').value.trim(),
+        dateISO: row.querySelector('.extra-task-date').value,
+      })).filter(r => r.title && r.dateISO).forEach(r => {
+        addOneTask({
+          client: base.client, dateISO: r.dateISO, title: r.title, tag: '', division: base.division,
+          owners: base.owners.slice(), status: 'notstarted', notes: '', weekId: mondayOf(r.dateISO),
+        });
       });
     }
     closeDeliveryModal();
