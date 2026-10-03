@@ -232,6 +232,7 @@
   .del-status.notstarted{color:var(--ink-muted);}
   .del-status.inprogress{color:var(--st-review-text);}
   .del-status.delivered{color:var(--st-done-text);}
+  .del-owners{font-size:11.5px; font-weight:600; color:var(--ink-muted);}
   .del-synced{color:var(--ink-muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; opacity:.7;}
   .del-cat-head{cursor:pointer;}
   .del-cat-head .del-cat-label{display:flex; align-items:center; gap:7px;}
@@ -1282,6 +1283,11 @@
           <div class="owners-pop" id="categoryPop" hidden></div>
         </div>
       </div>
+      <div class="field" style="position:relative;">
+        <label>Team <span style="text-transform:none;font-weight:500;">(optional)</span></label>
+        <button type="button" class="owners-btn" id="deliveryOwnersBtn">Select team</button>
+        <div class="owners-pop" id="deliveryOwnersPop" hidden></div>
+      </div>
       <div class="field-row">
         <div class="field"><label>Item <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="d_item" placeholder="e.g. Episode 13"></div>
         <div class="field"><label>Date <span style="text-transform:none;font-weight:500;">(optional)</span></label><input type="date" id="d_date"></div>
@@ -1443,6 +1449,7 @@
   let editingDeliveryId = null;
   let deliveryExpandedCategories = new Set(); // which category groups are expanded on the Delivery Tracker page
   let selectedDeliveryCategories = []; // categories checked in the open delivery-item form
+  let selectedDeliveryOwners = []; // team members checked in the open delivery-item form
   let contractClients = {};  // { clientName: [{name, target}, ...] } — self-serve contract categories, loaded when that page is open
   let unsubContractClients = null;
   let contractSetupClient = null; // which client the contract-setup modal is currently open for
@@ -1991,7 +1998,7 @@
     if(!client || !category){ removeDeliverySync(docId); return; }
     upsertDeliverySync(docId, {
       client, category, date: t.dateISO || '', title: t.title || '',
-      status: taskStatusToDeliveryStatus(t.status),
+      status: taskStatusToDeliveryStatus(t.status), owners: (t.owners||[]).slice(),
       sourceType: 'task', sourceId: id,
     });
   }
@@ -2009,7 +2016,7 @@
     const dateISO = item.date || currentWeekId;
     tasksCol().doc('spawn_del_' + deliveryId).set({
       client: item.client, dateISO, title: item.title || item.category, tag: item.category || '',
-      division: '', owners: [], status: deliveryStatusToTaskStatus(item.status), notes: item.notes || '',
+      division: '', owners: (item.owners||[]).slice(), status: deliveryStatusToTaskStatus(item.status), notes: item.notes || '',
       weekId: mondayOf(dateISO), showId: '', order: 90, calendarSynced: false,
       sourceType: 'delivery', sourceId: deliveryId,
     }).catch(()=>{});
@@ -4562,6 +4569,39 @@
     if(!pop.hidden && e.target.id !== 'categoryBtn' && !pop.contains(e.target)) pop.hidden = true;
   });
 
+  // Who's actually doing a delivery item — same multi-select pattern as the task form's Owners
+  // picker (see updateOwnersBtnLabel/renderOwnersPop above), just scoped to this modal so the two
+  // don't clobber each other if both happened to be open. Flows into deliveryItems.owners and,
+  // for items added here, onto the auto-spawned board task too (see spawnTaskFromDelivery) so the
+  // team actually sees who it's assigned to, not just that it's logged.
+  function updateDeliveryOwnersBtnLabel(){
+    const btn = document.getElementById('deliveryOwnersBtn');
+    btn.textContent = selectedDeliveryOwners.length ? selectedDeliveryOwners.map(o => ROSTER_INITIALS[o] || o).join(', ') : 'Select team';
+  }
+  function renderDeliveryOwnersPop(){
+    const pop = document.getElementById('deliveryOwnersPop');
+    pop.innerHTML = TEAM_ROSTER.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p => `
+      <label><input type="checkbox" value="${escapeAttr(p.name)}" ${selectedDeliveryOwners.includes(p.name)?'checked':''}> ${escapeHtml(p.name)} <span style="color:var(--ink-muted);font-weight:600;">(${p.initials})</span></label>`).join('');
+    pop.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if(cb.checked){ if(!selectedDeliveryOwners.includes(cb.value)) selectedDeliveryOwners.push(cb.value); }
+        else { selectedDeliveryOwners = selectedDeliveryOwners.filter(o=>o!==cb.value); }
+        updateDeliveryOwnersBtnLabel();
+      });
+    });
+  }
+  document.getElementById('deliveryOwnersBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const pop = document.getElementById('deliveryOwnersPop');
+    const willOpen = pop.hidden;
+    pop.hidden = !pop.hidden;
+    if(willOpen) renderDeliveryOwnersPop();
+  });
+  document.addEventListener('click', (e) => {
+    const pop = document.getElementById('deliveryOwnersPop');
+    if(!pop.hidden && e.target.id !== 'deliveryOwnersBtn' && !pop.contains(e.target)) pop.hidden = true;
+  });
+
   function subscribeDelivery(){
     if(unsubDelivery) unsubDelivery();
     if(!db){ renderDelivery(); return; }
@@ -4684,6 +4724,7 @@
             ${r.notes ? `<div class="del-notes">${escapeHtml(r.notes)}</div>` : ''}
             <div class="del-row-bottom">
               <span class="del-status ${escapeAttr(r.status||'notstarted')}">${escapeHtml(statusMeta.label)}</span>
+              ${r.owners && r.owners.length ? `<span class="del-owners">${escapeHtml(r.owners.map(o=>initials(o)).join(', '))}</span>` : ''}
             </div>
           </div>`;
         }).join('')}
@@ -4740,6 +4781,9 @@
     selectedDeliveryCategories = item && item.category ? [item.category] : [];
     updateCategoryBtnLabel();
     document.getElementById('categoryPop').hidden = true;
+    selectedDeliveryOwners = item ? (item.owners||[]).slice() : [];
+    updateDeliveryOwnersBtnLabel();
+    document.getElementById('deliveryOwnersPop').hidden = true;
     document.getElementById('d_item').value = item ? (item.item||'') : '';
     document.getElementById('d_date').value = item ? (item.date||'') : '';
     document.getElementById('d_title').value = item ? (item.title||'') : '';
@@ -4752,6 +4796,7 @@
   function closeDeliveryModal(){
     document.getElementById('deliveryOverlay').hidden = true;
     document.getElementById('categoryPop').hidden = true;
+    document.getElementById('deliveryOwnersPop').hidden = true;
     editingDeliveryId = null;
     if(nudgeFlowActive){ nudgeFlowActive = false; showNextClientNudge(); }
   }
@@ -4840,6 +4885,7 @@
     }
     const base = {
       client: document.getElementById('d_client').value,
+      owners: selectedDeliveryOwners.slice(),
       item: document.getElementById('d_item').value.trim(),
       date: document.getElementById('d_date').value,
       title: document.getElementById('d_title').value.trim(),
