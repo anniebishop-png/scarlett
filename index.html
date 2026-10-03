@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  // Apply any saved light/dark override before first paint, so the page never flashes the
+  // wrong theme. No saved value (or 'auto') leaves data-theme unset, which falls back to the
+  // visitor's system preference via the prefers-color-scheme CSS below.
+  (function(){
+    try {
+      var t = localStorage.getItem('scarlett-theme');
+      if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    } catch(e){}
+  })();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scarlett</title>
@@ -93,6 +104,10 @@
   .header-btn{background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff; padding:9px 15px; border-radius:10px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap;}
   .header-btn:hover{background:rgba(255,255,255,.22);}
   .header-nav-btns{display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end;}
+  .theme-toggle{display:inline-flex; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:10px; padding:3px; gap:2px;}
+  .theme-toggle button{border:none; background:transparent; color:rgba(255,255,255,.72); padding:6px 11px; border-radius:7px; font-weight:700; font-size:11.5px; cursor:pointer; white-space:nowrap;}
+  .theme-toggle button.active{background:rgba(255,255,255,.22); color:#fff;}
+  .theme-toggle button:hover:not(.active){color:#fff;}
 
   /* ---------- Shared cross-page nav (Board / Calendar / Client Ops / Delivery / Podcast / Reports) ---------- */
   .global-nav{display:flex; flex-wrap:wrap; gap:8px;}
@@ -627,6 +642,11 @@
       <button class="header-btn" id="podcastBtn" data-nav="podcast">Podcast</button>
       <button class="header-btn" id="hustleBtn" data-nav="hustle">Hustle</button>
       <button class="header-btn" id="reportsBtn" data-nav="reports">Reports</button>
+    </div>
+    <div class="theme-toggle" id="themeToggle" role="group" aria-label="Theme">
+      <button type="button" data-theme-choice="auto" title="Match your device">Auto</button>
+      <button type="button" data-theme-choice="light" title="Always light">Light</button>
+      <button type="button" data-theme-choice="dark" title="Always dark">Dark</button>
     </div>
     <div class="pulse" id="weekPulse" aria-live="polite" hidden></div>
   </header>
@@ -3414,6 +3434,28 @@
   document.getElementById('prevWeek').addEventListener('click', () => goToWeek(addDays(currentWeekId,-7)));
   document.getElementById('nextWeek').addEventListener('click', () => goToWeek(addDays(currentWeekId,7)));
   document.getElementById('todayBtn').addEventListener('click', () => goToWeek(CURRENT_WEEK));
+
+  // ---------------- light/dark theme toggle ----------------
+  // 'auto' (the default) clears data-theme and just follows the visitor's own system setting;
+  // 'light'/'dark' pins it regardless of their system, saved per-browser so it's each person's
+  // own choice rather than a shared board setting. The actual attribute is also set as early as
+  // possible in <head> (see the inline script up top) so there's no flash of the wrong theme.
+  function applyTheme(choice){
+    if(choice === 'light' || choice === 'dark') document.documentElement.setAttribute('data-theme', choice);
+    else document.documentElement.removeAttribute('data-theme');
+    document.querySelectorAll('#themeToggle button').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-theme-choice') === choice);
+    });
+    try { choice === 'auto' ? localStorage.removeItem('scarlett-theme') : localStorage.setItem('scarlett-theme', choice); } catch(e){}
+  }
+  document.querySelectorAll('#themeToggle button').forEach(btn => {
+    btn.addEventListener('click', () => applyTheme(btn.getAttribute('data-theme-choice')));
+  });
+  (function(){
+    let saved = 'auto';
+    try { saved = localStorage.getItem('scarlett-theme') || 'auto'; } catch(e){}
+    applyTheme(saved);
+  })();
 
   document.querySelectorAll('#viewTabs button').forEach(btn=>{
     btn.addEventListener('click', () => {
