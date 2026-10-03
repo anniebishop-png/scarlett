@@ -90,6 +90,16 @@ function createFirestoreShim(supabaseClient) {
         if (error) throw error;
       },
 
+      // One-off read of this doc (Firestore's DocumentReference.get()) -- distinct from
+      // onSnapshot() below, which stays subscribed. Used by callers that just need to branch on
+      // whether a row already exists (e.g. upsertDeliverySync's create-vs-merge check in
+      // index.html) without opening a realtime channel for it.
+      async get() {
+        const { data, error } = await supabaseClient.from(table).select('*').eq('id', id).maybeSingle();
+        if (error) throw error;
+        return { exists: !!data, id, data: () => data || {} };
+      },
+
       async update(data) {
         // .select() makes Supabase return the rows it actually changed. Without it, an update that
         // row-level security silently filters out (or one aimed at a row that no longer exists)
