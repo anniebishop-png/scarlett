@@ -1942,14 +1942,27 @@
     return candidates.find(c => c.toLowerCase() === norm) || null;
   }
 
+  // TEMPORARY: the live "deliveryItems" Postgres table doesn't have "division"/"owners" columns
+  // yet (added client-side ahead of the schema migration — see the SQL file delivered alongside
+  // this fix). Stripping them before any deliveryCol() write keeps every Add/Edit/sync from
+  // failing outright; both fields still flow into the mirrored board task via
+  // spawnTaskFromDelivery, which already has both columns. Remove this helper and its call sites
+  // once the migration has been run.
+  function stripForDeliveryTable(data){
+    const copy = Object.assign({}, data);
+    delete copy.division;
+    delete copy.owners;
+    return copy;
+  }
   // Create-or-merge into a synced delivery doc: preserves any manually-added graphics/notes on
   // later syncs (update() merges), while still creating a full doc the first time.
   function upsertDeliverySync(docId, derived){
     if(!canEdit) return;
     const ref = deliveryCol().doc(docId);
+    const safeDerived = stripForDeliveryTable(derived);
     ref.get().then(snap => {
-      if(snap.exists) ref.update(derived).catch(()=>{});
-      else ref.set(Object.assign({item:'', graphics:'', notes:''}, derived)).catch(()=>{});
+      if(snap.exists) ref.update(safeDerived).catch(()=>{});
+      else ref.set(Object.assign({item:'', graphics:'', notes:''}, safeDerived)).catch(()=>{});
     }).catch(()=>{});
   }
   function removeDeliverySync(docId){
@@ -4922,7 +4935,7 @@
         date: itemDate,
         notes: base.notes ? `${base.notes} (${item.dayLabel})` : `Graphics - Full package (${item.dayLabel})`,
       });
-      deliveryCol().add(data).then(ref => spawnTaskFromDelivery(ref.id, data)).catch(()=>{});
+      deliveryCol().add(stripForDeliveryTable(data)).then(ref => spawnTaskFromDelivery(ref.id, data)).catch(()=>{});
     });
   }
 
@@ -4950,7 +4963,7 @@
     if(editingDeliveryId){
       const editingItem = deliveryItems.find(x=>x.id===editingDeliveryId);
       const updated = Object.assign({}, base, {category: selectedDeliveryCategories[0]});
-      deliveryCol().doc(editingDeliveryId).update(updated).catch(()=>{});
+      deliveryCol().doc(editingDeliveryId).update(stripForDeliveryTable(updated)).catch(()=>{});
       // keep its mirrored task current too, but only for items that started life here (not ones
       // already auto-synced in from a board task or podcast episode — see spawnTaskFromDelivery)
       if(!editingItem || !editingItem.sourceType) spawnTaskFromDelivery(editingDeliveryId, updated);
@@ -4962,7 +4975,7 @@
       selectedDeliveryCategories.forEach(cat => {
         if(cat === 'Graphics - Full'){ spawnFullGraphicsDeliveryPackage(base); return; }
         const data = Object.assign({}, base, {category: cat});
-        deliveryCol().add(data).then(ref => spawnTaskFromDelivery(ref.id, data)).catch(()=>{});
+        deliveryCol().add(stripForDeliveryTable(data)).then(ref => spawnTaskFromDelivery(ref.id, data)).catch(()=>{});
       });
       // "+ Add another task" rows -- same client/team/owners as above, own title + date each, same
       // pattern as the Add task modal's own extra-task rows (see addExtraTaskRow/addOneTask). These
