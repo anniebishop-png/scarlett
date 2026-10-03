@@ -4587,7 +4587,7 @@
   // team actually sees who it's assigned to, not just that it's logged.
   function updateDeliveryOwnersBtnLabel(){
     const btn = document.getElementById('deliveryOwnersBtn');
-    btn.textContent = selectedDeliveryOwners.length ? selectedDeliveryOwners.map(o => ROSTER_INITIALS[o] || o).join(', ') : 'Select team';
+    btn.textContent = selectedDeliveryOwners.length ? selectedDeliveryOwners.map(o => ROSTER_INITIALS[o] || o).join(', ') : 'Select owners';
   }
   function renderDeliveryOwnersPop(){
     const pop = document.getElementById('deliveryOwnersPop');
