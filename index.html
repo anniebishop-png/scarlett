@@ -1731,7 +1731,7 @@
       const dateISO = addDays(show.weekId, dayOffset);
       const weekId = mondayOf(dateISO);
       const id = 'dt_' + show.id + '_' + slugify(client) + '_' + slugify(title) + '_d' + dayOffset;
-      tasksCol().doc(id).set({
+      tasksCol().doc(id).create({
         client, dateISO, title, tag: '', division, owners: [],
         status: 'notstarted', notes: '', weekId, showId: show.id,
         order: orderBase + j, calendarSynced: false,
@@ -1758,7 +1758,7 @@
       const dateISO = dayOffset != null ? addDays(show.weekId, dayOffset) : show.weekId;
       const weekId = mondayOf(dateISO);
       const id = 'dt_' + show.id + '_' + slugify(client) + '_' + slugify(title);
-      tasksCol().doc(id).set({
+      tasksCol().doc(id).create({
         client, dateISO, title, tag: '', division, owners: [],
         status: 'notstarted', notes: '', weekId, showId: show.id,
         order: 95 + i, calendarSynced: false,
@@ -1775,21 +1775,21 @@
     const base = { client, showId: show.id, eventName: show.eventName, weekId: show.weekId, division };
     const slug = slugify(client);
 
-    opsCol().doc('kickoff_' + show.id + '_' + slug).set(Object.assign({}, base, {
+    opsCol().doc('kickoff_' + show.id + '_' + slug).create(Object.assign({}, base, {
       kind: 'kickoff', dueDate: today, status: 'pending', notes: '',
     })).catch(()=>{});
 
-    opsCol().doc('reporting_' + show.id + '_' + slug).set(Object.assign({}, base, {
+    opsCol().doc('reporting_' + show.id + '_' + slug).create(Object.assign({}, base, {
       kind: 'reporting', dueDate: reportingDue, status: 'pending', notes: '',
     })).catch(()=>{});
 
-    opsCol().doc('invoicing_' + show.id + '_' + slug).set(Object.assign({}, base, {
+    opsCol().doc('invoicing_' + show.id + '_' + slug).create(Object.assign({}, base, {
       kind: 'invoicing', dueDate: '', status: 'blocked', notes: '',
     })).catch(()=>{});
 
     // Also put "Reporting due" straight onto the board, on the schedule for the week it's due --
     // not just the Client Ops page -- so it surfaces where the team already looks every week.
-    tasksCol().doc(opsReportingTaskId(show.id, slug)).set({
+    tasksCol().doc(opsReportingTaskId(show.id, slug)).create({
       client, dateISO: reportingDue, title: 'Reporting due', tag: '', division, owners: [],
       status: 'notstarted', notes: `Reporting for ${show.eventName}`,
       weekId: mondayOf(reportingDue), showId: show.id, order: 96, calendarSynced: false,
@@ -2404,10 +2404,31 @@
 
   function setTaskStatus(taskId, status){
     const t = tasks.find(x=>x.id===taskId);
+    const prev = t ? t.status : null;
     if(t) t.status = status; // optimistic
     renderGroups();
-    if(canEdit) tasksCol().doc(taskId).update({status}).catch(()=>{});
-    if(t) syncTaskToDelivery(taskId, t);
+    if(canEdit) tasksCol().doc(taskId).update({status})
+      .then(() => { if(t) syncTaskToDelivery(taskId, t); })
+      .catch(err => {
+        // Don't let the board pretend it saved: put the old status back and say so.
+        console.error('Status save failed', taskId, err);
+        if(t){ t.status = prev; renderGroups(); }
+        showSaveError('Couldn\'t save that status change. Try again, and tell Annie if it keeps happening.');
+      });
+  }
+  function showSaveError(msg){
+    let el = document.getElementById('saveErrorToast');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'saveErrorToast';
+      el.setAttribute('role','alert');
+      el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;max-width:90vw;padding:10px 16px;border-radius:10px;background:#B3261E;color:#fff;font-size:13px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.25);';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.hidden = false;
+    clearTimeout(showSaveError._t);
+    showSaveError._t = setTimeout(() => { el.hidden = true; }, 6000);
   }
 
   function deleteTask(taskId){
@@ -3418,7 +3439,7 @@
         status: r.status||'notstarted', notes: r.notes||'', weekId: currentWeekId,
         recurringId: r.id, order: 90, calendarSynced: false,
       };
-      tasksCol().doc(occId).set(occData).catch(()=>{});
+      tasksCol().doc(occId).create(occData).catch(()=>{});
     });
   }
   function goToWeek(id){

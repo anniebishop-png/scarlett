@@ -91,7 +91,22 @@ function createFirestoreShim(supabaseClient) {
       },
 
       async update(data) {
-        const { error } = await supabaseClient.from(table).update(data).eq('id', id);
+        // .select() makes Supabase return the rows it actually changed. Without it, an update that
+        // row-level security silently filters out (or one aimed at a row that no longer exists)
+        // comes back as a "success" with nothing saved -- which is exactly how a task could look
+        // done on screen and then revert on refresh with no error anywhere.
+        const { data: rows, error } = await supabaseClient.from(table).update(data).eq('id', id).select('id');
+        if (error) throw error;
+        if (!rows || rows.length === 0) {
+          throw new Error('Nothing was saved to "' + table + '" (row ' + id + ') -- the row is missing or an UPDATE policy is blocking it.');
+        }
+      },
+
+      // Insert only if this id doesn't exist yet; never overwrite an existing row. Used by the
+      // auto-spawn routines (recurring tasks, show delivery tasks, client ops) so re-running them
+      // can't reset a task someone has already marked done back to "not started".
+      async create(data) {
+        const { error } = await supabaseClient.from(table).upsert(Object.assign({ id }, data), { onConflict: 'id', ignoreDuplicates: true });
         if (error) throw error;
       },
 
