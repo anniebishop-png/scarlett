@@ -162,6 +162,7 @@
   .ops-mark-btn{border:1px solid var(--hairline-strong); background:none; color:var(--ink); padding:5px 10px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; justify-self:start;}
   .ops-mark-btn:hover{border-color:var(--navy);}
   .ops-mark-btn:disabled{opacity:.45; cursor:not-allowed;}
+  .ops-pill-btn{border:none; background:none; padding:0; cursor:pointer; justify-self:start;}
   .ops-actions{display:flex; align-items:center; gap:6px; justify-self:end;}
   .ops-del-btn{border:none; background:none; color:var(--ink-muted); opacity:.6; cursor:pointer; font-size:14px; line-height:1; padding:4px;}
   .ops-del-btn:hover{opacity:1; color:var(--st-blocked-text);}
@@ -745,7 +746,7 @@
   </div>
   <div class="report-summary" id="opsSummary"></div>
   <div id="opsResults"></div>
-  <footer class="note">Kickoff, reporting and invoicing milestones are created automatically the moment a show is flagged for a client. Invoicing unlocks once reporting is marked done.</footer>
+  <footer class="note">Kickoff, reporting and invoicing milestones are created automatically the moment a show is flagged for a client. Click a status to set it directly — invoicing moves itself to Pending once reporting's marked Done, but you can change any of the three by hand at any time.</footer>
 </div>
 
 <div class="app" id="calendarApp" style="display:none;">
@@ -3850,6 +3851,15 @@
   // ---------------- client ops page ----------------
   const OPS_KIND_LABEL = {kickoff:'Kickoff', reporting:'Reporting', invoicing:'Invoicing'};
   const OPS_KIND_ORDER = {kickoff:0, reporting:1, invoicing:2};
+  // Reuses the same pill color families as the Board's task-status pills, so an ops item's
+  // status is a clickable pill with the same Pending/Waiting/Done choices every time, instead of
+  // the old single "Mark done" button that could only toggle done<->pending and hard-locked
+  // invoicing until reporting was done (the "glitchy" bit — a disabled button that did nothing).
+  const OPS_STATUS_META = {
+    pending: {label:'Pending', pillClass:'notstarted'},
+    blocked: {label:'Waiting', pillClass:'review'},
+    done:    {label:'Done',    pillClass:'done'},
+  };
 
   function subscribeOps(){
     if(unsubOps) unsubOps();
@@ -3913,32 +3923,48 @@
       });
       return `<div class="report-group">
         <div class="report-group-head"><span>${escapeHtml(client)}</span><span>${items.length} item${items.length===1?'':'s'}</span></div>
-        ${items.map(r => `<div class="ops-row">
+        ${items.map(r => {
+          const meta = OPS_STATUS_META[r.status] || OPS_STATUS_META.pending;
+          const pillHtml = `<span class="pill ${meta.pillClass}"><span class="dot"></span>${meta.label}</span>`;
+          return `<div class="ops-row">
           <span class="ops-kind ${escapeAttr(r.kind)}">${escapeHtml(OPS_KIND_LABEL[r.kind]||r.kind)}</span>
           <span class="oevent">${escapeHtml(r.eventName||'')}${r.weekId?` <span style="opacity:.6;">(${escapeHtml(fmtWeekRange(r.weekId))})</span>`:''}</span>
           <span class="odate">${r.dueDate ? escapeHtml(fmtDayLabel(r.dueDate)) : '—'}</span>
-          <span class="ops-status ${escapeAttr(r.status)}">${r.status==='blocked'?'Waiting':r.status==='done'?'Done':'Pending'}</span>
+          ${canEdit ? `<button type="button" class="ops-pill-btn" data-op="${r.id}">${pillHtml}</button>` : pillHtml}
           <span class="ops-actions">
-            ${canEdit ? (
-              r.status==='blocked' ? `<button class="ops-mark-btn" disabled title="Unlocks once reporting is marked done">Locked</button>`
-              : r.status==='done' ? `<button class="ops-mark-btn" data-undo-op="${r.id}">Undo</button>`
-              : `<button class="ops-mark-btn" data-done-op="${r.id}">Mark done</button>`
-            ) : ''}
             ${canEdit ? `<button class="ops-del-btn" data-delete-op="${r.id}" title="Delete this ops item">×</button>` : ''}
           </span>
-        </div>`).join('')}
+        </div>`;
+        }).join('')}
       </div>`;
     }).join('');
 
-    resultsEl.querySelectorAll('[data-done-op]').forEach(btn => {
-      btn.addEventListener('click', () => markOpDone(btn.getAttribute('data-done-op')));
-    });
-    resultsEl.querySelectorAll('[data-undo-op]').forEach(btn => {
-      btn.addEventListener('click', () => markOpUndone(btn.getAttribute('data-undo-op')));
+    resultsEl.querySelectorAll('.ops-pill-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); toggleOpsStatusPop(btn); });
     });
     resultsEl.querySelectorAll('[data-delete-op]').forEach(btn => {
       btn.addEventListener('click', () => deleteOp(btn.getAttribute('data-delete-op')));
     });
+  }
+
+  function toggleOpsStatusPop(btn){
+    closePops();
+    const opId = btn.getAttribute('data-op');
+    const pop = document.createElement('div');
+    pop.className = 'status-pop';
+    pop.innerHTML = Object.keys(OPS_STATUS_META).map(key => {
+      const m = OPS_STATUS_META[key];
+      return `<button data-set-op-status="${key}"><span class="dot" style="background:var(--st-${m.pillClass}-dot)"></span>${m.label}</button>`;
+    }).join('');
+    positionFloatingPop(pop, btn, {alignLeft:true});
+    pop.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setOpStatus(opId, b.getAttribute('data-set-op-status'));
+        closePops();
+      });
+    });
+    openStatusPopId = opId;
   }
 
   function deleteOp(opId){
@@ -3952,19 +3978,29 @@
     }
   }
 
-  function markOpDone(opId){
+  // Replaces the old markOpDone()/markOpUndone() pair with one function that can set any of the
+  // three statuses directly, picked from the pill popover. Reporting still carries its two side
+  // effects — unlocking invoicing and mirroring both onto the board — but only as a convenience:
+  // nothing is hard-gated any more, so any status can be set by hand at any time.
+  function setOpStatus(opId, newStatus){
+    if(!canEdit) return;
     const op = opsRows.find(r=>r.id===opId);
-    if(!op) return;
-    opsCol().doc(opId).update({status:'done', doneAt: toDateStr(new Date())}).catch(()=>{});
-    if(op.kind === 'reporting'){
-      const slug = slugify(op.client);
-      const invId = 'invoicing_' + op.showId + '_' + slug;
-      const inv = opsRows.find(r=>r.id===invId);
+    if(!op || !OPS_STATUS_META[newStatus] || op.status === newStatus) return;
+    const wasDone = op.status === 'done';
+    const update = {status: newStatus};
+    if(newStatus === 'done') update.doneAt = toDateStr(new Date());
+    opsCol().doc(opId).update(update).catch(()=>{});
+
+    if(op.kind !== 'reporting' || !op.showId) return;
+    const slug = slugify(op.client);
+    const invId = 'invoicing_' + op.showId + '_' + slug;
+    const inv = opsRows.find(r=>r.id===invId);
+    if(newStatus === 'done' && !wasDone){
+      // Reporting just finished: wake up invoicing (if nothing's touched it yet) and open a task
+      // for Geogs to invoice the client, same as before.
       if(inv && inv.status === 'blocked'){
         opsCol().doc(invId).update({status:'pending', dueDate: toDateStr(new Date())}).catch(()=>{});
       }
-      // Close out "Reporting due" on the board, and open a task for Geogs to invoice the client
-      // now that reporting's done.
       tasksCol().doc(opsReportingTaskId(op.showId, slug)).update({status:'done'}).catch(()=>{});
       const today = toDateStr(new Date());
       tasksCol().doc(opsInvoicingTaskId(op.showId, slug)).set({
@@ -3972,13 +4008,13 @@
         owners: ['Geogs'], status: 'notstarted', notes: `Invoicing for ${op.eventName || op.client}`,
         weekId: mondayOf(today), showId: op.showId, order: 97, calendarSynced: false,
       }).catch(()=>{});
-    }
-  }
-  function markOpUndone(opId){
-    const op = opsRows.find(r=>r.id===opId);
-    opsCol().doc(opId).update({status:'pending'}).catch(()=>{});
-    if(op && op.kind === 'reporting'){
-      tasksCol().doc(opsReportingTaskId(op.showId, slugify(op.client))).update({status:'notstarted'}).catch(()=>{});
+    } else if(newStatus !== 'done' && wasDone){
+      // Reporting moved back off Done: put invoicing back to Waiting too, but only if nobody's
+      // started on it yet — never pull back something already Pending-by-choice or Done.
+      if(inv && inv.status === 'pending'){
+        opsCol().doc(invId).update({status:'blocked'}).catch(()=>{});
+      }
+      tasksCol().doc(opsReportingTaskId(op.showId, slug)).update({status:'notstarted'}).catch(()=>{});
     }
   }
 
