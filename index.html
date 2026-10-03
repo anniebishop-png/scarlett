@@ -515,9 +515,12 @@
   .notif-badge{position:absolute; top:-6px; right:-6px; min-width:17px; height:17px; padding:0 4px; border-radius:9px;
     background:var(--overdue); color:#fff; font-size:10.5px; font-weight:700; line-height:17px; text-align:center;
     box-shadow:0 0 0 2px var(--navy);}
-  .notif-panel{position:absolute; top:calc(100% + 10px); right:0; width:320px; max-height:420px; overflow:auto;
+  /* position:fixed (not absolute) and positioned via JS from the bell's own coordinates -- it lives
+     outside the header element in the DOM (see the markup comment there) specifically so the
+     header's overflow:hidden can't clip it. */
+  .notif-panel{position:fixed; width:320px; max-height:420px; overflow:auto;
     background:var(--surface); border:1px solid var(--hairline); border-radius:12px; box-shadow:var(--shadow);
-    padding:8px; z-index:40; color:var(--ink);}
+    padding:8px; z-index:200; color:var(--ink);}
   .notif-panel-empty{padding:18px 10px; text-align:center; color:var(--ink-muted); font-size:13px;}
   .notif-panel-head{font-family:var(--font-display); font-size:12px; font-weight:700; text-transform:uppercase;
     letter-spacing:.04em; color:var(--ink-muted); padding:8px 8px 4px;}
@@ -689,10 +692,15 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="notif-badge" id="notifBadge" hidden>0</span>
       </button>
-      <div class="notif-panel" id="notifPanel" hidden></div>
     </div>
     <div class="pulse" id="weekPulse" aria-live="polite" hidden></div>
   </header>
+
+  <!-- Deliberately OUTSIDE the header element above: it uses overflow:hidden to round off its
+       decorative gradient corners, which would clip (and swallow clicks on) a dropdown nested
+       inside it. This panel is positioned with JS (see notifBellBtn's click handler) to sit under
+       the bell icon. -->
+  <div class="notif-panel" id="notifPanel" hidden></div>
 
   <main>
 
@@ -1879,20 +1887,40 @@
       `You have ${dueNotifications.length} item${dueNotifications.length===1?'':'s'} that need attention — ${parts.join(', ')}.`;
     banner.hidden = false;
   }
+  // The panel lives outside the header element (see its markup comment) so overflow:hidden there can't clip
+  // it, which means it's no longer visually anchored to the bell by CSS alone -- this pins it under
+  // the bell's actual on-screen position every time it's about to be shown.
+  function positionNotifPanel(){
+    const panel = document.getElementById('notifPanel');
+    const btn = document.getElementById('notifBellBtn');
+    if(!panel || !btn) return;
+    const r = btn.getBoundingClientRect();
+    panel.style.top = (r.bottom + 10) + 'px';
+    panel.style.right = (window.innerWidth - r.right) + 'px';
+  }
+  function openNotifPanel(){
+    positionNotifPanel();
+    document.getElementById('notifPanel').hidden = false;
+  }
   document.getElementById('notifBellBtn').addEventListener('click', () => {
     const panel = document.getElementById('notifPanel');
-    panel.hidden = !panel.hidden;
+    if(panel.hidden) openNotifPanel(); else panel.hidden = true;
   });
   document.addEventListener('click', e => {
     const wrap = document.getElementById('notifWrap');
-    if(wrap && !wrap.contains(e.target)) document.getElementById('notifPanel').hidden = true;
+    const panel = document.getElementById('notifPanel');
+    if(wrap && panel && !wrap.contains(e.target) && !panel.contains(e.target)) panel.hidden = true;
   });
+  // Fixed positioning means scrolling the page leaves the panel visually stranded (it doesn't track
+  // the bell as the page scrolls) -- simplest fix is to just close it, same as clicking away.
+  window.addEventListener('scroll', () => { document.getElementById('notifPanel').hidden = true; }, {passive:true, capture:true});
+  window.addEventListener('resize', () => { document.getElementById('notifPanel').hidden = true; });
   document.getElementById('dueBannerDismissBtn').addEventListener('click', () => {
     document.getElementById('dueBanner').hidden = true;
   });
   document.getElementById('dueBannerViewBtn').addEventListener('click', () => {
     document.getElementById('dueBanner').hidden = true;
-    document.getElementById('notifPanel').hidden = false;
+    openNotifPanel();
   });
 
   // ---------------- client work automation (delivery tasks + client ops) ----------------
