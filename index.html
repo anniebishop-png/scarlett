@@ -1907,19 +1907,21 @@
   });
 
   // ---------------- delivery tracker auto-sync ----------------
-  // When a podcast episode or task is tagged for a client that has an active, categorized
-  // delivery tracker (the Delivery Tracker page), a matching entry is kept in sync there
-  // automatically, so it doesn't need logging twice. This is separate from — and doesn't follow
-  // automatically from — a client having contract categories set up (see contractCategoriesFor):
-  // the sync target categories ('Opportunistic Graphics – Eventing/Jumping') only exist in Red
-  // Mills' own DELIVERY_CATEGORIES today, so add a client here only once there's a real reason for
-  // their board tasks/podcast episodes to mirror in automatically, not just because they're now a
-  // contract client.
-  const ACTIVE_DELIVERY_CLIENTS = ['Red Mills'];
-
+  // When a podcast episode or task is tagged for a client that has a categorized delivery tracker
+  // set up (legacy — Red Mills/Highlands Cup — or self-serve via "Set up contract", see
+  // contractCategoriesFor), a matching entry is kept in sync there automatically, so it doesn't
+  // need logging twice. Any client with contract categories counts as "set up" here; what actually
+  // gates a sync is whether one of THAT client's own categories matches (see
+  // podcastCategoryForDelivery / taskCategoryForDelivery below) — so a newly set-up client with no
+  // podcast-shaped or opportunistic-graphics category just quietly doesn't sync anything, rather
+  // than guessing into the wrong bucket.
   function activeDeliveryClientFor(name){
-    const norm = (name||'').trim().toLowerCase();
-    return ACTIVE_DELIVERY_CLIENTS.find(c => c.toLowerCase() === norm) || null;
+    const trimmed = (name||'').trim();
+    if(!trimmed) return null;
+    const norm = trimmed.toLowerCase();
+    const candidates = Object.keys(LEGACY_CONTRACT_CLIENTS)
+      .concat(Object.keys(contractClients).filter(c => contractClients[c] && contractClients[c].length));
+    return candidates.find(c => c.toLowerCase() === norm) || null;
   }
 
   // Create-or-merge into a synced delivery doc: preserves any manually-added graphics/notes on
@@ -1942,11 +1944,24 @@
     if(status === 'recorded') return 'inprogress';
     return 'notstarted';
   }
-  // Podcast platform names line up 1:1 with two of the Red Mills contract categories.
+  // Which of a client's own contract categories an episode's platform maps onto. Red Mills' two
+  // podcast categories are named after the platforms themselves ('Eventing Podcast'/'Jumping
+  // Podcast'), so an exact match wins first. A client with exactly one podcast-flavoured category
+  // instead (e.g. Highlands Cup's 'Podcast Series') catches every platform under that one bucket —
+  // but two or more non-matching podcast categories is ambiguous, so it's left unsynced rather than
+  // guessed into the wrong one.
+  function podcastCategoryForDelivery(client, platform){
+    const contract = contractCategoriesFor(client);
+    if(!contract) return null;
+    const names = contract.map(c => c.name);
+    if(names.indexOf(platform) !== -1) return platform;
+    const podcastish = names.filter(n => /podcast/i.test(n));
+    return podcastish.length === 1 ? podcastish[0] : null;
+  }
   function syncEpisodeToDelivery(id, ep){
     const docId = 'sync_ep_' + id;
     const client = activeDeliveryClientFor(ep.brand);
-    const category = (ep.platform === 'Eventing Podcast' || ep.platform === 'Jumping Podcast') ? ep.platform : null;
+    const category = client ? podcastCategoryForDelivery(client, ep.platform) : null;
     if(!client || !category){ removeDeliverySync(docId); return; }
     upsertDeliverySync(docId, {
       client, category, date: ep.date || '', title: ep.title || '',
@@ -3816,8 +3831,10 @@
                                     onLeave: () => { if(unsubCalendarShows){ unsubCalendarShows(); unsubCalendarShows = null; } } },
     podcast:  { el: 'podcastApp',  onEnter: subscribePodcast,  onLeave: unsubscribePodcast },
     hustle:   { el: 'hustleApp',   onEnter: subscribeHustle,   onLeave: unsubscribeHustle },
-    delivery: { el: 'deliveryApp', onEnter: () => { subscribeDelivery(); subscribeContractClients(); },
-                                    onLeave: () => { unsubscribeDelivery(); unsubscribeContractClients(); } },
+    // contractClients itself is subscribed globally in startAppOnce() now, not just while this
+    // page is open — syncEpisodeToDelivery/syncTaskToDelivery (podcast/task saves, which can
+    // happen from any page) need it to know which clients are set up, not only visits to this page.
+    delivery: { el: 'deliveryApp', onEnter: subscribeDelivery, onLeave: unsubscribeDelivery },
   };
   let currentAppPage = 'board';
   function switchApp(target){
@@ -4939,6 +4956,9 @@
     subscribeRecurring();
     subscribeWeekPodcast();
     subscribeTeamActivity();
+    // Global (not page-scoped) so a podcast or task save from any page can check which clients
+    // have contract categories set up, for the delivery tracker auto-sync above.
+    subscribeContractClients();
   }
 
   supabaseClient.auth.onAuthStateChange((event, session) => {
