@@ -32,6 +32,9 @@ function createFirestoreShim(supabaseClient) {
       case '<=': return query.lte(field, value);
       case '>': return query.gt(field, value);
       case '<': return query.lt(field, value);
+      // Firestore's array-contains, for a Postgres array column (e.g. "owners" text[]) -- true when
+      // `value` is one of the elements. Used for "what's assigned to me" queries.
+      case 'array-contains': return query.contains(field, [value]);
       default: throw new Error('Unsupported where() operator in firestore shim: ' + op);
     }
   }
