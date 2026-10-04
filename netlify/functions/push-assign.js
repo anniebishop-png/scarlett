@@ -28,7 +28,7 @@ exports.handler = async (event) => {
 
     if(body.test){
       const mine = await sb('pushSubscriptions?select=*&email=eq.' + encodeURIComponent(email));
-      const r = await sendToSubs(mine || [], { title: 'Scarlett', body: 'Phone notifications are working on this device.', url: '/', tag: 'test' });
+      const r = await sendToSubs(mine || [], { title: 'Scarlett', body: 'Notifications are working on this device.', url: '/', tag: 'test' });
       return json(200, r);
     }
 
