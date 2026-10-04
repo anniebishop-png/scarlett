@@ -788,6 +788,7 @@
   .notif-tag.today{background:var(--st-review-bg); color:var(--st-review-text);}
   .notif-tag.soon{background:var(--st-inprogress-bg); color:var(--st-inprogress-text);}
   .notif-tag.new{background:var(--st-done-bg); color:var(--st-done-text);}
+  .notif-tag.assigned{background:var(--gold); color:#11283C;}
   .notif-item-meta{font-size:12px; color:var(--ink-2);}
   .due-banner{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px;
     padding:12px 16px 12px 14px; border-radius:12px; background:var(--surface);
@@ -2237,51 +2238,93 @@
   // and tags each one overdue / due today / due soon (next 3 days) / newly assigned since their last
   // visit. Shown two ways: a dismissible banner the first time they land on the board each session,
   // and an always-available bell + dropdown panel in the header.
-  const DUE_REASON_LABEL = {overdue:'Overdue', today:'Due today', soon:'Due soon', new:'New'};
-  const DUE_REASON_ORDER = {overdue:0, today:1, soon:2, new:3};
+  const DUE_REASON_LABEL = {overdue:'Overdue', today:'Due today', assigned:'Assigned to you', soon:'Due soon', new:'New'};
+  const DUE_REASON_ORDER = {overdue:0, today:1, assigned:2, soon:3, new:4};
 
   // Single most-urgent reason an item needs attention right now -- a task that's both overdue and
   // newly assigned only shows once, as "Overdue" (the more actionable of the two).
-  function classifyDueItem(dateStr, todayStr, soonCutoff, updatedAt){
+  // Assignment tagging: when someone adds a person to a task / delivery item, or makes them the owner of a
+  // hustle deal, the save stamps assignedTo (who was added), assignedBy and assignedAt on the row. That
+  // needs three columns (schema-v12-assigned.sql); until they exist assignCols stays false and saves
+  // simply skip the stamp, so nothing breaks.
+  let assignCols = false;
+  function probeAssignCols(){
+    if(!db) return;
+    Promise.all(['tasks','deliveryItems','hustleOpportunities'].map(t =>
+      db.collection(t).where('assignedTo','array-contains','__probe__').get()
+    )).then(() => { assignCols = true; }).catch(() => { assignCols = false; });
+  }
+  function stampAssign(data, prevPeople, nextPeople){
+    if(!assignCols) return;
+    const added = (nextPeople || []).filter(n => n && !(prevPeople || []).includes(n) && n !== currentUserName);
+    if(added.length){
+      data.assignedTo = added;
+      data.assignedBy = currentUserName || 'A teammate';
+      data.assignedAt = new Date().toISOString();
+    }
+  }
+  function isAssignedToMe(rec){
+    if(!rec || !currentUserName || !Array.isArray(rec.assignedTo) || !rec.assignedTo.includes(currentUserName) || !rec.assignedAt) return false;
+    return !priorLastSeenAt || new Date(rec.assignedAt).getTime() > new Date(priorLastSeenAt).getTime();
+  }
+  function classifyDueItem(dateStr, todayStr, soonCutoff, updatedAt, rec){
     if(dateStr && dateStr < todayStr) return 'overdue';
     if(dateStr && dateStr === todayStr) return 'today';
+    if(isAssignedToMe(rec)) return 'assigned';
     if(dateStr && dateStr > todayStr && dateStr <= soonCutoff) return 'soon';
     // Postgres returns timestamptz as "...+00:00"; recordLastActive writes a JS "...Z" ISO string --
     // different string shapes for the same instant, so compare as real timestamps, not strings.
     if(updatedAt && priorLastSeenAt && new Date(updatedAt).getTime() > new Date(priorLastSeenAt).getTime()) return 'new';
     return null;
   }
+  let lastAssignedCount = 0;
   function checkDueNotifications(){
     if(!currentUserName || !db){ dueNotifications = []; renderNotifBadge(); return; }
     const today = toDateStr(new Date());
     const soonCutoff = addDays(today, 3);
+    const HUSTLE_CLOSED = ['5. Won','6. Lost','7. Parked'];
     Promise.all([
       tasksCol().where('owners','array-contains', currentUserName).where('status','!=','done').get(),
       deliveryCol().where('owners','array-contains', currentUserName).where('status','!=','delivered').get(),
-    ]).then(([taskSnap, delSnap]) => {
+      hustleCol().where('owner','==', currentUserName).get().catch(() => ({docs: []})),
+    ]).then(([taskSnap, delSnap, hustleSnap]) => {
       const items = [];
       taskSnap.docs.forEach(d => {
         const t = d.data();
-        const reason = classifyDueItem(t.dateISO, today, soonCutoff, t.updated_at);
-        if(reason) items.push({kind:'task', id:d.id, client:t.client||'', title:t.title||'(untitled task)', date:t.dateISO||'', week:t.weekId||'', reason});
+        const reason = classifyDueItem(t.dateISO, today, soonCutoff, t.updated_at, t);
+        if(reason) items.push({kind:'task', id:d.id, client:t.client||'', title:t.title||'(untitled task)', date:t.dateISO||'', week:t.weekId||'', reason, by: reason === 'assigned' ? t.assignedBy : ''});
       });
       delSnap.docs.forEach(d => {
         const it = d.data();
-        const reason = classifyDueItem(it.date, today, soonCutoff, it.updated_at);
-        if(reason) items.push({kind:'delivery', id:d.id, client:it.client||'', title:it.title||it.item||it.category||'(untitled item)', date:it.date||'', reason});
+        const reason = classifyDueItem(it.date, today, soonCutoff, it.updated_at, it);
+        if(reason) items.push({kind:'delivery', id:d.id, client:it.client||'', title:it.title||it.item||it.category||'(untitled item)', date:it.date||'', reason, by: reason === 'assigned' ? it.assignedBy : ''});
+      });
+      hustleSnap.docs.forEach(d => {
+        const op = d.data();
+        if(HUSTLE_CLOSED.includes(op.stage)) return;
+        const reason = classifyDueItem(op.nextActionDate, today, soonCutoff, op.updated_at, op);
+        if(reason) items.push({kind:'hustle', id:d.id, client:'Hustle · ' + String(op.stage || '').replace(/^\d+\.\s*/, ''), title:(op.opportunity || '(untitled deal)') + (op.nextAction ? ' · ' + op.nextAction : ''), date:op.nextActionDate||'', reason, by: reason === 'assigned' ? op.assignedBy : ''});
       });
       items.sort((a,b) => (DUE_REASON_ORDER[a.reason]-DUE_REASON_ORDER[b.reason]) || (a.date||'').localeCompare(b.date||''));
       dueNotifications = items;
+      const assignedNow = items.filter(i => i.reason === 'assigned').length;
+      if(assignedNow > lastAssignedCount) bannerDismissed = false;   // a fresh assignment re-raises the banner
+      lastAssignedCount = assignedNow;
       renderNotifBadge();
       renderNotifPanel();
       updateDueBanner();
     }).catch(()=>{ dueNotifications = []; renderNotifBadge(); });
   }
+  // Re-check every minute and whenever the tab comes back into view, so an assignment someone makes
+  // while you already have Scarlett open reaches your bell without a refresh.
+  setInterval(() => { if(!document.hidden) checkDueNotifications(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) checkDueNotifications(); });
   function dueItemMeta(item){
     const bits = [];
+    if(item.by) bits.push('from ' + item.by);
     if(item.client) bits.push(item.client);
     if(item.date) bits.push(fmtShortDate(item.date));
-    return bits.join(' · ') || (item.kind === 'task' ? 'Task' : 'Delivery item');
+    return bits.join(' · ') || (item.kind === 'task' ? 'Task' : item.kind === 'hustle' ? 'Hustle deal' : 'Delivery item');
   }
   // Polls until the page's live data has caught up (the board/delivery subscriptions load async
   // after a page or week switch), then runs fn. Gives up quietly after ~5s so a deleted/moved item
@@ -2306,6 +2349,12 @@
       whenDueDataReady(
         () => currentWeekId === wk && tasks.some(x => x.id === item.id),
         () => openTaskModal(item.id)
+      );
+    } else if(item.kind === 'hustle'){
+      switchApp('hustle');
+      whenDueDataReady(
+        () => hustleOpportunities.some(x => x.id === item.id),
+        () => openHustleModal(hustleOpportunities.find(x => x.id === item.id))
       );
     } else {
       switchApp('delivery');
@@ -2356,7 +2405,7 @@
     if(!dueNotifications.length || bannerDismissed){ banner.hidden = true; return; }
     const counts = {};
     dueNotifications.forEach(it => { counts[it.reason] = (counts[it.reason]||0) + 1; });
-    const parts = ['overdue','today','soon','new'].filter(k => counts[k]).map(k => `${counts[k]} ${DUE_REASON_LABEL[k].toLowerCase()}`);
+    const parts = ['overdue','today','assigned','soon','new'].filter(k => counts[k]).map(k => `${counts[k]} ${DUE_REASON_LABEL[k].toLowerCase()}`);
     document.getElementById('dueBannerText').textContent =
       (dueNotifications.length===1
         ? `You have 1 item that needs attention: "${dueNotifications[0].title}" (${parts[0]}).`
@@ -3475,6 +3524,10 @@
       weekId: mondayOf(dateISO),
     };
     if(!data.client || !data.title || !data.dateISO){ closeTaskModal(); return; }
+    {
+      const prevTask = editingTaskId ? tasks.find(x => x.id === editingTaskId) : null;
+      stampAssign(data, prevTask ? prevTask.owners : [], data.owners);
+    }
 
     // Any "+ Add another task" rows -- same client/team/owners/status/notes as above, own title +
     // date each -- only apply when adding fresh, never while editing one existing task.
@@ -5574,12 +5627,14 @@
     const taskId = editTaskIdFor(epId);
     tasksCol().doc(taskId).get().then(snap => {
       if(snap.exists){ podcastNotice(PODCAST_EDITOR + ' was already tagged for "' + name + '".', true); return; }
-      return tasksCol().doc(taskId).create({
+      const editTask = {
         client: brand || platform, dateISO, title: 'Edit: ' + name, tag: 'Podcast',
         division: PC_DIVISION[platform] || '', owners: [PODCAST_EDITOR], status: 'notstarted',
         notes: 'Recorded' + (lead ? ' by ' + lead : '') + (guest ? ' with ' + guest : '') + '. Release date ' + hFmtDate(date) + '.',
         weekId: mondayOf(dateISO), showId: '', order: 80, calendarSynced: false,
-      }).then(() => podcastNotice('Sent to ' + PODCAST_EDITOR + ': "Edit: ' + name + '" is on the Board for ' + hFmtDate(dateISO) + ' (before the ' + hFmtDate(date) + ' release).', true));
+      };
+      stampAssign(editTask, [], editTask.owners);
+      return tasksCol().doc(taskId).create(editTask).then(() => podcastNotice('Sent to ' + PODCAST_EDITOR + ': "Edit: ' + name + '" is on the Board for ' + hFmtDate(dateISO) + ' (before the ' + hFmtDate(date) + ' release).', true));
     }).catch(e => podcastNotice("That didn't save: " + ((e && e.message) || e)));
   });
 
@@ -6314,6 +6369,7 @@
     const before = editingHustleId ? hustleOpportunities.find(x => x.id === editingHustleId) : null;
     // stageChangedAt feeds "Won / Lost this year": stamp it when a deal is created or its stage actually changes.
     if(!before || before.stage !== stage) data.stageChangedAt = new Date().toISOString();
+    stampAssign(data, before && before.owner ? [before.owner] : [], data.owner ? [data.owner] : []);
     if(editingHustleId){
       hustleCol().doc(editingHustleId).update(data).catch(hSaveError);
     } else {
@@ -7281,6 +7337,10 @@
       status: document.getElementById('d_status').value,
       notes: document.getElementById('d_notes').value.trim(),
     };
+    {
+      const prevDel = editingDeliveryId ? deliveryItems.find(x => x.id === editingDeliveryId) : null;
+      stampAssign(base, prevDel ? prevDel.owners : [], base.owners);
+    }
     if(editingDeliveryId){
       const editingItem = deliveryItems.find(x=>x.id===editingDeliveryId);
       const updated = Object.assign({}, base, {category: selectedDeliveryCategories[0]});
@@ -7469,6 +7529,7 @@
         // recordLastActive below overwrites it, so "newly assigned since you were last here" has a
         // real cutoff to compare against. Kept fixed for the rest of the session (not re-read on
         // every background token refresh) so that cutoff doesn't quietly creep forward on its own.
+        probeAssignCols();
         teamActivityCol().doc(email).get()
           .then(snap => { priorLastSeenAt = snap.exists ? (snap.data().lastActive || null) : null; })
           .catch(() => {})
