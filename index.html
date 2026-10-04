@@ -693,6 +693,16 @@
   .hr-link-btn{border:none; background:none; color:var(--navy); font:inherit; font-size:12px; font-weight:700; cursor:pointer; padding:6px 0 0;}
   :root[data-theme="dark"] .hr-link-btn{color:var(--gold);}
 
+
+  /* ---------- Delivery Tracker: client cards, due chips ---------- */
+  .dc-cards{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));}
+  .dc-prog{display:flex; flex-direction:column; gap:6px;}
+  .dc-prog .del-bar{width:100%;}
+  .del-row{border-left:4px solid transparent;}
+  .del-row.overdue{border-left-color:var(--hs-overdue);}
+  .del-row.dueweek{border-left-color:var(--hs-due);}
+  .del-cat-flags{display:inline-flex; gap:6px; margin-right:10px; vertical-align:middle;}
+
   /* ---------- Due-item notifications (bell + panel, login banner) ---------- */
   .notif-wrap{position:relative;}
   .notif-bell{position:relative; display:flex; align-items:center; justify-content:center; width:34px; height:34px;
@@ -1153,10 +1163,13 @@
   </div>
   <div class="report-controls">
     <select id="deliveryClientFilter"><option value="">All clients</option></select>
+    <select id="deliveryOwnerFilter" aria-label="Filter by owner" style="display:none;"><option value="">Everyone</option></select>
+    <label class="checkbox-row" style="margin:0;"><input type="checkbox" id="deliveryHideDone"> <span style="font-size:12.5px;font-weight:600;color:var(--ink);">Hide delivered</span></label>
     <button class="btn-ghost" id="contractSetupToolbarBtn" style="display:none;">Set up contract</button>
     <button class="btn-primary" id="addDeliveryBtn" style="margin-left:auto;">+ Add item</button>
   </div>
   <div class="del-outstanding" id="deliveryOutstandingCounter"></div>
+  <div id="deliveryCards"></div>
   <div id="deliveryResults"></div>
 </div>
 
@@ -6222,6 +6235,139 @@
   // shows nothing for, since there's no single client's list to display). Always on screen, even
   // before a client's picked, so there's an at-a-glance number the way the board's own
   // "X of Y tasks still to finish" line works.
+  // ---- Delivery Tracker: client cards + dynamic dates / status (same thinking as the Hustle tab) ----
+  // The item date is treated as the due date. For anything not yet delivered:
+  //   Overdue = date is before today; Due this week = today through Sunday; No date = nothing set.
+  let dShowAllAttention = false;
+  function dOpen(r){ return r.status !== 'delivered'; }
+  function dItemName(r){ return r.title || r.item || r.category || '(untitled item)'; }
+  function dOverdue(r, today){ return dOpen(r) && !!r.date && r.date < today; }
+  function dDueWeek(r, today, wk){ return dOpen(r) && !!r.date && r.date >= today && r.date <= wk; }
+  function dNoDate(r){ return dOpen(r) && !r.date; }
+  function dChipHtml(r, today, wk){
+    if(!dOpen(r)) return '';
+    if(!r.date) return '<span class="hs-chip warn">No date set</span>';
+    const f = escapeHtml(hFmtDate(r.date));
+    if(r.date < today) return `<span class="hs-chip overdue">Overdue · due ${f}</span>`;
+    if(r.date <= wk) return `<span class="hs-chip soon">Due ${f}</span>`;
+    return `<span class="hs-chip">Due ${f}</span>`;
+  }
+  function dRowClass(r, today, wk){
+    return dOverdue(r, today) ? ' overdue' : (dDueWeek(r, today, wk) ? ' dueweek' : '');
+  }
+  function dFillOwnerFilter(){
+    const sel = document.getElementById('deliveryOwnerFilter');
+    if(!sel) return;
+    const names = new Set();
+    deliveryItems.forEach(r => (r.owners || []).forEach(n => n && names.add(n)));
+    const list = [...names].sort((a,b) => a.localeCompare(b));
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Everyone</option>' + list.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('');
+    sel.value = list.includes(cur) ? cur : '';
+    sel.style.display = list.length ? '' : 'none';
+  }
+  function dScopedItems(){
+    const o = document.getElementById('deliveryOwnerFilter').value;
+    return o ? deliveryItems.filter(r => (r.owners || []).includes(o)) : deliveryItems.slice();
+  }
+  // delivered vs contracted for one client's items (contract targets where they exist, else plain item counts)
+  function dClientProgress(client, items, useTargets){
+    let done = 0, target = 0, delivered = 0;
+    const byCat = new Map();
+    items.forEach(r => { const k = r.category || 'Uncategorized'; if(!byCat.has(k)) byCat.set(k, []); byCat.get(k).push(r); });
+    byCat.forEach((its, cat) => {
+      const tgt = useTargets ? deliveryCategoryTarget(client, cat) : 0;
+      const dc = its.filter(r => r.status === 'delivered').length;
+      delivered += dc;
+      if(tgt){ target += tgt; done += Math.min(dc, tgt); }
+    });
+    return target ? {done, total: target, contracted: true} : {done: delivered, total: items.length, contracted: false};
+  }
+
+  function renderDeliveryCards(){
+    const el = document.getElementById('deliveryCards');
+    if(!el) return;
+    if(!db || !deliveryItems.length){ el.innerHTML = ''; return; }
+    const ownerSel = document.getElementById('deliveryOwnerFilter').value;
+    const sel = document.getElementById('deliveryClientFilter').value;
+    const today = hToday(), wk = hWeekEnd();
+    const by = new Map();
+    dScopedItems().forEach(r => { if(!r.client) return; if(!by.has(r.client)) by.set(r.client, []); by.get(r.client).push(r); });
+    const cards = [...by.entries()].map(([client, items]) => {
+      const prog = dClientProgress(client, items, !ownerSel);
+      return {client, prog,
+        overdue: items.filter(r => dOverdue(r, today)).length,
+        due: items.filter(r => dDueWeek(r, today, wk)).length,
+        noDate: items.filter(dNoDate).length,
+        inprog: items.filter(r => r.status === 'inprogress').length};
+    }).sort((a,b) => b.overdue - a.overdue || b.due - a.due || a.client.localeCompare(b.client));
+    if(!cards.length){ el.innerHTML = ''; return; }
+    el.innerHTML = `<div class="hs-section-head"><h3>By client</h3><span>Click a card to open that client. Click it again to come back here.</span></div>
+      <div class="hs-cards dc-cards">` + cards.map(c => {
+        const pct = c.prog.total ? Math.min(100, Math.round(100 * c.prog.done / c.prog.total)) : 0;
+        return `<button type="button" class="hs-card ${sel === c.client ? 'selected' : ''}" data-dc-client="${escapeAttr(c.client)}" aria-pressed="${sel === c.client}">
+          <span class="hs-card-name">${escapeHtml(c.client)}</span>
+          <span class="dc-prog"><span class="del-bar ${c.prog.total && c.prog.done >= c.prog.total ? 'complete' : ''}" style="width:100%;"><span style="--w:${pct}%"></span></span>
+            <span class="hs-muted"><b style="color:var(--ink);">${c.prog.done}</b> of ${c.prog.total} ${c.prog.contracted ? 'contracted' : 'items'} delivered</span></span>
+          <span class="hs-card-grid">
+            <span><i>Overdue</i><b class="over">${c.overdue}</b></span>
+            <span><i>Due this week</i><b class="due">${c.due}</b></span>
+            <span><i>No date set</i><b>${c.noDate}</b></span>
+            <span><i>In progress</i><b>${c.inprog}</b></span>
+          </span>
+        </button>`;
+      }).join('') + '</div>';
+    el.querySelectorAll('[data-dc-client]').forEach(btn => btn.addEventListener('click', () => {
+      const name = btn.getAttribute('data-dc-client');
+      const s = document.getElementById('deliveryClientFilter');
+      s.value = s.value === name ? '' : name;
+      renderDelivery();
+    }));
+  }
+
+  function bindDeliveryOpen(container){
+    container.querySelectorAll('[data-open-delivery]').forEach(row => {
+      row.addEventListener('click', () => {
+        const item = deliveryItems.find(x => x.id === row.getAttribute('data-open-delivery'));
+        if(item) openDeliveryModal(item);
+      });
+    });
+  }
+  // All-clients landing view: what needs attention right now, across every client.
+  function renderDeliveryAttention(resultsEl){
+    const today = hToday(), wk = hWeekEnd();
+    const items = dScopedItems();
+    const attn = items.filter(r => dOverdue(r, today) || dDueWeek(r, today, wk))
+      .sort((a,b) => (dOverdue(b, today) ? 1 : 0) - (dOverdue(a, today) ? 1 : 0) || (a.date||'').localeCompare(b.date||'') || (a.client||'').localeCompare(b.client||''));
+    if(!attn.length){
+      resultsEl.innerHTML = '<div class="report-empty">Nothing overdue or due this week. Pick a client card above to see everything for them.</div>';
+      return;
+    }
+    const shown = dShowAllAttention ? attn : attn.slice(0, 20);
+    resultsEl.innerHTML = `<div class="report-group">
+      <div class="report-group-head"><span>Needs attention <span class="hs-mw-group-note">overdue first, then due this week</span></span><span>${attn.length}</span></div>
+      ${shown.map(r => {
+        const statusMeta = DELIVERY_STATUS_META[r.status] || DELIVERY_STATUS_META.notstarted;
+        return `<div class="del-row${dRowClass(r, today, wk)}" data-open-delivery="${r.id}">
+          <div class="del-row-top">
+            <span class="ddate">${r.date ? escapeHtml(fmtDayLabel(r.date)) : '—'}</span>
+            <span class="del-item">${escapeHtml(r.client || '')}${r.category ? ' · ' + escapeHtml(r.category) : ''}</span>
+          </div>
+          <div class="del-title">${escapeHtml(dItemName(r))}</div>
+          <div class="del-row-bottom">
+            <span class="del-status ${escapeAttr(r.status||'notstarted')}">${escapeHtml(statusMeta.label)}</span>
+            ${r.owners && r.owners.length ? `<span class="del-owners">${escapeHtml(r.owners.map(o=>initials(o)).join(', '))}</span>` : ''}
+            ${dChipHtml(r, today, wk)}
+          </div>
+        </div>`;
+      }).join('')}
+      ${attn.length > 20 ? `<div style="padding:10px 16px;"><button type="button" class="hr-link-btn" id="dAttnToggle">${dShowAllAttention ? 'Show fewer' : 'See all ' + attn.length}</button></div>` : ''}
+    </div>`;
+    bindDeliveryOpen(resultsEl);
+    const tg = document.getElementById('dAttnToggle');
+    if(tg) tg.addEventListener('click', () => { dShowAllAttention = !dShowAllAttention; renderDelivery(); });
+  }
+
   function renderDeliveryOutstandingCounter(){
     const el = document.getElementById('deliveryOutstandingCounter');
     if(!db || !deliveryItems.length){ el.innerHTML = ''; return; }
@@ -6235,18 +6381,20 @@
 
   function renderDelivery(){
     updateContractSetupToolbarBtn();
+    dFillOwnerFilter();
     renderDeliveryOutstandingCounter();
+    renderDeliveryCards();
     const resultsEl = document.getElementById('deliveryResults');
     if(!db){
       resultsEl.innerHTML = '<div class="report-empty">Delivery Tracker needs the shared board connection — open this board from claude.ai to use it.</div>';
       return;
     }
     const clientFilter = document.getElementById('deliveryClientFilter').value;
-    if(!clientFilter){
-      resultsEl.innerHTML = '<div class="report-empty">Pick a client above to see their deliverables.</div>';
-      return;
-    }
-    let rows = deliveryItems.slice().filter(r => r.client === clientFilter);
+    if(!clientFilter){ renderDeliveryAttention(resultsEl); return; }
+    const dToday = hToday(), dWk = hWeekEnd();
+    const hideDone = document.getElementById('deliveryHideDone').checked;
+    const ownerSel = document.getElementById('deliveryOwnerFilter').value;
+    let rows = deliveryItems.slice().filter(r => r.client === clientFilter && (!ownerSel || (r.owners || []).includes(ownerSel)));
     if(!rows.length){
       resultsEl.innerHTML = '<div class="report-empty">Nothing here yet — add an item to get started.</div>';
       return;
@@ -6260,24 +6408,40 @@
     let ovDone = 0, ovTarget = 0, ovItems = 0, ovDelivered = 0;
     catKeys.forEach(cat => {
       const its = byCategory.get(cat);
-      const tgt = deliveryCategoryTarget(clientFilter, cat);
+      const tgt = ownerSel ? 0 : deliveryCategoryTarget(clientFilter, cat);
       const dc = its.filter(r => r.status === 'delivered').length;
       ovItems += its.length; ovDelivered += dc;
       if(tgt){ ovTarget += tgt; ovDone += Math.min(dc, tgt); }
     });
     const ringDone = ovTarget ? ovDone : ovDelivered;
     const ringTotal = ovTarget || ovItems;
+    const nOver = rows.filter(r => dOverdue(r, dToday)).length, nDue = rows.filter(r => dDueWeek(r, dToday, dWk)).length, nNoDate = rows.filter(dNoDate).length;
+    const attnBits = [nOver ? `<strong style="color:var(--hs-overdue);">${nOver} overdue</strong>` : '', nDue ? `<strong style="color:var(--hs-due);">${nDue} due this week</strong>` : '', nNoDate ? `${nNoDate} with no date set` : ''].filter(Boolean);
     const overviewHtml = `<div class="del-overview">
       ${ringHtml(ringDone, ringTotal)}
       <div class="del-overview-text">
         <h3>${escapeHtml(clientFilter)}</h3>
-        <p>${ringDone} of ${ringTotal} ${ovTarget ? 'contracted deliverables' : 'items'} delivered across ${catKeys.length} categor${catKeys.length===1?'y':'ies'}.</p>
+        <p>${ringDone} of ${ringTotal} ${ovTarget ? 'contracted deliverables' : 'items'} delivered across ${catKeys.length} categor${catKeys.length===1?'y':'ies'}.${attnBits.length ? ' ' + attnBits.join(' · ') : ''}</p>
       </div>
     </div>`;
 
+    if(renderDelivery.autoExpanded !== clientFilter){
+      catKeys.forEach(cat => { if(byCategory.get(cat).some(r => dOverdue(r, dToday) || dDueWeek(r, dToday, dWk))) deliveryExpandedCategories.add(cat); });
+      renderDelivery.autoExpanded = clientFilter;
+    }
     resultsEl.innerHTML = overviewHtml + catKeys.map(cat => {
-      const items = byCategory.get(cat).slice().sort((a,b) => (a.date||'').localeCompare(b.date||''));
-      const target = deliveryCategoryTarget(clientFilter, cat);
+      // live items first, soonest due first (undated last); delivered items after
+      const items = byCategory.get(cat).slice().sort((a,b) => {
+        const ao = dOpen(a) ? 0 : 1, bo = dOpen(b) ? 0 : 1;
+        if(ao !== bo) return ao - bo;
+        const ad = a.date || '', bd = b.date || '';
+        if(ad && !bd) return -1; if(!ad && bd) return 1;
+        return ad.localeCompare(bd);
+      });
+      const shownItems = hideDone ? items.filter(dOpen) : items;
+      const catOver = items.filter(r => dOverdue(r, dToday)).length, catDue = items.filter(r => dDueWeek(r, dToday, dWk)).length;
+      const catFlags = (catOver ? `<span class="hs-chip overdue">${catOver} overdue</span>` : '') + (catDue ? `<span class="hs-chip soon">${catDue} due this week</span>` : '');
+      const target = ownerSel ? 0 : deliveryCategoryTarget(clientFilter, cat);
       const deliveredCount = items.filter(r => r.status === 'delivered').length;
       const barOf = target || items.length;
       const countLabel = `<span class="del-cat-progress"><span class="del-bar ${deliveredCount>=barOf?'complete':''}"><span style="--w:${Math.min(100, Math.round(deliveredCount/barOf*100))}%"></span></span>${deliveredCount}/${barOf} delivered</span>`;
@@ -6285,14 +6449,14 @@
       return `<div class="report-group">
         <div class="report-group-head del-cat-head" data-toggle-category="${escapeAttr(cat)}">
           <span class="del-cat-label"><span class="del-cat-chev ${isOpen?'open':''}">▸</span>${escapeHtml(cat)}</span>
-          <span>${countLabel}</span>
+          <span>${catFlags ? `<span class="del-cat-flags">${catFlags}</span>` : ''}${countLabel}</span>
         </div>
         <div class="del-cat-items ${isOpen?'open':''}">
-        ${items.map(r => {
+        ${shownItems.map(r => {
           const statusMeta = DELIVERY_STATUS_META[r.status] || DELIVERY_STATUS_META.notstarted;
           const metaBits = [r.graphics].filter(Boolean).join(' · ');
           const syncedTitle = r.sourceType ? `Synced automatically from the ${r.sourceType==='podcast'?'Podcast':'board task'} page — edit it there to change this row.` : '';
-          return `<div class="del-row" data-open-delivery="${r.id}">
+          return `<div class="del-row${dRowClass(r, dToday, dWk)}" data-open-delivery="${r.id}">
             <div class="del-row-top">
               <span class="ddate">${r.date ? escapeHtml(fmtDayLabel(r.date)) : '—'}</span>
               <span class="del-item">${escapeHtml(r.item||'')}</span>
@@ -6304,6 +6468,7 @@
             ${r.notes ? `<div class="del-notes">${escapeHtml(r.notes)}</div>` : ''}
             <div class="del-row-bottom">
               <span class="del-status ${escapeAttr(r.status||'notstarted')}">${escapeHtml(statusMeta.label)}</span>
+              ${dChipHtml(r, dToday, dWk)}
               ${r.owners && r.owners.length ? `<span class="del-owners">${escapeHtml(r.owners.map(o=>initials(o)).join(', '))}</span>` : ''}
             </div>
           </div>`;
@@ -6534,6 +6699,8 @@
   document.getElementById('addDeliveryBtn').addEventListener('click', () => openDeliveryModal(null));
 
   document.getElementById('deliveryClientFilter').addEventListener('change', renderDelivery);
+  document.getElementById('deliveryOwnerFilter').addEventListener('change', renderDelivery);
+  document.getElementById('deliveryHideDone').addEventListener('change', renderDelivery);
 
   document.getElementById('prevQuarter').addEventListener('click', () => shiftQuarter(-1));
   document.getElementById('nextQuarter').addEventListener('click', () => shiftQuarter(1));
