@@ -13,8 +13,9 @@ exports.handler = async (event) => {
     const token = auth.replace(/^Bearer\s+/i, '');
     if(!token) return json(401, { error: 'Not signed in' });
 
-    const key = env('SUPABASE_SERVICE_ROLE_KEY');
-    const ur = await fetch(env('SUPABASE_URL').replace(/\/$/, '') + '/auth/v1/user', { headers: { apikey: key, Authorization: 'Bearer ' + token } });
+    // Checking who the caller is only needs the project's public (publishable) key plus their own session token.
+    const PUBLISHABLE = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_-zgn37TBJaub87sbxxfM3A_HJvyfvMU';
+    const ur = await fetch(env('SUPABASE_URL').replace(/\/$/, '') + '/auth/v1/user', { headers: { apikey: PUBLISHABLE, Authorization: 'Bearer ' + token } });
     if(!ur.ok) return json(401, { error: 'Invalid session' });
     const user = await ur.json();
     const email = String(user.email || '').toLowerCase();
