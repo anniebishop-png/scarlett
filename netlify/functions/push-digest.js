@@ -40,7 +40,12 @@ async function itemsFor(name, today){
   return { overdue, dueToday };
 }
 
-exports.handler = async () => {
+exports.handler = async (event) => {
+  // Only Netlify's scheduler should run this (its payload carries next_run). Direct web requests are refused so
+  // nobody can trigger repeat digests by visiting the URL.
+  let scheduled = false;
+  try{ scheduled = !!(event && event.body && JSON.parse(event.body).next_run); }catch(_){}
+  if(!scheduled) return { statusCode: 403, body: 'Scheduled use only' };
   const now = new Date();
   const subs = (await sb('pushSubscriptions?select=*')) || [];
   const due = subs.filter(s => {
