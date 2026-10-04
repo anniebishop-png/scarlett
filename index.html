@@ -4720,21 +4720,17 @@
     const el = document.getElementById('nextShow');
     if(!el) return;
     if(!nsShows.length){ el.hidden = true; return; }
-    // Prefer shows we're delivering for a client; fall back to anything on the calendar.
-    const clientOnes = nsShows.filter(s => (s.clients || []).length);
-    const pool = clientOnes.length ? clientOnes : nsShows;
-    const first = pool.map(s => s.weekId).sort()[0];
-    const names = pool.filter(s => s.weekId === first).map(s => s.eventName).sort((a,b) => a.localeCompare(b));
+    // Only client shows (flagged for a client), and only the ones running next week.
+    const nextWeek = addDays(CURRENT_WEEK, 7);
+    const names = nsShows.filter(s => (s.clients || []).length && s.weekId === nextWeek).map(s => s.eventName).sort((a,b) => a.localeCompare(b));
+    if(!names.length){ el.hidden = true; return; }
     const day = d => new Date(d + 'T12:00:00');
-    const weeks = Math.round((day(first) - day(CURRENT_WEEK)) / (7 * 86400000));
-    const when = weeks <= 0 ? 'this week' : weeks === 1 ? 'next week' : 'in ' + weeks + ' weeks';
-    const sub = weeks > 0 ? 'w/c ' + day(first).toLocaleDateString('en-GB', {day:'numeric', month:'short'}) : '';
-    const shown = names.slice(0, 2).map(escapeHtml).join(' + ') + (names.length > 2 ? ' +' + (names.length - 2) + ' more' : '');
+    const sub = 'w/c ' + day(nextWeek).toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+    const shown = names.slice(0, 3).map(escapeHtml).join(' + ') + (names.length > 3 ? ' +' + (names.length - 3) + ' more' : '');
     el.innerHTML = '<span class="ns-rosette">' + ROSETTE_SVG + '</span>'
-      + '<span class="ns-label">Next up</span>'
+      + '<span class="ns-label">Next week</span>'
       + '<span class="ns-name">' + shown + '</span>'
-      + '<span class="ns-when">' + when + '</span>'
-      + (sub ? '<span class="ns-sub">' + sub + '</span>' : '');
+      + '<span class="ns-sub">' + sub + '</span>';
     el.hidden = false;
   }
 
