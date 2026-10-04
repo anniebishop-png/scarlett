@@ -763,6 +763,21 @@
   .pcw-clear{border:none; background:none; color:var(--ink-2); font:inherit; font-size:12px; font-weight:700; text-decoration:underline; cursor:pointer; padding:0;}
 
 
+  /* ---------- Quick assign (click the owner on a task / delivery item / deal) ---------- */
+  .assign-hit{cursor:pointer; border-radius:8px;}
+  .assign-hit:hover{outline:2px solid var(--gold); outline-offset:2px;}
+  .assign-add{font-size:11px; font-weight:700; color:var(--ink-muted); border:1px dashed var(--hairline-strong); border-radius:8px; padding:1px 7px; white-space:nowrap;}
+  .qa-pop{position:fixed; z-index:300; width:230px; max-height:min(70vh,400px); overflow:auto; background:var(--surface); border:1px solid var(--hairline);
+    border-radius:12px; box-shadow:var(--shadow); padding:8px; color:var(--ink);}
+  .qa-pop[hidden]{display:none;}
+  .qa-head{font-family:var(--font-display); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-muted); padding:4px 6px 6px;}
+  .qa-pop label{display:flex; align-items:center; gap:8px; padding:6px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer; text-transform:none; letter-spacing:0;}
+  .qa-pop label:hover{background:var(--surface-2);}
+  .qa-pop input{width:auto; margin:0;}
+  .qa-actions{display:flex; gap:8px; justify-content:flex-end; padding:8px 2px 2px; border-top:1px solid var(--hairline); margin-top:6px; position:sticky; bottom:0; background:var(--surface);}
+  .qa-actions button{font:inherit; font-size:12.5px; font-weight:700; padding:7px 12px; border-radius:9px; border:1px solid var(--hairline-strong); background:var(--surface); color:var(--ink); cursor:pointer;}
+  .qa-actions .primary{background:var(--navy); color:#fff; border-color:var(--navy);}
+
   /* ---------- Weather chip (header) + forecast panel ---------- */
   .wx-chip{display:flex; align-items:center; gap:7px; height:34px; padding:0 11px; border-radius:9px; border:1px solid rgba(255,255,255,.18);
     background:rgba(255,255,255,.06); color:#fff; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap;}
@@ -1007,6 +1022,7 @@
        the bell icon. -->
   <div class="notif-panel" id="notifPanel" hidden></div>
   <div class="wx-panel" id="wxPanel" hidden></div>
+  <div class="qa-pop" id="qaPop" hidden></div>
 
   <main>
 
@@ -3034,9 +3050,10 @@
     return `<button type="button" class="pill-btn" data-task="${taskId}"><span class="pill ${status}"><span class="dot"></span>${meta.label}</span></button>`;
   }
 
-  function avatarsHtml(owners){
-    if(!owners || !owners.length) return `<div class="avatar-stack"><div class="avatar unassigned" title="Unassigned">–</div></div>`;
-    return `<div class="avatar-stack">` + owners.slice(0,4).map(o =>
+  function avatarsHtml(owners, taskId){
+    const hit = (canEdit && taskId) ? ` assign-hit" data-assign-task="${escapeAttr(taskId)}" role="button" tabindex="0` : '';
+    if(!owners || !owners.length) return `<div class="avatar-stack${hit}"><div class="avatar unassigned" title="${hit ? 'Unassigned. Click to assign' : 'Unassigned'}">–</div></div>`;
+    return `<div class="avatar-stack${hit}"${hit ? ' title="Click to change who this is assigned to"' : ''}>` + owners.slice(0,4).map(o =>
       `<div class="avatar" style="background:${ownerColor(o)}" title="${escapeAttr(o)}">${initials(o)}</div>`
     ).join('') + `</div>`;
   }
@@ -3061,7 +3078,7 @@
           ${metaBits ? `<div class="meta-line">${escapeHtml(metaBits)}</div>` : ''}
         </div>
         ${pillHtml(t.status, t.id)}
-        ${avatarsHtml(t.owners)}
+        ${avatarsHtml(t.owners, t.id)}
         ${canEdit ? `<button class="row-menu-btn" data-menu="${t.id}">⋯</button>` : '<span></span>'}
       </div>`;
   }
@@ -4578,6 +4595,94 @@
   if('serviceWorker' in navigator){
     window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
   }
+
+  // ---------- Quick assign: click the owner on a task, delivery item or hustle deal ----------
+  let qaState = null;
+  function qaRecord(kind, id){
+    if(kind === 'task') return tasks.find(x => x.id === id);
+    if(kind === 'delivery') return deliveryItems.find(x => x.id === id);
+    return hustleOpportunities.find(x => x.id === id);
+  }
+  function qaClose(){ const p = document.getElementById('qaPop'); if(p) p.hidden = true; qaState = null; }
+  function openQuickAssign(anchor, kind, id){
+    if(!canEdit) return;
+    const rec = qaRecord(kind, id);
+    if(!rec) return;
+    const current = kind === 'hustle' ? (rec.owner ? [rec.owner] : []) : (rec.owners || []).slice();
+    qaState = {kind, id, multi: kind !== 'hustle', sel: new Set(current), prev: current};
+    const pop = document.getElementById('qaPop');
+    document.getElementById('notifPanel').hidden = true;
+    const wxp = document.getElementById('wxPanel'); if(wxp) wxp.hidden = true;
+    const names = TEAM_ROSTER.map(p => p.name).sort((a, b) => a.localeCompare(b));
+    current.forEach(n => { if(!names.includes(n)) names.push(n); });
+    pop.innerHTML = `<div class="qa-head">${qaState.multi ? 'Assign to' : 'Owner'}</div>` +
+      names.map(n => `<label><input type="checkbox" value="${escapeAttr(n)}" ${qaState.sel.has(n) ? 'checked' : ''}> ${escapeHtml(n)}</label>`).join('') +
+      `<div class="qa-actions"><button type="button" id="qaCancel">Cancel</button><button type="button" class="primary" id="qaSave">Assign</button></div>`;
+    pop.hidden = false;
+    const r = anchor.getBoundingClientRect();
+    const w = pop.offsetWidth, h = pop.offsetHeight;
+    let left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+    let top = r.bottom + 6;
+    if(top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+    // A deal has one owner, so its boxes behave like radios, but ticking the chosen name again clears it.
+    pop.querySelectorAll('input').forEach(inp => inp.addEventListener('change', () => {
+      if(qaState.multi){ if(inp.checked) qaState.sel.add(inp.value); else qaState.sel.delete(inp.value); return; }
+      pop.querySelectorAll('input').forEach(o => { if(o !== inp) o.checked = false; });
+      qaState.sel = new Set(inp.checked ? [inp.value] : []);
+    }));
+    document.getElementById('qaCancel').addEventListener('click', qaClose);
+    document.getElementById('qaSave').addEventListener('click', qaApply);
+  }
+  function qaApply(){
+    if(!qaState) return;
+    const {kind, id, prev} = qaState;
+    const next = Array.from(qaState.sel);
+    qaClose();
+    const rec = qaRecord(kind, id);
+    if(!rec) return;
+    const same = next.length === prev.length && next.every(n => prev.includes(n));
+    if(same) return;
+    if(kind === 'task'){
+      const data = {owners: next};
+      stampAssign(data, prev, next, rec.title);
+      Object.assign(rec, data);
+      renderGroups();
+      syncTaskToDelivery(id, rec);
+      tasksCol().doc(id).update(data).catch(() => {});
+    } else if(kind === 'delivery'){
+      const data = {owners: next};
+      stampAssign(data, prev, next, dItemName(rec));
+      Object.assign(rec, data);
+      renderDelivery();
+      deliveryCol().doc(id).update(data).then(() => dMirror(rec, {owners: next})).catch(dSaveError);
+    } else {
+      const data = {owner: next[0] || ''};
+      stampAssign(data, prev, next, rec.opportunity);
+      Object.assign(rec, data);
+      renderHustleAll();
+      hustleCol().doc(id).update(data).catch(hSaveError);
+    }
+  }
+  // Capture phase so a click on the owner chip never also opens the row's own edit form.
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('[data-assign-task],[data-assign-delivery],[data-assign-hustle]');
+    if(a){
+      e.stopPropagation(); e.preventDefault();
+      if(a.hasAttribute('data-assign-task')) openQuickAssign(a, 'task', a.getAttribute('data-assign-task'));
+      else if(a.hasAttribute('data-assign-delivery')) openQuickAssign(a, 'delivery', a.getAttribute('data-assign-delivery'));
+      else openQuickAssign(a, 'hustle', a.getAttribute('data-assign-hustle'));
+      return;
+    }
+    const pop = document.getElementById('qaPop');
+    if(pop && !pop.hidden && !pop.contains(e.target)) qaClose();
+  }, true);
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape') qaClose();
+    if((e.key === 'Enter' || e.key === ' ') && e.target && e.target.matches && e.target.matches('[data-assign-task],[data-assign-delivery],[data-assign-hustle]')){ e.preventDefault(); e.target.click(); }
+  });
+  window.addEventListener('scroll', e => { const p = document.getElementById('qaPop'); if(p && !p.hidden && !p.contains(e.target)) qaClose(); }, {passive: true, capture: true});
+  window.addEventListener('resize', qaClose);
 
   // ---------- Weather chip: each person picks a city (saved in this browser), forecast from Open-Meteo ----------
   const WX_KEY = 'scarlett.weather';
@@ -6204,7 +6309,10 @@
     return `<div class="hs-row${rowCls}" data-open-hustle="${op.id}">
       <div class="hs-row-top">
         <span class="hs-stage ${stageMeta.cls}">${escapeHtml(stageMeta.short)}</span>
-        ${op.owner ? `<span class="hs-owner" style="color:${ownerColor(op.owner)}">${escapeHtml(initials(op.owner))}</span>` : ''}
+        ${canEdit ? (op.owner
+          ? `<span class="hs-owner assign-hit" data-assign-hustle="${escapeAttr(op.id)}" role="button" tabindex="0" title="Click to change the owner" style="color:${ownerColor(op.owner)}">${escapeHtml(initials(op.owner))}</span>`
+          : `<span class="assign-add assign-hit" data-assign-hustle="${escapeAttr(op.id)}" role="button" tabindex="0">+ Assign</span>`)
+          : (op.owner ? `<span class="hs-owner" style="color:${ownerColor(op.owner)}">${escapeHtml(initials(op.owner))}</span>` : '')}
         ${op.clientType ? `<span class="hs-muted">${escapeHtml(op.clientType === 'Existing' ? 'Existing client' : 'New')}</span>` : ''}
         <button class="hs-del-btn" data-delete-hustle="${op.id}" title="Delete this opportunity">×</button>
       </div>
@@ -7080,7 +7188,7 @@
           <div class="del-title">${escapeHtml(dItemName(r))}</div>
           <div class="del-row-bottom">
             <span class="del-status ${escapeAttr(r.status||'notstarted')}">${escapeHtml(statusMeta.label)}</span>
-            ${r.owners && r.owners.length ? `<span class="del-owners">${escapeHtml(r.owners.map(o=>initials(o)).join(', '))}</span>` : ''}
+            ${dOwnersHtml(r)}
             ${dChipHtml(r, today, wk)}
           </div>
         </div>`;
@@ -7112,6 +7220,14 @@
   }
   // Hand-added items are mirrored onto the Task board (spawn_del_<id>); keep that copy in step.
   // Items synced in from a task or podcast episode are changed at the source instead.
+  function dOwnersHtml(r){
+    const has = r.owners && r.owners.length;
+    const label = has ? r.owners.map(o => initials(o)).join(', ') : '';
+    if(!canEdit || r.sourceType) return has ? `<span class="del-owners">${escapeHtml(label)}</span>` : '';
+    return has
+      ? `<span class="del-owners assign-hit" data-assign-delivery="${escapeAttr(r.id)}" role="button" tabindex="0" title="Click to change who this is assigned to">${escapeHtml(label)}</span>`
+      : `<span class="assign-add assign-hit" data-assign-delivery="${escapeAttr(r.id)}" role="button" tabindex="0">+ Assign</span>`;
+  }
   function dMirror(r, patch){
     if(r.sourceType) return;
     try{ Promise.resolve(tasksCol().doc('spawn_del_' + r.id).update(patch)).catch(() => {}); }catch(e){}
@@ -7491,7 +7607,7 @@
             <div class="del-row-bottom">
               <span class="del-status ${escapeAttr(r.status||'notstarted')}">${escapeHtml(statusMeta.label)}</span>
               ${dChipHtml(r, dToday, dWk)}
-              ${r.owners && r.owners.length ? `<span class="del-owners">${escapeHtml(r.owners.map(o=>initials(o)).join(', '))}</span>` : ''}
+              ${dOwnersHtml(r)}
             </div>
           </div>`;
         }).join('')}
