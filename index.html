@@ -650,6 +650,49 @@
   @media (max-width:640px){ .hs-mw-row{grid-template-columns:1fr; } }
   .hs-stage.parked{background:var(--hs-warn-bg); color:var(--hs-warn);}
 
+
+  /* ---------- Hustle step 2: optional fields, activity log, Reports ---------- */
+  .hs-seg{display:inline-flex; background:var(--surface-2); border:1px solid var(--hairline); padding:3px; border-radius:10px; gap:2px;}
+  .hs-seg button{border:none; background:transparent; color:var(--ink-2); font:inherit; font-size:12.5px; font-weight:700; padding:7px 16px; border-radius:8px; cursor:pointer;}
+  .hs-seg button.active{background:var(--surface); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.12);}
+  .hs-log{border:1px solid var(--hairline); border-radius:12px; padding:10px 12px; margin-bottom:13px;}
+  .hs-log-add{display:flex; gap:8px; margin-bottom:8px;}
+  .hs-log-add input{flex:1;}
+  .hs-log-entry{display:grid; grid-template-columns:100px 1fr; gap:8px; padding:7px 0; border-top:1px solid var(--hairline); font-size:12.5px; line-height:1.45;}
+  .hs-log-entry .d{color:var(--ink-muted); font-weight:700; font-size:11.5px;}
+  .hs-log-empty{color:var(--ink-muted); font-size:12px; padding:4px 0;}
+  .hs-link{font-size:11.5px; font-weight:700; color:var(--navy); text-decoration:none;}
+  :root[data-theme="dark"] .hs-link{color:var(--gold);}
+  .hs-link:hover{text-decoration:underline;}
+  .hr-filters{display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin-bottom:16px;}
+  .hr-filters label{font-size:12.5px; font-weight:700; color:var(--ink-2);}
+  .hr-filters select{margin-left:6px;}
+  .hr-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:14px;}
+  .hr-panel{background:var(--surface); border:1px solid var(--hairline); border-radius:14px; padding:14px 16px;}
+  .hr-panel h3{margin:0 0 2px; font-size:14px; font-weight:800; color:var(--ink);}
+  .hr-sub{font-size:11.5px; color:var(--ink-muted); margin:0 0 12px; line-height:1.45;}
+  .hr-bar-row{display:grid; grid-template-columns:78px 1fr 40px; align-items:center; gap:10px; font-size:12.5px; margin:7px 0;}
+  .hr-bar-row .lbl{font-weight:700;}
+  .hr-bar-row .num{text-align:right; font-weight:800; font-variant-numeric:tabular-nums;}
+  .hr-bar{height:10px; background:var(--surface-2); border-radius:99px; overflow:hidden; border:1px solid var(--hairline);}
+  .hr-bar i{display:block; height:100%; background:var(--navy); border-radius:99px;}
+  :root[data-theme="dark"] .hr-bar i{background:var(--gold);}
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .hr-bar i{background:var(--gold);} }
+  .hr-bar.won i{background:var(--st-done-dot);} .hr-bar.lost i{background:var(--hs-overdue);} .hr-bar.parked i{background:#C9A227;}
+  .hr-bar-row.muted{opacity:.55;}
+  .hr-note{font-size:12px; color:var(--ink-2); margin-top:10px; line-height:1.5;}
+  .hr-table{width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums;}
+  .hr-table th{color:var(--ink-muted); font-weight:700; text-align:right; padding:6px 8px; border-bottom:1px solid var(--hairline);}
+  .hr-table td{text-align:right; padding:8px; border-bottom:1px solid var(--hairline);}
+  .hr-table th:first-child, .hr-table td:first-child{text-align:left; font-weight:700;}
+  .hr-table tr:last-child td{border-bottom:none;}
+  .hr-stale-row{display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid var(--hairline); font-size:12.5px; cursor:pointer;}
+  .hr-stale-row:last-of-type{border-bottom:none;}
+  .hr-stale-row:hover{background:var(--surface-2);}
+  .hr-stale-row span:last-child{color:var(--hs-overdue); font-weight:800; white-space:nowrap;}
+  .hr-link-btn{border:none; background:none; color:var(--navy); font:inherit; font-size:12px; font-weight:700; cursor:pointer; padding:6px 0 0;}
+  :root[data-theme="dark"] .hr-link-btn{color:var(--gold);}
+
   /* ---------- Due-item notifications (bell + panel, login banner) ---------- */
   .notif-wrap{position:relative;}
   .notif-bell{position:relative; display:flex; align-items:center; justify-content:center; width:34px; height:34px;
@@ -1069,6 +1112,7 @@
     <div class="segmented" id="hustleViewTabs">
       <button type="button" data-view="pipeline" class="active">Pipeline</button>
       <button type="button" data-view="myweek">My week</button>
+      <button type="button" data-view="reports">Reports</button>
     </div>
     <button class="btn-primary" id="addHustleBtn" style="margin-left:auto;">+ Add opportunity</button>
   </div>
@@ -1089,6 +1133,7 @@
     <div id="hustleResults"></div>
   </div>
   <div id="hustleMyWeekView" hidden></div>
+  <div id="hustleReportsView" hidden></div>
   <footer class="note">New-business pipeline — prospects through won/lost, by stage. No pricing shown here.</footer>
 </div>
 
@@ -1508,15 +1553,7 @@
           </div>
           <div class="field"><label>Due date</label><input type="date" id="h_nextActionDate"></div>
         </div>
-      </div>
-      <div class="field" id="h_closedReasonWrap" hidden>
-        <label>Closed reason <span class="hs-req">(required for Lost or Parked)</span></label>
-        <select id="h_closedReason">
-          <option value="">Select a reason</option>
-          <option value="Price">Price</option><option value="Timing">Timing</option>
-          <option value="Went elsewhere">Went elsewhere</option><option value="No response">No response</option>
-          <option value="Not a fit">Not a fit</option><option value="Parked">Parked</option>
-        </select>
+        <div class="field"><label>Expected close <span class="hs-req">(month, optional)</span></label><select id="h_expectedClose"></select></div>
       </div>
       <div class="field-row">
         <div class="field"><label>Division</label>
@@ -1542,10 +1579,35 @@
         <div class="owners-pop-static" id="hustleDisciplineList"></div>
       </div>
       <div class="field-row">
+        <div class="field"><label>Size band <span class="hs-req">(optional)</span></label>
+          <div class="hs-seg" id="h_sizeSeg"><button type="button" data-v="S">S</button><button type="button" data-v="M">M</button><button type="button" data-v="L">L</button></div></div>
+        <div class="field"><label>Client <span class="hs-req">(optional)</span></label>
+          <div class="hs-seg" id="h_clientSeg"><button type="button" data-v="New">New</button><button type="button" data-v="Existing">Existing</button></div></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Contact <span class="hs-req">(optional)</span></label><input id="h_contact" placeholder="Name at the client" autocomplete="off"></div>
+        <div class="field"><label>Proposal link <span class="hs-req">(optional)</span></label><input id="h_proposalLink" type="url" placeholder="https://" autocomplete="off"></div>
+      </div>
+      <div class="field-row">
         <div class="field"><label>Start <span style="text-transform:none;font-weight:500;">(optional)</span></label><select id="h_start"></select></div>
         <div class="field"><label>End <span style="text-transform:none;font-weight:500;">(optional)</span></label><select id="h_end"></select></div>
       </div>
       <div class="field"><label>Engage <span style="text-transform:none;font-weight:500;">(next check-in month, optional)</span></label><select id="h_engage"></select></div>
+      <div class="field" id="h_closedReasonWrap" hidden>
+        <label>Closed reason <span class="hs-req">(required for Lost or Parked)</span></label>
+        <select id="h_closedReason">
+          <option value="">Select a reason</option>
+          <option value="Price">Price</option><option value="Timing">Timing</option>
+          <option value="Went elsewhere">Went elsewhere</option><option value="No response">No response</option>
+          <option value="Not a fit">Not a fit</option><option value="Parked">Parked</option>
+        </select>
+      </div>
+      <div class="field"><label>Activity <span class="hs-req">(optional notes, saved with the deal)</span></label>
+        <div class="hs-log">
+          <div class="hs-log-add"><input id="h_logInput" placeholder="Add a note…" autocomplete="off"><button type="button" class="btn-ghost" id="h_logAddBtn">Add</button></div>
+          <div id="h_logList"></div>
+        </div>
+      </div>
       <div class="hs-updated" id="h_updatedNote"></div>
       <div class="modal-actions">
         <div class="left">
@@ -5214,6 +5276,8 @@
   let myWeekOwner = null;          // whose follow-ups the My week view is showing
   let hsNextCtx = null;            // {id, mode:'done'|'set'} for the next-step prompt
   let hsSnoozeId = null;
+  let hSize = '', hClientType = '', hLog = [];   // working copies for the open edit form
+  let hrPeriod = 'ytd', hrOwner = '', hrShowAllStale = false;   // Reports filters
 
   function hOpen(op){ return HUSTLE_OPEN.includes(op.stage); }
   function hToday(){ return toDateStr(new Date()); }
@@ -5306,8 +5370,10 @@
   function renderHustleAll(){
     document.getElementById('hustlePipelineView').hidden = hustleView !== 'pipeline';
     document.getElementById('hustleMyWeekView').hidden = hustleView !== 'myweek';
+    document.getElementById('hustleReportsView').hidden = hustleView !== 'reports';
     document.querySelectorAll('#hustleViewTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-view') === hustleView));
     if(hustleView === 'myweek'){ renderHustleMyWeek(); return; }
+    if(hustleView === 'reports'){ renderHustleReports(); return; }
     renderHustleOwnerCards();
     renderHustleShape();
     renderHustleOwnerChip();
@@ -5378,7 +5444,7 @@
 
   function hustleRowHtml(op){
     const stageMeta = HUSTLE_STAGE_META[op.stage] || HUSTLE_STAGE_META['1. Prospect'];
-    const metaBits = [op.division, op.service, (op.discipline||[]).join(', ')].filter(Boolean).join(' · ');
+    const metaBits = [op.division, op.service, (op.discipline||[]).join(', '), op.contact ? 'Contact: ' + op.contact : ''].filter(Boolean).join(' · ');
     const windowBits = [op.start, op.end].filter(Boolean).join(' – ');
     const today = hToday(), wk = hWeekEnd();
     const open = hOpen(op);
@@ -5398,6 +5464,7 @@
       <div class="hs-row-top">
         <span class="hs-stage ${stageMeta.cls}">${escapeHtml(stageMeta.short)}</span>
         ${op.owner ? `<span class="hs-owner" style="color:${ownerColor(op.owner)}">${escapeHtml(initials(op.owner))}</span>` : ''}
+        ${(op.clientType || op.sizeBand) ? `<span class="hs-muted">${escapeHtml([op.clientType ? (op.clientType === 'Existing' ? 'Existing client' : 'New') : '', op.sizeBand ? 'Size ' + op.sizeBand : ''].filter(Boolean).join(' · '))}</span>` : ''}
         <button class="hs-del-btn" data-delete-hustle="${op.id}" title="Delete this opportunity">×</button>
       </div>
       <div class="hs-title">${escapeHtml(op.opportunity||'(untitled)')}</div>
@@ -5409,13 +5476,15 @@
         ${reason}
         ${windowBits ? `<span class="hs-window">${escapeHtml(windowBits)}</span>` : ''}
         ${op.engage ? `<span class="hs-engage">Engage ${escapeHtml(op.engage)}</span>` : ''}
+        ${op.expectedClose && hOpen(op) ? `<span class="hs-muted">Expected close ${escapeHtml(hFmtMonth(op.expectedClose))}</span>` : ''}
+        ${hSafeUrl(op.proposalLink) ? `<a class="hs-link" href="${escapeAttr(hSafeUrl(op.proposalLink))}" target="_blank" rel="noopener noreferrer">Proposal ↗</a>` : ''}
       </div>
     </div>`;
   }
   function bindHustleRowEvents(container, list){
     container.querySelectorAll('[data-open-hustle]').forEach(row => {
       row.addEventListener('click', (e) => {
-        if(e.target.closest('[data-delete-hustle]')) return;
+        if(e.target.closest('[data-delete-hustle], a')) return;
         const op = list.find(x=>x.id===row.getAttribute('data-open-hustle'));
         if(op) openHustleModal(op);
       });
@@ -5581,6 +5650,171 @@
     el.querySelectorAll('[data-mw-set]').forEach(b => b.addEventListener('click', () => openHsNext(b.getAttribute('data-mw-set'), 'set')));
   }
 
+  // ---- optional fields (size band, client type, contact, proposal link, expected close) + activity log ----
+  function hSafeUrl(u){
+    try { const x = new URL(String(u||'').trim()); return (x.protocol === 'http:' || x.protocol === 'https:') ? x.href : ''; }
+    catch(e){ return ''; }
+  }
+  function hFmtMonth(ym){
+    if(!ym) return '';
+    const p = ym.split('-').map(Number);
+    if(!p[0] || !p[1]) return ym;
+    return MONTH_NAMES[p[1]-1].slice(0,3) + (p[0] !== new Date().getFullYear() ? ' ' + p[0] : '');
+  }
+  function hFillExpectedClose(selected){
+    const sel = document.getElementById('h_expectedClose');
+    const now = new Date();
+    const opts = [['', '—']];
+    for(let i = -1; i < 23; i++){
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      opts.push([d.getFullYear() + '-' + pad2(d.getMonth()+1), MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear()]);
+    }
+    if(selected && !opts.some(o => o[0] === selected)) opts.push([selected, hFmtMonth(selected)]);
+    sel.innerHTML = opts.map(o => `<option value="${o[0]}">${escapeHtml(o[1])}</option>`).join('');
+    sel.value = selected || '';
+  }
+  function hPaintSeg(id, value){
+    document.querySelectorAll('#' + id + ' button').forEach(b => b.classList.toggle('active', b.getAttribute('data-v') === value));
+  }
+  document.querySelectorAll('#h_sizeSeg button').forEach(b => b.addEventListener('click', () => {
+    const v = b.getAttribute('data-v'); hSize = hSize === v ? '' : v; hPaintSeg('h_sizeSeg', hSize);
+  }));
+  document.querySelectorAll('#h_clientSeg button').forEach(b => b.addEventListener('click', () => {
+    const v = b.getAttribute('data-v'); hClientType = hClientType === v ? '' : v; hPaintSeg('h_clientSeg', hClientType);
+  }));
+  function hFmtLogDate(iso){
+    const d = new Date((iso || '') + 'T12:00:00');
+    return isNaN(d.getTime()) ? (iso || '') : d.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+  }
+  function renderHLog(){
+    const el = document.getElementById('h_logList');
+    el.innerHTML = hLog.length
+      ? hLog.map(n => `<div class="hs-log-entry"><span class="d">${escapeHtml(hFmtLogDate(n.date))}${n.by ? ' · ' + escapeHtml(n.by) : ''}</span><span>${escapeHtml(n.text||'')}</span></div>`).join('')
+      : '<div class="hs-log-empty">No notes yet.</div>';
+  }
+  function addHLogNote(){
+    const inp = document.getElementById('h_logInput');
+    const t = inp.value.trim();
+    if(!t) return;
+    hLog.unshift({date: toDateStr(new Date()), by: currentUserName ? initials(currentUserName) : '', text: t});
+    inp.value = '';
+    renderHLog();
+  }
+  document.getElementById('h_logAddBtn').addEventListener('click', addHLogNote);
+  document.getElementById('h_logInput').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); addHLogNote(); } });
+
+  // ---- Reports ----
+  function hrPeriodStart(){
+    const n = new Date();
+    if(hrPeriod === 'ytd') return new Date(n.getFullYear(), 0, 1).getTime();
+    if(hrPeriod === 'quarter') return new Date(n.getFullYear(), Math.floor(n.getMonth()/3)*3, 1).getTime();
+    if(hrPeriod === '12m') return Date.now() - 365*86400000;
+    return null;
+  }
+  // Won / Lost / Parked are dated by stageChangedAt. Older rows have no date, so they count as this year
+  // (and in "All time" and "Last 12 months"), but not as "This quarter" because we can't know.
+  function hrInPeriod(op){
+    const start = hrPeriodStart();
+    if(start === null) return true;
+    if(!op.stageChangedAt) return hrPeriod !== 'quarter';
+    return new Date(op.stageChangedAt).getTime() >= start;
+  }
+  function hrExpectedThisQuarter(op){
+    if(!hOpen(op) || !op.expectedClose) return false;
+    const p = op.expectedClose.split('-').map(Number);
+    const n = new Date();
+    return p[0] === n.getFullYear() && Math.floor((p[1]-1)/3) === Math.floor(n.getMonth()/3);
+  }
+
+  function renderHustleReports(){
+    const el = document.getElementById('hustleReportsView');
+    const owners = hOwnerList();
+    const list = hrOwner ? hustleOpportunities.filter(o => o.owner === hrOwner) : hustleOpportunities;
+    const today = hToday();
+    const live = list.filter(hOpen);
+    const won = list.filter(o => o.stage === '5. Won' && hrInPeriod(o));
+    const lost = list.filter(o => o.stage === '6. Lost' && hrInPeriod(o));
+    const parked = list.filter(o => o.stage === '7. Parked' && hrInPeriod(o));
+    const closedList = lost.concat(parked);
+    const winRate = (won.length + lost.length) ? Math.round(100 * won.length / (won.length + lost.length)) : null;
+    const overdue = live.filter(o => hIsOverdue(o, today));
+    const stale = live.filter(hIsStale);
+    const attn = new Set(overdue.concat(stale).map(o => o.id)).size;
+    const quarter = list.filter(hrExpectedThisQuarter);
+    const sizes = ['L','M','S'].map(s => [s, quarter.filter(o => o.sizeBand === s).length]).filter(x => x[1]);
+    const periodLabel = {ytd: new Date().getFullYear() + ' year to date', quarter: 'This quarter', '12m': 'Last 12 months', all: 'All time'}[hrPeriod];
+
+    const stageCounts = {
+      qualify: list.filter(o => o.stage === '2. Qualify').length,
+      present: list.filter(o => o.stage === '3. Present').length,
+      close: list.filter(o => o.stage === '4. Close').length,
+    };
+    const prospects = list.filter(o => o.stage === '1. Prospect').length;
+    const funnel = [['Qualify', stageCounts.qualify, ''], ['Present', stageCounts.present, ''], ['Close', stageCounts.close, ''], ['Won', won.length, 'won'], ['Lost', lost.length, 'lost'], ['Parked', parked.length, 'parked']];
+    const fmax = Math.max(1, ...funnel.map(f => f[1]));
+    const funnelHtml = `<div class="hr-bar-row muted"><span class="lbl">Prospect</span><span class="hr-bar"><i style="width:0"></i></span><span class="num">${prospects}</span></div>`
+      + funnel.map(f => `<div class="hr-bar-row"><span class="lbl">${f[0]}</span><span class="hr-bar ${f[2]}"><i style="width:${Math.round(100*f[1]/fmax)}%"></i></span><span class="num">${f[1]}</span></div>`).join('');
+
+    const reasonCounts = {};
+    closedList.forEach(o => { const r = o.closedReason || 'No reason recorded'; reasonCounts[r] = (reasonCounts[r]||0) + 1; });
+    const reasons = Object.entries(reasonCounts).sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const rmax = Math.max(1, ...reasons.map(r => r[1]));
+    const reasonsHtml = reasons.length
+      ? reasons.map(r => `<div class="hr-bar-row"><span class="lbl" style="grid-column:auto;">${escapeHtml(r[0])}</span><span class="hr-bar lost"><i style="width:${Math.round(100*r[1]/rmax)}%"></i></span><span class="num">${r[1]}</span></div>`).join('')
+        + (reasonCounts['No response'] ? '<div class="hr-note">"No response" is the one to watch: it usually means we stopped following up, not that they said no.</div>' : '')
+      : '<div class="hr-note">Nothing closed in this period yet. Pick a reason when a deal moves to Lost or Parked and it shows up here.</div>';
+
+    const services = HUSTLE_SERVICES.concat(['Unspecified']);
+    const svcRows = services.map(sv => {
+      const m = o => sv === 'Unspecified' ? !o.service : o.service === sv;
+      const l = live.filter(m).length, w = won.filter(m).length, x = lost.filter(m).length;
+      return {sv, l, w, x, rate: (w + x) ? Math.round(100*w/(w+x)) + '%' : '—'};
+    }).filter(r => r.l || r.w || r.x);
+    const svcHtml = svcRows.length
+      ? `<table class="hr-table"><thead><tr><th>Service</th><th>Live</th><th>Won</th><th>Lost</th><th>Win rate</th></tr></thead><tbody>`
+        + svcRows.map(r => `<tr><td>${escapeHtml(r.sv)}</td><td>${r.l}</td><td>${r.w}</td><td>${r.x}</td><td>${r.rate}</td></tr>`).join('') + `</tbody></table>`
+      : '<div class="hr-note">No deals match.</div>';
+
+    const staleSorted = stale.slice().sort((a,b) => (hDaysSince(b.updated_at)||0) - (hDaysSince(a.updated_at)||0));
+    const staleShown = hrShowAllStale ? staleSorted : staleSorted.slice(0, 8);
+    const staleHtml = staleSorted.length
+      ? staleShown.map(o => `<div class="hr-stale-row" data-hr-open="${o.id}"><span>${escapeHtml(o.opportunity||'(untitled)')} <span class="hs-muted" style="color:var(--ink-muted);font-weight:500;">· ${escapeHtml((HUSTLE_STAGE_META[o.stage]||{}).short||'')}${o.owner ? ' · ' + escapeHtml(initials(o.owner)) : ''}</span></span><span>${hDaysSince(o.updated_at)} days</span></div>`).join('')
+        + (staleSorted.length > 8 ? `<button type="button" class="hr-link-btn" id="hrStaleToggle">${hrShowAllStale ? 'Show fewer' : 'See all ' + staleSorted.length}</button>` : '')
+        + '<div class="hr-note">Rule of thumb: anything here either gets a next action this week or moves to Parked with a reason.</div>'
+      : '<div class="hr-note">Nothing has gone quiet. Every live deal was touched in the last 30 days.</div>';
+
+    el.innerHTML = `
+      <div class="hr-filters">
+        <label>Period <select id="hrPeriod">
+          <option value="ytd">${new Date().getFullYear()} year to date</option><option value="quarter">This quarter</option>
+          <option value="12m">Last 12 months</option><option value="all">All time</option></select></label>
+        <label>Owner <select id="hrOwner"><option value="">Everyone</option>${owners.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('')}</select></label>
+        <span class="hs-muted">Won, Lost and Parked follow the period. Live counts are always as of today.</span>
+      </div>
+      <div class="hs-tiles">
+        <div class="hs-tile"><b>${live.length}</b><span>Live pipeline (Qualify to Close)</span></div>
+        <div class="hs-tile"><b>${winRate === null ? '—' : winRate + '%'}</b><span>Win rate · ${won.length} won · ${lost.length} lost · parked excluded</span></div>
+        <div class="hs-tile due"><b>${quarter.length}</b><span>Expected to close this quarter${sizes.length ? ' · ' + sizes.map(s => s[1] + ' ' + s[0]).join(' · ') : ''}</span></div>
+        <div class="hs-tile over"><b>${attn}</b><span>Needs attention · ${overdue.length} overdue · ${stale.length} stale 30d+</span></div>
+      </div>
+      <div class="hr-grid">
+        <div class="hr-panel"><h3>Where the pipeline sits</h3><p class="hr-sub">${escapeHtml(periodLabel)}. Prospect is shown for scale but kept out of the funnel.</p>${funnelHtml}</div>
+        <div class="hr-panel"><h3>Why we lost or parked</h3><p class="hr-sub">From the Closed reason field. ${closedList.length} closed in this period.</p>${reasonsHtml}</div>
+        <div class="hr-panel"><h3>Won and lost by service</h3><p class="hr-sub">Parked is excluded from win rate.</p>${svcHtml}</div>
+        <div class="hr-panel"><h3>Stale: not touched in 30+ days</h3><p class="hr-sub">Live deals only.</p>${staleHtml}</div>
+      </div>`;
+    document.getElementById('hrPeriod').value = hrPeriod;
+    document.getElementById('hrOwner').value = hrOwner;
+    document.getElementById('hrPeriod').addEventListener('change', e => { hrPeriod = e.target.value; renderHustleReports(); });
+    document.getElementById('hrOwner').addEventListener('change', e => { hrOwner = e.target.value; renderHustleReports(); });
+    const tg = document.getElementById('hrStaleToggle');
+    if(tg) tg.addEventListener('click', () => { hrShowAllStale = !hrShowAllStale; renderHustleReports(); });
+    el.querySelectorAll('[data-hr-open]').forEach(r => r.addEventListener('click', () => {
+      const op = hustleOpportunities.find(x => x.id === r.getAttribute('data-hr-open'));
+      if(op) openHustleModal(op);
+    }));
+  }
+
   function openHsNext(id, mode){
     if(!canEdit) return;
     const op = hustleOpportunities.find(x => x.id === id);
@@ -5676,6 +5910,14 @@
     document.getElementById('h_nextAction').value = op ? (op.nextAction||'') : '';
     document.getElementById('h_nextActionDate').value = op ? (op.nextActionDate||'') : '';
     document.getElementById('h_closedReason').value = op ? (op.closedReason||'') : '';
+    hFillExpectedClose(op ? (op.expectedClose||'') : '');
+    hSize = op ? (op.sizeBand||'') : ''; hPaintSeg('h_sizeSeg', hSize);
+    hClientType = op ? (op.clientType||'') : ''; hPaintSeg('h_clientSeg', hClientType);
+    document.getElementById('h_contact').value = op ? (op.contact||'') : '';
+    document.getElementById('h_proposalLink').value = op ? (op.proposalLink||'') : '';
+    hLog = op && Array.isArray(op.activityLog) ? op.activityLog.slice() : [];
+    document.getElementById('h_logInput').value = '';
+    renderHLog();
     document.getElementById('h_division').value = op ? (op.division||'') : '';
     document.getElementById('h_service').value = op ? (op.service||'') : '';
     selectedDisciplines = op ? (op.discipline||[]).slice() : [];
@@ -5701,6 +5943,7 @@
     if(!canEdit){ closeHustleModal(); return; }
     const stage = document.getElementById('h_stage').value;
     const closed = stage === '6. Lost' || stage === '7. Parked';
+    if(document.getElementById('h_logInput').value.trim()) addHLogNote();   // a note typed but not yet added still gets saved
     const data = {
       opportunity: document.getElementById('h_opportunity').value.trim(),
       stage,
@@ -5708,6 +5951,12 @@
       nextAction: document.getElementById('h_nextAction').value.trim(),
       nextActionDate: document.getElementById('h_nextActionDate').value || null,
       closedReason: closed ? (document.getElementById('h_closedReason').value || null) : null,
+      expectedClose: document.getElementById('h_expectedClose').value || null,
+      sizeBand: hSize || null,
+      clientType: hClientType || null,
+      contact: document.getElementById('h_contact').value.trim() || null,
+      proposalLink: document.getElementById('h_proposalLink').value.trim() || null,
+      activityLog: hLog.slice(),
       division: document.getElementById('h_division').value,
       service: document.getElementById('h_service').value,
       discipline: selectedDisciplines.slice(),
