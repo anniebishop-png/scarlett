@@ -557,14 +557,14 @@
   @media (max-width:560px){ .pulse{grid-template-columns:1fr; gap:10px;} .pulse-figure .pulse-pct{font-size:44px;} }
 
 
-  /* Header layout: brand left + week picker right on the first row, then the page menu (A to Z)
-     on the left with theme toggle + bell on the right, then the week pulse across the full width. */
+  /* Header layout: brand + week picker together on the left of the first row (theme toggle + bell
+     pushed to the right), then the page menu (A to Z) across the second row, then the week pulse. */
   header.top{
-    display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; column-gap:18px; row-gap:16px;
-    grid-template-areas:"brand week" "nav tools" "pulse pulse";
+    display:grid; grid-template-columns:auto auto minmax(0,1fr); align-items:center; column-gap:28px; row-gap:16px;
+    grid-template-areas:"brand week tools" "nav nav nav" "pulse pulse pulse";
   }
   header.top .brand-block{grid-area:brand;}
-  header.top .week-nav{grid-area:week; justify-self:end; padding:9px 14px; gap:14px; border-radius:14px;
+  header.top .week-nav{grid-area:week; justify-self:start; padding:9px 14px; gap:14px; border-radius:14px;
     background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.26);}
   header.top .week-nav span{font-size:17px; min-width:140px;}
   header.top .week-nav button{width:30px; height:30px; font-size:16px;}
