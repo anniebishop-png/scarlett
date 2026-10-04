@@ -10,7 +10,10 @@ function env(name){
 
 function sbHeaders(extra){
   const key = env('SUPABASE_SERVICE_ROLE_KEY');
-  return Object.assign({ apikey: key, Authorization: 'Bearer ' + key }, extra || {});
+  // New-style secret keys (sb_secret_...) go in the apikey header only; old-style service_role keys are JWTs and
+  // are also sent as the bearer token.
+  const h = key.startsWith('sb_secret_') ? { apikey: key } : { apikey: key, Authorization: 'Bearer ' + key };
+  return Object.assign(h, extra || {});
 }
 
 async function sb(path, opts){
