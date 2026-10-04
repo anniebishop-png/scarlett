@@ -825,6 +825,10 @@
   .notif-tag.new{background:var(--st-done-bg); color:var(--st-done-text);}
   .notif-tag.assigned{background:var(--gold); color:#11283C;}
   .notif-item-meta{font-size:12px; color:var(--ink-2);}
+  .notif-push{margin-top:6px; padding:10px 8px 4px; border-top:1px solid var(--hairline); font-size:12px; color:var(--ink-2); line-height:1.4;}
+  .notif-push button{border:none; background:none; font:inherit; font-size:12px; font-weight:700; padding:0; cursor:pointer; text-decoration:underline; color:var(--ink-2);}
+  .notif-push button.primary{display:block; text-decoration:none; background:var(--navy); color:#fff; padding:8px 12px; border-radius:9px; margin:6px 0 2px; width:100%;}
+  .notif-push .push-links{display:flex; gap:12px; margin-top:4px;}
   .due-banner{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px;
     padding:12px 16px 12px 14px; border-radius:12px; background:var(--surface);
     border:1px solid var(--hairline); border-left:4px solid var(--gold); box-shadow:var(--shadow);}
@@ -2291,13 +2295,14 @@
       db.collection(t).where('assignedTo','array-contains','__probe__').get()
     )).then(() => { assignCols = true; }).catch(() => { assignCols = false; });
   }
-  function stampAssign(data, prevPeople, nextPeople){
+  function stampAssign(data, prevPeople, nextPeople, label){
     if(!assignCols) return;
     const added = (nextPeople || []).filter(n => n && !(prevPeople || []).includes(n) && n !== currentUserName);
     if(added.length){
       data.assignedTo = added;
       data.assignedBy = currentUserName || 'A teammate';
       data.assignedAt = new Date().toISOString();
+      pushAssigned(added, label || data.title || data.opportunity || data.item);
     }
   }
   function isAssignedToMe(rec){
@@ -2414,7 +2419,8 @@
     const panel = document.getElementById('notifPanel');
     if(!panel) return;
     if(!dueNotifications.length){
-      panel.innerHTML = `<div class="notif-panel-empty">Nothing due — you're all caught up.</div>`;
+      panel.innerHTML = `<div class="notif-panel-empty">Nothing due — you're all caught up.</div>` + pushFooterHtml();
+      bindPushFooter(panel);
       return;
     }
     panel.innerHTML = `<div class="notif-panel-head">Your due items</div>` + dueNotifications.map((it, i) => `
@@ -2424,7 +2430,8 @@
           ${escapeHtml(it.title)}
         </div>
         <div class="notif-item-meta">${escapeHtml(dueItemMeta(it))}</div>
-      </div>`).join('');
+      </div>`).join('') + pushFooterHtml();
+    bindPushFooter(panel);
     panel.querySelectorAll('[data-notif-idx]').forEach(el => {
       const go = () => openDueItem(dueNotifications[Number(el.getAttribute('data-notif-idx'))]);
       el.addEventListener('click', go);
@@ -2471,7 +2478,8 @@
   document.addEventListener('click', e => {
     const wrap = document.getElementById('notifWrap');
     const panel = document.getElementById('notifPanel');
-    if(wrap && panel && !wrap.contains(e.target) && !panel.contains(e.target)) panel.hidden = true;
+    const path = e.composedPath ? e.composedPath() : [];
+    if(wrap && panel && !path.includes(panel) && !path.includes(wrap) && !wrap.contains(e.target) && !panel.contains(e.target)) panel.hidden = true;
   });
   // Fixed positioning means scrolling the page leaves the panel visually stranded (it doesn't track
   // the bell as the page scrolls) -- simplest fix is to just close it, same as clicking away.
@@ -3563,7 +3571,7 @@
     if(!data.client || !data.title || !data.dateISO){ closeTaskModal(); return; }
     {
       const prevTask = editingTaskId ? tasks.find(x => x.id === editingTaskId) : null;
-      stampAssign(data, prevTask ? prevTask.owners : [], data.owners);
+      stampAssign(data, prevTask ? prevTask.owners : [], data.owners, data.title);
     }
 
     // Any "+ Add another task" rows -- same client/team/owners/status/notes as above, own title +
@@ -4456,6 +4464,120 @@
 
   function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function escapeAttr(s){ return escapeHtml(s); }
+
+  // ---------- Phone / desktop push notifications ----------
+  // The service worker (sw.js) shows the notification; Netlify functions (netlify/functions) send it.
+  // Each device registers itself in the pushSubscriptions table, tagged with the person's team name and time zone.
+  const VAPID_PUBLIC_KEY = 'BOiPF7-p8HWnPNTze_IE2FgTzABsmvw5gqwNInibfcT6RaOQwWOTF8ZP18SrdXVwwrlY7YTcshGsn5tc4jniCXc';
+  let pushOn = false;
+  let pushBusy = false;
+  let pushMsg = '';
+  const pushIsIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const pushStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  function pushSupported(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+  function pushState(){
+    if(pushIsIOS && !pushStandalone) return 'ios-install';
+    if(!pushSupported()) return 'unsupported';
+    if(Notification.permission === 'denied') return 'denied';
+    if(!currentUserName) return 'noname';
+    return pushOn ? 'on' : 'off';
+  }
+  function pushFooterHtml(){
+    const st = pushState();
+    const note = pushMsg ? `<div>${escapeHtml(pushMsg)}</div>` : '';
+    let body = '';
+    if(st === 'ios-install') body = 'To get phone notifications on an iPhone, add Scarlett to your Home Screen (Share, then Add to Home Screen) and open it from there.';
+    else if(st === 'unsupported') body = "This browser can't show phone notifications.";
+    else if(st === 'denied') body = 'Notifications are blocked for Scarlett in this browser. Allow them in your browser or phone settings, then come back.';
+    else if(st === 'noname') body = "Your sign-in isn't matched to a team name yet, so notifications can't be switched on.";
+    else if(st === 'off') body = `Get a buzz when something is assigned to you, plus a weekday 8am summary.<button type="button" class="primary" data-push="on"${pushBusy ? ' disabled' : ''}>${pushBusy ? 'Turning on...' : 'Turn on phone notifications'}</button>`;
+    else body = `Phone notifications are on for this device.<div class="push-links"><button type="button" data-push="test">Send me a test</button><button type="button" data-push="off">Turn off</button></div>`;
+    return `<div class="notif-push" id="notifPush">${body}${note}</div>`;
+  }
+  function bindPushFooter(root){
+    root.querySelectorAll('[data-push]').forEach(b => b.addEventListener('click', () => {
+      const a = b.getAttribute('data-push');
+      if(a === 'on') pushEnable(); else if(a === 'off') pushDisable(); else if(a === 'test') pushTest();
+    }));
+  }
+  function pushB64ToBytes(b64){
+    const pad = '='.repeat((4 - b64.length % 4) % 4);
+    const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(raw, c => c.charCodeAt(0));
+  }
+  async function pushIdFor(endpoint){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(endpoint));
+    return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 40);
+  }
+  async function pushSaveSub(sub){
+    const j = sub.toJSON();
+    const id = await pushIdFor(j.endpoint);
+    await db.collection('pushSubscriptions').doc(id).set({
+      userName: currentUserName || '', email: (currentUserEmail || '').toLowerCase(),
+      endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
+      tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || ''), userAgent: navigator.userAgent.slice(0, 160),
+      updated_at: new Date().toISOString(),
+    });
+  }
+  async function pushEnable(){
+    if(pushBusy || pushState() !== 'off') return;
+    pushBusy = true; pushMsg = ''; renderNotifPanel();
+    try{
+      const perm = await Notification.requestPermission();
+      if(perm !== 'granted'){ pushMsg = perm === 'denied' ? '' : 'Notifications were not allowed.'; return; }
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if(!sub) sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: pushB64ToBytes(VAPID_PUBLIC_KEY)});
+      await pushSaveSub(sub);
+      pushOn = true; pushMsg = '';
+    }catch(e){
+      pushMsg = "Couldn't turn notifications on: " + ((e && e.message) || e);
+    }finally{
+      pushBusy = false; renderNotifPanel();
+    }
+  }
+  async function pushDisable(){
+    try{
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if(sub){
+        const id = await pushIdFor(sub.endpoint);
+        await sub.unsubscribe();
+        await db.collection('pushSubscriptions').doc(id).delete().catch(() => {});
+      }
+      pushOn = false; pushMsg = '';
+    }catch(e){ pushMsg = "Couldn't turn notifications off: " + ((e && e.message) || e); }
+    renderNotifPanel();
+  }
+  function pushCall(payload){
+    return supabaseClient.auth.getSession().then(({data}) => {
+      const tok = data && data.session && data.session.access_token;
+      if(!tok) throw new Error('not signed in');
+      return fetch('/.netlify/functions/push-assign', {method: 'POST', headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + tok}, body: JSON.stringify(payload)});
+    });
+  }
+  function pushTest(){
+    pushMsg = 'Sending a test...'; renderNotifPanel();
+    pushCall({test: true}).then(r => r.json().then(j => ({ok: r.ok, j}))).then(({ok, j}) => {
+      pushMsg = !ok ? "The test didn't go through (" + (j.error || 'server error') + ')' : (j.sent ? 'Test sent. It should arrive in a few seconds.' : 'No devices are registered for you yet.');
+    }).catch(() => { pushMsg = "The test didn't go through. The notification service may not be set up yet."; }).then(() => renderNotifPanel());
+  }
+  // Fire-and-forget: tells the people just assigned something. A failure never affects the save.
+  function pushAssigned(names, title){
+    if(!names || !names.length) return;
+    pushCall({to: names, title: String(title || 'an item')}).catch(() => {});
+  }
+  // On sign-in: work out whether this device is already subscribed, and keep its row fresh (name, time zone).
+  function pushRefresh(){
+    if(!pushSupported() || (pushIsIOS && !pushStandalone)) return;
+    navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription()).then(sub => {
+      pushOn = !!sub && Notification.permission === 'granted';
+      if(pushOn && currentUserName) return pushSaveSub(sub);
+    }).catch(() => {}).then(() => renderNotifPanel());
+  }
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+  }
 
   // ---------- Weather chip: each person picks a city (saved in this browser), forecast from Open-Meteo ----------
   const WX_KEY = 'scarlett.weather';
@@ -5845,7 +5967,7 @@
         notes: 'Recorded' + (lead ? ' by ' + lead : '') + (guest ? ' with ' + guest : '') + '. Release date ' + hFmtDate(date) + '.',
         weekId: mondayOf(dateISO), showId: '', order: 80, calendarSynced: false,
       };
-      stampAssign(editTask, [], editTask.owners);
+      stampAssign(editTask, [], editTask.owners, editTask.title);
       return tasksCol().doc(taskId).create(editTask).then(() => podcastNotice('Sent to ' + PODCAST_EDITOR + ': "Edit: ' + name + '" is on the Board for ' + hFmtDate(dateISO) + ' (before the ' + hFmtDate(date) + ' release).', true));
     }).catch(e => podcastNotice("That didn't save: " + ((e && e.message) || e)));
   });
@@ -6581,7 +6703,7 @@
     const before = editingHustleId ? hustleOpportunities.find(x => x.id === editingHustleId) : null;
     // stageChangedAt feeds "Won / Lost this year": stamp it when a deal is created or its stage actually changes.
     if(!before || before.stage !== stage) data.stageChangedAt = new Date().toISOString();
-    stampAssign(data, before && before.owner ? [before.owner] : [], data.owner ? [data.owner] : []);
+    stampAssign(data, before && before.owner ? [before.owner] : [], data.owner ? [data.owner] : [], data.opportunity);
     if(editingHustleId){
       hustleCol().doc(editingHustleId).update(data).catch(hSaveError);
     } else {
@@ -7551,7 +7673,7 @@
     };
     {
       const prevDel = editingDeliveryId ? deliveryItems.find(x => x.id === editingDeliveryId) : null;
-      stampAssign(base, prevDel ? prevDel.owners : [], base.owners);
+      stampAssign(base, prevDel ? prevDel.owners : [], base.owners, base.title || base.item || (selectedDeliveryCategories[0] || 'a delivery item'));
     }
     if(editingDeliveryId){
       const editingItem = deliveryItems.find(x=>x.id===editingDeliveryId);
@@ -7742,6 +7864,7 @@
         // real cutoff to compare against. Kept fixed for the rest of the session (not re-read on
         // every background token refresh) so that cutoff doesn't quietly creep forward on its own.
         probeAssignCols();
+        pushRefresh();
         teamActivityCol().doc(email).get()
           .then(snap => { priorLastSeenAt = snap.exists ? (snap.data().lastActive || null) : null; })
           .catch(() => {})

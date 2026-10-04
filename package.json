@@ -1,0 +1,8 @@
+{
+  "name": "scarlett",
+  "private": true,
+  "description": "Scarlett static site. Dependencies here are only for the Netlify push-notification functions.",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

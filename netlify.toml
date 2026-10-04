@@ -1,0 +1,10 @@
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Weekday morning digest. Runs every hour; it only sends to devices where it is 8am local time right now.
+[functions."push-digest"]
+  schedule = "0 * * * *"
