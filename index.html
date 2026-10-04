@@ -762,6 +762,41 @@
   .pcw-note{font-size:12px; color:var(--ink-2); margin:0 0 12px;}
   .pcw-clear{border:none; background:none; color:var(--ink-2); font:inherit; font-size:12px; font-weight:700; text-decoration:underline; cursor:pointer; padding:0;}
 
+
+  /* ---------- Weather chip (header) + forecast panel ---------- */
+  .wx-chip{display:flex; align-items:center; gap:7px; height:34px; padding:0 11px; border-radius:9px; border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.06); color:#fff; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap;}
+  .wx-chip:hover{background:rgba(255,255,255,.12);}
+  .wx-chip svg{flex:none;}
+  .wx-chip .wx-city{font-weight:600; color:rgba(255,255,255,.75); max-width:110px; overflow:hidden; text-overflow:ellipsis;}
+  @media (max-width:700px){ .wx-chip .wx-city{display:none;} }
+  .wx-panel{position:fixed; width:310px; max-height:80vh; overflow:auto; background:var(--surface); border:1px solid var(--hairline);
+    border-radius:12px; box-shadow:var(--shadow); padding:14px; z-index:200; color:var(--ink);}
+  .wx-panel[hidden]{display:none;}
+  .wx-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+  .wx-place{font-family:var(--font-display); font-weight:700; font-size:14px; line-height:1.25;}
+  .wx-link{border:none; background:none; color:var(--ink-2); font:inherit; font-size:12px; font-weight:700; text-decoration:underline; cursor:pointer; padding:0; white-space:nowrap;}
+  .wx-now{display:flex; align-items:center; gap:12px; margin:12px 0 10px;}
+  .wx-now .wx-big{font-family:var(--font-display); font-size:34px; font-weight:800; line-height:1;}
+  .wx-now .wx-cond{font-size:13px; color:var(--ink-2);}
+  .wx-now svg{color:var(--gold-deep);}
+  .wx-days{display:flex; flex-direction:column; border-top:1px solid var(--hairline);}
+  .wx-day{display:grid; grid-template-columns:48px 24px 1fr auto; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--hairline); font-size:12.5px;}
+  .wx-day svg{color:var(--ink-2);}
+  .wx-day .wx-rain{color:var(--ink-muted); font-size:11.5px;}
+  .wx-day b{font-weight:700;}
+  .wx-day .wx-lo{color:var(--ink-muted); margin-left:6px;}
+  .wx-foot{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; font-size:11px; color:var(--ink-muted);}
+  .wx-units{display:inline-flex; border:1px solid var(--hairline-strong); border-radius:8px; overflow:hidden;}
+  .wx-units button{border:none; background:transparent; color:var(--ink-2); font:inherit; font-size:11px; font-weight:700; padding:4px 9px; cursor:pointer;}
+  .wx-units button.on{background:var(--navy); color:#fff;}
+  .wx-search input{width:100%; font:inherit; font-size:13.5px; padding:9px 11px; border-radius:9px; border:1px solid var(--hairline-strong); background:var(--surface); color:var(--ink);}
+  .wx-results{margin-top:6px; display:flex; flex-direction:column;}
+  .wx-results button{text-align:left; border:none; background:transparent; font:inherit; font-size:13px; color:var(--ink); padding:8px; border-radius:8px; cursor:pointer;}
+  .wx-results button:hover{background:var(--surface-2);}
+  .wx-results small{display:block; color:var(--ink-muted); font-size:11.5px;}
+  .wx-hint{font-size:12px; color:var(--ink-2); margin:0 0 8px;}
+
   /* ---------- Due-item notifications (bell + panel, login banner) ---------- */
   .notif-wrap{position:relative;}
   .notif-bell{position:relative; display:flex; align-items:center; justify-content:center; width:34px; height:34px;
@@ -951,6 +986,7 @@
       <button type="button" data-theme-choice="light" title="Always light">Light</button>
       <button type="button" data-theme-choice="dark" title="Always dark">Dark</button>
     </div>
+    <button type="button" class="wx-chip" id="wxChip" aria-haspopup="true" title="Weather"></button>
     <div class="notif-wrap" id="notifWrap">
       <button type="button" class="notif-bell" id="notifBellBtn" aria-label="Your due items" title="Your due items">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -966,6 +1002,7 @@
        inside it. This panel is positioned with JS (see notifBellBtn's click handler) to sit under
        the bell icon. -->
   <div class="notif-panel" id="notifPanel" hidden></div>
+  <div class="wx-panel" id="wxPanel" hidden></div>
 
   <main>
 
@@ -4419,6 +4456,160 @@
 
   function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function escapeAttr(s){ return escapeHtml(s); }
+
+  // ---------- Weather chip: each person picks a city (saved in this browser), forecast from Open-Meteo ----------
+  const WX_KEY = 'scarlett.weather';
+  const wx = {loc: null, unit: 'auto', data: null, at: 0, searching: false, results: [], msg: ''};
+  const WX_ICONS = {
+    sun:    '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    part:   '<circle cx="8" cy="8" r="3"/><path d="M8 2v1.5M2 8h1.5M3.8 3.8l1 1M12.2 3.8l-1 1"/><path d="M8 20h9a4 4 0 0 0 .5-8A5.5 5.5 0 0 0 7 13.5 3.3 3.3 0 0 0 8 20z"/>',
+    cloud:  '<path d="M7 19h10a4.5 4.5 0 0 0 .6-8.96A6 6 0 0 0 6 11.5 3.8 3.8 0 0 0 7 19z"/>',
+    rain:   '<path d="M7 15h10a4 4 0 0 0 .5-7.96A5.5 5.5 0 0 0 6.5 8.5 3.3 3.3 0 0 0 7 15z"/><path d="M8 18l-1 2.5M12 18l-1 2.5M16 18l-1 2.5"/>',
+    snow:   '<path d="M7 15h10a4 4 0 0 0 .5-7.96A5.5 5.5 0 0 0 6.5 8.5 3.3 3.3 0 0 0 7 15z"/><path d="M8 18.5h.01M12 19.5h.01M16 18.5h.01M10 21h.01M14 21h.01"/>',
+    storm:  '<path d="M7 15h10a4 4 0 0 0 .5-7.96A5.5 5.5 0 0 0 6.5 8.5 3.3 3.3 0 0 0 7 15z"/><path d="M12.5 15l-2.5 4h3l-2 3"/>',
+    fog:    '<path d="M4 9h16M3 13h18M5 17h14"/>',
+  };
+  function wxIcon(kind, size){
+    return `<svg width="${size||18}" height="${size||18}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WX_ICONS[kind] || WX_ICONS.cloud}</svg>`;
+  }
+  function wxKind(code){
+    if(code === 0) return ['sun','Clear'];
+    if(code === 1 || code === 2) return ['part', code === 1 ? 'Mostly clear' : 'Partly cloudy'];
+    if(code === 3) return ['cloud','Overcast'];
+    if(code === 45 || code === 48) return ['fog','Fog'];
+    if(code >= 51 && code <= 57) return ['rain','Drizzle'];
+    if((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return ['rain','Rain'];
+    if((code >= 71 && code <= 77) || code === 85 || code === 86) return ['snow','Snow'];
+    if(code >= 95) return ['storm','Thunderstorm'];
+    return ['cloud','Cloudy'];
+  }
+  function wxLoadPrefs(){
+    try{
+      const j = JSON.parse(localStorage.getItem(WX_KEY) || 'null');
+      if(j && j.loc && typeof j.loc.lat === 'number' && typeof j.loc.lon === 'number'){ wx.loc = j.loc; wx.unit = ['auto','F','C'].includes(j.unit) ? j.unit : 'auto'; }
+    }catch(e){}
+  }
+  function wxSavePrefs(){ try{ localStorage.setItem(WX_KEY, JSON.stringify({loc: wx.loc, unit: wx.unit})); }catch(e){} }
+  function wxUseF(){ return wx.unit === 'F' || (wx.unit === 'auto' && wx.loc && wx.loc.cc === 'US'); }
+  function wxTemp(c){ if(c == null) return '–'; return Math.round(wxUseF() ? c * 9 / 5 + 32 : c) + '°'; }
+  function wxDayLabel(iso, i){
+    if(i === 0) return 'Today';
+    const d = new Date(iso + 'T12:00:00');
+    return isNaN(d) ? iso : d.toLocaleDateString('en-US', {weekday: 'short'});
+  }
+  function wxFetch(force){
+    if(!wx.loc) return Promise.resolve();
+    if(!force && wx.data && Date.now() - wx.at < 15 * 60 * 1000) return Promise.resolve();
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + encodeURIComponent(wx.loc.lat) + '&longitude=' + encodeURIComponent(wx.loc.lon) +
+      '&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=5&timezone=auto';
+    return fetch(url).then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(j => {
+      wx.data = j; wx.at = Date.now(); wx.msg = '';
+    }).catch(() => { wx.msg = wx.data ? '' : "Couldn't load the forecast right now."; }).then(() => { wxRenderChip(); wxRenderPanel(); });
+  }
+  function wxRenderChip(){
+    const chip = document.getElementById('wxChip');
+    if(!chip) return;
+    if(!wx.loc){ chip.innerHTML = wxIcon('part', 18) + '<span>Set weather</span>'; chip.title = 'Pick your city for the weather'; return; }
+    const cur = wx.data && wx.data.current;
+    const kind = cur ? wxKind(cur.weather_code)[0] : 'cloud';
+    chip.innerHTML = wxIcon(kind, 18) + `<span>${cur ? wxTemp(cur.temperature_2m) : '–'}</span><span class="wx-city">${escapeHtml(wx.loc.name)}</span>`;
+    chip.title = 'Weather in ' + wx.loc.name;
+  }
+  function wxPlaceLabel(l){ return [l.name, l.admin1 && l.admin1 !== l.name ? l.admin1 : '', l.country].filter(Boolean).join(', '); }
+  function wxRenderPanel(){
+    const panel = document.getElementById('wxPanel');
+    if(!panel || panel.hidden) return;
+    const keep = panel.querySelector('#wxQuery');
+    const keepVal = keep ? keep.value : '';
+    const hadFocus = keep && document.activeElement === keep;
+    if(!wx.loc || wx.searching){
+      panel.innerHTML = `<div class="wx-search">
+          <p class="wx-hint">${wx.loc ? 'Search for a new city or town.' : 'Where are you? Pick a city and the weather follows you on this device.'}</p>
+          <input id="wxQuery" type="search" placeholder="City or town, e.g. Aachen" autocomplete="off" value="${escapeAttr(keepVal)}">
+          <div class="wx-results" id="wxResults">${wx.results.map((r, i) => `<button type="button" data-wx-pick="${i}">${escapeHtml(r.name)}<small>${escapeHtml(wxPlaceLabel(r))}</small></button>`).join('')}</div>
+          ${wx.msg ? `<p class="wx-hint" style="margin-top:8px">${escapeHtml(wx.msg)}</p>` : ''}
+          ${wx.loc ? '<div style="margin-top:8px"><button type="button" class="wx-link" id="wxCancelSearch">Cancel</button></div>' : ''}
+        </div>`;
+      const q = panel.querySelector('#wxQuery');
+      if(q){
+        let t = null;
+        q.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => wxSearch(q.value), 300); });
+        q.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); clearTimeout(t); wxSearch(q.value); } });
+        if(hadFocus || !keep){ q.focus(); }
+      }
+      panel.querySelectorAll('[data-wx-pick]').forEach(b => b.addEventListener('click', () => wxPick(wx.results[Number(b.getAttribute('data-wx-pick'))])));
+      const c = panel.querySelector('#wxCancelSearch'); if(c) c.addEventListener('click', () => { wx.searching = false; wx.results = []; wx.msg = ''; wxRenderPanel(); });
+      return;
+    }
+    const d = wx.data;
+    const cur = d && d.current;
+    const [kind, label] = cur ? wxKind(cur.weather_code) : ['cloud', ''];
+    const days = d && d.daily ? d.daily.time.map((iso, i) => `
+        <div class="wx-day"><span>${escapeHtml(wxDayLabel(iso, i))}</span>${wxIcon(wxKind(d.daily.weather_code[i])[0], 18)}
+          <span class="wx-rain">${d.daily.precipitation_probability_max && d.daily.precipitation_probability_max[i] != null ? d.daily.precipitation_probability_max[i] + '% rain' : ''}</span>
+          <span><b>${wxTemp(d.daily.temperature_2m_max[i])}</b><span class="wx-lo">${wxTemp(d.daily.temperature_2m_min[i])}</span></span></div>`).join('') : '';
+    panel.innerHTML = `
+      <div class="wx-top"><div class="wx-place">${escapeHtml(wxPlaceLabel(wx.loc))}</div><button type="button" class="wx-link" id="wxChange">Change</button></div>
+      ${cur ? `<div class="wx-now">${wxIcon(kind, 40)}<div><div class="wx-big">${wxTemp(cur.temperature_2m)}</div><div class="wx-cond">${escapeHtml(label)}</div></div></div>` : `<p class="wx-hint" style="margin:12px 0">${escapeHtml(wx.msg || 'Loading the forecast...')}</p>`}
+      ${days ? `<div class="wx-days">${days}</div>` : ''}
+      <div class="wx-foot"><div class="wx-units" id="wxUnits">${[['auto','Auto'],['F','°F'],['C','°C']].map(([v, l]) => `<button type="button" data-wx-unit="${v}" class="${wx.unit === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+        <a class="wx-link" href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></div>`;
+    panel.querySelector('#wxChange').addEventListener('click', () => { wx.searching = true; wx.results = []; wx.msg = ''; wxRenderPanel(); });
+    panel.querySelectorAll('[data-wx-unit]').forEach(b => b.addEventListener('click', () => {
+      wx.unit = b.getAttribute('data-wx-unit'); wxSavePrefs(); wxRenderChip(); wxRenderPanel();
+    }));
+  }
+  let wxSearchSeq = 0;
+  function wxSearch(q){
+    q = (q || '').trim();
+    const seq = ++wxSearchSeq;
+    if(q.length < 2){ wx.results = []; wx.msg = ''; wxRenderResultsOnly(); return; }
+    fetch('https://geocoding-api.open-meteo.com/v1/search?count=6&language=en&format=json&name=' + encodeURIComponent(q))
+      .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(j => {
+        if(seq !== wxSearchSeq) return;
+        wx.results = (j.results || []).map(r => ({name: r.name, admin1: r.admin1 || '', country: r.country || '', cc: r.country_code || '', lat: r.latitude, lon: r.longitude}));
+        wx.msg = wx.results.length ? '' : 'No places found. Try a nearby town.';
+        wxRenderResultsOnly();
+      })
+      .catch(() => { if(seq === wxSearchSeq){ wx.results = []; wx.msg = "Couldn't search just now."; wxRenderResultsOnly(); } });
+  }
+  // Re-render only the results list so the search box keeps focus and what was typed.
+  function wxRenderResultsOnly(){ wxRenderPanel(); }
+  function wxPick(r){
+    if(!r) return;
+    wx.loc = {name: r.name, admin1: r.admin1, country: r.country, cc: r.cc, lat: r.lat, lon: r.lon};
+    wx.searching = false; wx.results = []; wx.msg = ''; wx.data = null; wx.at = 0;
+    wxSavePrefs(); wxRenderChip(); wxRenderPanel(); wxFetch(true);
+  }
+  function wxPositionPanel(){
+    const panel = document.getElementById('wxPanel'), chip = document.getElementById('wxChip');
+    if(!panel || !chip) return;
+    const r = chip.getBoundingClientRect();
+    panel.style.top = (r.bottom + 10) + 'px';
+    panel.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+  }
+  function wxOpenPanel(){
+    const panel = document.getElementById('wxPanel');
+    document.getElementById('notifPanel').hidden = true;
+    wx.searching = false; wx.results = []; wx.msg = '';
+    panel.hidden = false;
+    wxPositionPanel(); wxRenderPanel(); wxFetch(false);
+  }
+  document.getElementById('wxChip').addEventListener('click', () => {
+    const panel = document.getElementById('wxPanel');
+    if(panel.hidden) wxOpenPanel(); else panel.hidden = true;
+  });
+  document.addEventListener('click', e => {
+    const panel = document.getElementById('wxPanel'), chip = document.getElementById('wxChip');
+    if(panel && !panel.hidden && !panel.contains(e.target) && !chip.contains(e.target)) panel.hidden = true;
+  });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape'){ const p = document.getElementById('wxPanel'); if(p) p.hidden = true; } });
+  window.addEventListener('scroll', e => { const p = document.getElementById('wxPanel'); if(p && !p.hidden && !p.contains(e.target)) p.hidden = true; }, {passive:true, capture:true});
+  window.addEventListener('resize', () => { document.getElementById('wxPanel').hidden = true; });
+  document.getElementById('notifBellBtn').addEventListener('click', () => { document.getElementById('wxPanel').hidden = true; });
+  wxLoadPrefs(); wxRenderChip(); wxFetch(true);
+  setInterval(() => { if(!document.hidden) wxFetch(true); }, 30 * 60 * 1000);
 
   // ---------------- reports ----------------
   let reportYear, reportQuarter, reportRows = [];
