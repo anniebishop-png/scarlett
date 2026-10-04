@@ -4804,7 +4804,7 @@
       let seen = null; try{ seen = localStorage.getItem(key); }catch(e){}
       if(seen === today) return;
       try{ localStorage.setItem(key, today); }catch(e){}
-      celebrate('Clear round!', 'Nothing left due today. No faults.', false);
+      celebrate('Nothing left due today', 'Nice work, you are all caught up.', false);
     }catch(e){}
   }
 
