@@ -703,6 +703,12 @@
   .del-row.dueweek{border-left-color:var(--hs-due);}
   .del-cat-flags{display:inline-flex; gap:6px; margin-right:10px; vertical-align:middle;}
 
+    /* ---------- Delivery Tracker step 2: My deliverables + Reports ---------- */
+  .dr-bars .hr-bar-row{grid-template-columns:120px 1fr 58px;}
+  .dr-bars .hr-bar-row .lbl{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .dm-hint{font-size:11.5px; color:var(--ink-muted); font-weight:600; max-width:150px; text-align:right;}
+  .dr-late{color:var(--hs-overdue); font-weight:700;}
+
   /* ---------- Due-item notifications (bell + panel, login banner) ---------- */
   .notif-wrap{position:relative;}
   .notif-bell{position:relative; display:flex; align-items:center; justify-content:center; width:34px; height:34px;
@@ -1162,15 +1168,25 @@
     <h2>Delivery Tracker</h2>
   </div>
   <div class="report-controls">
+    <div class="segmented" id="deliveryViewTabs">
+      <button type="button" data-dview="tracker" class="active">Tracker</button>
+      <button type="button" data-dview="mine">My deliverables</button>
+      <button type="button" data-dview="reports">Reports</button>
+    </div>
     <select id="deliveryClientFilter"><option value="">All clients</option></select>
     <select id="deliveryOwnerFilter" aria-label="Filter by owner" style="display:none;"><option value="">Everyone</option></select>
-    <label class="checkbox-row" style="margin:0;"><input type="checkbox" id="deliveryHideDone"> <span style="font-size:12.5px;font-weight:600;color:var(--ink);">Hide delivered</span></label>
+    <label class="checkbox-row" id="deliveryHideDoneLabel" style="margin:0;"><input type="checkbox" id="deliveryHideDone"> <span style="font-size:12.5px;font-weight:600;color:var(--ink);">Hide delivered</span></label>
     <button class="btn-ghost" id="contractSetupToolbarBtn" style="display:none;">Set up contract</button>
     <button class="btn-primary" id="addDeliveryBtn" style="margin-left:auto;">+ Add item</button>
   </div>
-  <div class="del-outstanding" id="deliveryOutstandingCounter"></div>
-  <div id="deliveryCards"></div>
-  <div id="deliveryResults"></div>
+  <div class="hs-notice" id="deliveryNotice" hidden></div>
+  <div id="deliveryTrackerView">
+    <div class="del-outstanding" id="deliveryOutstandingCounter"></div>
+    <div id="deliveryCards"></div>
+    <div id="deliveryResults"></div>
+  </div>
+  <div id="deliveryMineView" hidden></div>
+  <div id="deliveryReportsView" hidden></div>
 </div>
 
 <div class="overlay" id="taskOverlay" hidden>
@@ -1668,6 +1684,24 @@
     <div class="modal-actions">
       <div class="left"></div>
       <div class="right"><button type="button" class="btn-ghost" id="hsSnoozeCancel">Cancel</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="dSnoozeOverlay" hidden style="z-index:25;">
+  <div class="modal">
+    <h3 id="dSnoozeTitle">Snooze</h3>
+    <p class="hs-modal-sub" id="dSnoozeSub"></p>
+    <div class="hs-snooze-opts" id="dSnoozeOpts">
+      <button type="button" class="btn-ghost" data-dsnooze="week">+1 week</button>
+      <button type="button" class="btn-ghost" data-dsnooze="month">+1 month</button>
+    </div>
+    <div class="field"><label id="dSnoozeLabel">Or pick a date</label>
+      <div class="hs-snooze-pick"><input type="date" id="dSnoozeDate"><button type="button" class="btn-primary" id="dSnoozeSet">Set date</button></div>
+    </div>
+    <div class="modal-actions">
+      <div class="left"></div>
+      <div class="right"><button type="button" class="btn-ghost" id="dSnoozeCancel">Cancel</button></div>
     </div>
   </div>
 </div>
@@ -2207,7 +2241,7 @@
     } else {
       switchApp('delivery');
       const sel = document.getElementById('deliveryClientFilter');
-      if(sel && item.client){ sel.value = item.client; renderDelivery(); }
+      if(sel && item.client){ sel.value = item.client; deliveryView = 'tracker'; renderDelivery(); }
       whenDueDataReady(
         () => deliveryItems.some(x => x.id === item.id),
         () => openDeliveryModal(deliveryItems.find(x => x.id === item.id))
@@ -2486,6 +2520,7 @@
     document.getElementById('d_client').value = client;
     ensureClientOption(document.getElementById('deliveryClientFilter'), client);
     document.getElementById('deliveryClientFilter').value = client;
+    deliveryView = 'tracker';
     renderDelivery();
   }
   document.getElementById('clientTypeSimpleBtn').addEventListener('click', () => {
@@ -6368,6 +6403,290 @@
     if(tg) tg.addEventListener('click', () => { dShowAllAttention = !dShowAllAttention; renderDelivery(); });
   }
 
+  // ---- Delivery Tracker step 2: My deliverables + Reports ----
+  let deliveryView = 'tracker';          // 'tracker' | 'mine' | 'reports'
+  let dMineOwner = '';                   // '' = not chosen yet, '__none__' = unassigned
+  let dMineShowAll = false;
+  let drClient = '';
+  let drShowAllStalled = false;
+  const D_NONE = '__none__';
+  function deliveryNotice(msg){
+    const el = document.getElementById('deliveryNotice');
+    if(!el) return;
+    el.textContent = msg;
+    el.hidden = !msg;
+    if(msg) setTimeout(() => { if(el.textContent === msg) el.hidden = true; }, 9000);
+  }
+  function dSaveError(e){
+    const m = (e && e.message) ? e.message : String(e || 'unknown error');
+    deliveryNotice("That change didn't save: " + m);
+  }
+  // Hand-added items are mirrored onto the Task board (spawn_del_<id>); keep that copy in step.
+  // Items synced in from a task or podcast episode are changed at the source instead.
+  function dMirror(r, patch){
+    if(r.sourceType) return;
+    try{ Promise.resolve(tasksCol().doc('spawn_del_' + r.id).update(patch)).catch(() => {}); }catch(e){}
+  }
+  function dMarkDelivered(id){
+    const r = deliveryItems.find(x => x.id === id);
+    if(!r || !canEdit || r.sourceType) return;
+    deliveryCol().doc(id).update({status: 'delivered'}).then(() => dMirror(r, {status: 'done'})).catch(dSaveError);
+  }
+  function dSetDate(id, date){
+    const r = deliveryItems.find(x => x.id === id);
+    if(!r || !canEdit || r.sourceType || !date) return;
+    deliveryCol().doc(id).update({date: date}).then(() => dMirror(r, {dateISO: date, weekId: mondayOf(date)})).catch(dSaveError);
+  }
+  let dSnoozeId = null;
+  function openDSnooze(id){
+    if(!canEdit) return;
+    const r = deliveryItems.find(x => x.id === id);
+    if(!r || r.sourceType) return;
+    dSnoozeId = id;
+    const undated = !r.date;
+    document.getElementById('dSnoozeTitle').textContent = undated ? 'Set a due date' : 'Snooze';
+    document.getElementById('dSnoozeSub').textContent = undated
+      ? dItemName(r) + ' has no date yet. When is it due?'
+      : dItemName(r) + ' is due ' + hFmtDate(r.date) + '. Push it back to:';
+    document.getElementById('dSnoozeOpts').style.display = undated ? 'none' : '';
+    document.getElementById('dSnoozeLabel').textContent = undated ? 'Due date' : 'Or pick a date';
+    document.getElementById('dSnoozeDate').value = '';
+    document.getElementById('dSnoozeOverlay').hidden = false;
+  }
+  function closeDSnooze(){ document.getElementById('dSnoozeOverlay').hidden = true; dSnoozeId = null; }
+  function applyDSnooze(date){
+    if(!dSnoozeId || !date) return;
+    const id = dSnoozeId;
+    closeDSnooze();
+    dSetDate(id, date);
+  }
+  document.querySelectorAll('#dSnoozeOverlay [data-dsnooze]').forEach(b => b.addEventListener('click', () => {
+    const r = deliveryItems.find(x => x.id === dSnoozeId);
+    if(!r) return;
+    // Counts from the later of its current date and today, so snoozing an overdue item lands in the future.
+    const today = hToday();
+    const base = r.date && r.date > today ? r.date : today;
+    applyDSnooze(b.getAttribute('data-dsnooze') === 'week' ? addDays(base, 7) : hAddMonth(base));
+  }));
+  document.getElementById('dSnoozeSet').addEventListener('click', () => applyDSnooze(document.getElementById('dSnoozeDate').value));
+  document.getElementById('dSnoozeCancel').addEventListener('click', closeDSnooze);
+  document.getElementById('dSnoozeOverlay').addEventListener('click', e => { if(e.target.id === 'dSnoozeOverlay') closeDSnooze(); });
+
+  document.querySelectorAll('#deliveryViewTabs button').forEach(btn => {
+    btn.addEventListener('click', () => { deliveryView = btn.getAttribute('data-dview'); dShowAllAttention = false; renderDelivery(); });
+  });
+
+  function dOwnerPool(){
+    const names = new Set();
+    deliveryItems.forEach(r => (r.owners || []).forEach(n => n && names.add(n)));
+    if(currentUserName) names.add(currentUserName);
+    return [...names].sort((a,b) => a.localeCompare(b));
+  }
+  function dMineItems(owner){
+    return deliveryItems.filter(r => owner === D_NONE ? !(r.owners && r.owners.length) : (r.owners || []).includes(owner));
+  }
+  function renderDeliveryMine(){
+    const el = document.getElementById('deliveryMineView');
+    const names = dOwnerPool();
+    const hasUnassigned = deliveryItems.some(r => !(r.owners && r.owners.length));
+    const hasLive = o => dMineItems(o).some(dOpen);
+    if(!dMineOwner){
+      dMineOwner = (currentUserName && hasLive(currentUserName)) ? currentUserName
+        : (names.find(hasLive) || (hasUnassigned ? D_NONE : (currentUserName || '')));
+    }
+    const options = names.map(n => ({v: n, t: n})).concat(hasUnassigned ? [{v: D_NONE, t: 'Unassigned'}] : []);
+    const mine = dMineItems(dMineOwner);
+    const today = hToday(), wk = hWeekEnd();
+    const byDate = (a,b) => (a.date||'').localeCompare(b.date||'') || (a.client||'').localeCompare(b.client||'') || dItemName(a).localeCompare(dItemName(b));
+    const overdue = mine.filter(r => dOverdue(r, today)).sort(byDate);
+    const week = mine.filter(r => dDueWeek(r, today, wk)).sort(byDate);
+    const noDate = mine.filter(dNoDate).sort((a,b) => (a.client||'').localeCompare(b.client||'') || dItemName(a).localeCompare(dItemName(b)));
+    const delivered = mine.filter(r => r.status === 'delivered').length;
+    const LIMIT = 25;
+
+    const row = r => {
+      const statusMeta = DELIVERY_STATUS_META[r.status] || DELIVERY_STATUS_META.notstarted;
+      let actions = '';
+      if(canEdit){
+        if(r.sourceType){
+          actions = `<span class="dm-hint">Synced from the ${r.sourceType === 'podcast' ? 'Podcast tab' : 'Task board'}. Update it there.</span>`;
+        } else {
+          actions = (r.date
+            ? `<button type="button" class="btn-ghost" data-dm-snooze="${r.id}">Snooze</button>`
+            : `<button type="button" class="btn-ghost" data-dm-setdate="${r.id}">Set date</button>`)
+            + `<button type="button" class="btn-primary" data-dm-done="${r.id}">Delivered</button>`;
+        }
+      }
+      return `<div class="hs-mw-row" data-dm-open="${r.id}">
+        <div class="hs-mw-date ${dOverdue(r, today) ? 'over' : ''}">${r.date ? escapeHtml(hFmtDate(r.date)) : '—'}</div>
+        <div>
+          <div class="hs-mw-name">${escapeHtml(dItemName(r))} <span>· ${escapeHtml(r.client || '')}${r.category ? ' · ' + escapeHtml(r.category) : ''}</span></div>
+          <div class="hs-mw-next">${escapeHtml(statusMeta.label)}</div>
+        </div>
+        <div class="hs-mw-actions">${actions}</div>
+      </div>`;
+    };
+    const group = (title, note, list) => {
+      const shown = dMineShowAll ? list : list.slice(0, LIMIT);
+      return `<div class="report-group">
+        <div class="report-group-head"><span>${title} <span class="hs-mw-group-note">${note}</span></span><span>${list.length}</span></div>
+        ${list.length ? shown.map(row).join('') : '<div class="report-empty" style="padding:16px;">Nothing here.</div>'}
+        ${list.length > LIMIT ? `<div style="padding:10px 16px;"><button type="button" class="hr-link-btn" data-dm-toggle="1">${dMineShowAll ? 'Show fewer' : 'See all ' + list.length}</button></div>` : ''}
+      </div>`;
+    };
+    const mondayLabel = new Date(mondayOf(today) + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'long'});
+
+    el.innerHTML = `
+      <div class="report-controls">
+        <label style="font-size:12.5px;font-weight:700;color:var(--ink-2);">Viewing as
+          <select id="dMineOwner" style="margin-left:6px;">${options.map(o => `<option value="${escapeAttr(o.v)}" ${o.v === dMineOwner ? 'selected' : ''}>${escapeHtml(o.t)}</option>`).join('')}</select>
+        </label>
+        <span class="hs-muted">Week of ${escapeHtml(mondayLabel)} · sorted by due date. Delivered closes it out; Snooze pushes the date.</span>
+      </div>
+      <div class="hs-tiles">
+        <div class="hs-tile over"><b>${overdue.length}</b><span>Overdue</span></div>
+        <div class="hs-tile due"><b>${week.length}</b><span>Due this week</span></div>
+        <div class="hs-tile"><b>${noDate.length}</b><span>No date set</span></div>
+        <div class="hs-tile"><b>${delivered}</b><span>Delivered</span></div>
+      </div>
+      ${group('Overdue', '', overdue)}
+      ${group('This week', '', week)}
+      ${group('Open with no date', 'these are the ones that slip', noDate)}`;
+
+    document.getElementById('dMineOwner').addEventListener('change', e => { dMineOwner = e.target.value; dMineShowAll = false; renderDeliveryMine(); });
+    el.querySelectorAll('[data-dm-open]').forEach(r => r.addEventListener('click', e => {
+      if(e.target.closest('button')) return;
+      const item = deliveryItems.find(x => x.id === r.getAttribute('data-dm-open'));
+      if(item) openDeliveryModal(item);
+    }));
+    el.querySelectorAll('[data-dm-done]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); dMarkDelivered(b.getAttribute('data-dm-done')); }));
+    el.querySelectorAll('[data-dm-snooze]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openDSnooze(b.getAttribute('data-dm-snooze')); }));
+    el.querySelectorAll('[data-dm-setdate]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openDSnooze(b.getAttribute('data-dm-setdate')); }));
+    el.querySelectorAll('[data-dm-toggle]').forEach(b => b.addEventListener('click', () => { dMineShowAll = !dMineShowAll; renderDeliveryMine(); }));
+  }
+
+  function renderDeliveryReports(){
+    const el = document.getElementById('deliveryReportsView');
+    const clients = [...new Set(deliveryItems.map(r => r.client).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+    if(drClient && !clients.includes(drClient)) drClient = '';
+    const items = drClient ? deliveryItems.filter(r => r.client === drClient) : deliveryItems;
+    const today = hToday(), wk = hWeekEnd();
+    const live = items.filter(dOpen);
+    const overdue = live.filter(r => dOverdue(r, today));
+    const dueWeek = live.filter(r => dDueWeek(r, today, wk));
+    const noDate = live.filter(dNoDate);
+
+    // groups: by client (all) or by category (one client)
+    const groupKey = r => drClient ? (r.category || 'Uncategorized') : (r.client || 'No client');
+    const groups = new Map();
+    items.forEach(r => { const k = groupKey(r); if(!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+    const stats = [...groups.entries()].map(([name, its]) => {
+      let done, total, contracted = false;
+      if(drClient){
+        const tgt = deliveryCategoryTarget(drClient, name);
+        const dc = its.filter(r => !dOpen(r)).length;
+        if(tgt){ done = Math.min(dc, tgt); total = tgt; contracted = true; } else { done = dc; total = its.length; }
+      } else {
+        const p = dClientProgress(name, its, true); done = p.done; total = p.total; contracted = p.contracted;
+      }
+      return {name, done, total, contracted,
+        overdue: its.filter(r => dOverdue(r, today)).length,
+        due: its.filter(r => dDueWeek(r, today, wk)).length,
+        noDate: its.filter(dNoDate).length,
+        left: its.filter(dOpen).length};
+    });
+    const totalDone = stats.reduce((a,x) => a + x.done, 0), totalAll = stats.reduce((a,x) => a + x.total, 0);
+    const pctAll = totalAll ? Math.round(100 * totalDone / totalAll) : 0;
+
+    const progHtml = stats.length
+      ? stats.slice().sort((a,b) => (b.total ? b.done/b.total : 0) - (a.total ? a.done/a.total : 0) || a.name.localeCompare(b.name)).map(x => {
+          const pct = x.total ? Math.min(100, Math.round(100 * x.done / x.total)) : 0;
+          return `<div class="hr-bar-row"><span class="lbl" title="${escapeAttr(x.name)}">${escapeHtml(x.name)}</span><span class="hr-bar ${x.total && x.done >= x.total ? 'won' : ''}"><i style="width:${pct}%"></i></span><span class="num">${x.done}/${x.total}</span></div>`;
+        }).join('')
+        + '<div class="hr-note">Counts against contracted amounts where a contract is set up, otherwise against the number of items logged.</div>'
+      : '<div class="hr-note">Nothing logged yet.</div>';
+
+    const slipping = stats.filter(x => x.overdue || x.due || x.noDate)
+      .sort((a,b) => b.overdue - a.overdue || b.noDate - a.noDate || b.due - a.due || a.name.localeCompare(b.name));
+    const slipHtml = slipping.length
+      ? `<table class="hr-table"><thead><tr><th>${drClient ? 'Category' : 'Client'}</th><th>Overdue</th><th>This week</th><th>No date</th></tr></thead><tbody>`
+        + slipping.slice(0, 10).map(x => `<tr><td>${escapeHtml(x.name)}</td><td class="${x.overdue ? 'dr-late' : ''}">${x.overdue}</td><td>${x.due}</td><td>${x.noDate}</td></tr>`).join('') + '</tbody></table>'
+        + (slipping.length > 10 ? `<div class="hr-note">${slipping.length - 10} more not shown.</div>` : '')
+      : '<div class="hr-note">Nothing overdue, due this week or missing a date.</div>';
+
+    // contract line items table (one contracted client only)
+    let contractHtml = '';
+    const contract = drClient ? contractCategoriesFor(drClient) : null;
+    if(contract){
+      const rows = contract.filter(c => c.target).map(c => {
+        const its = items.filter(r => (r.category || 'Uncategorized') === c.name);
+        const dc = its.filter(r => !dOpen(r)).length;
+        return {name: c.name, dc, target: c.target, left: Math.max(0, c.target - dc), over: its.filter(r => dOverdue(r, today)).length};
+      });
+      if(rows.length) contractHtml = `<div class="hr-panel" style="grid-column:1/-1;"><h3>Contract line items</h3><p class="hr-sub">${escapeHtml(drClient)}: delivered against what was contracted.</p>
+        <table class="hr-table"><thead><tr><th>Category</th><th>Delivered</th><th>Contracted</th><th>Left</th><th>Overdue</th></tr></thead><tbody>`
+        + rows.map(r => `<tr><td>${escapeHtml(r.name)}</td><td>${r.dc}</td><td>${r.target}</td><td>${r.left}</td><td class="${r.over ? 'dr-late' : ''}">${r.over}</td></tr>`).join('') + '</tbody></table></div>';
+    }
+
+    // on time vs late: only items with a recorded delivery time and a due date
+    const hasCol = deliveryItems.some(r => 'deliveredAt' in r);
+    const measured = items.filter(r => r.status === 'delivered' && r.deliveredAt && r.date).map(r => {
+      const d = toDateStr(new Date(r.deliveredAt));
+      const lateBy = Math.round((new Date(d + 'T12:00:00') - new Date(r.date + 'T12:00:00')) / 86400000);
+      return {r, lateBy};
+    });
+    const onTime = measured.filter(m => m.lateBy <= 0), late = measured.filter(m => m.lateBy > 0);
+    const onTimePct = measured.length ? Math.round(100 * onTime.length / measured.length) : null;
+    let otHtml;
+    if(!hasCol){
+      otHtml = '<div class="hr-note">Not recording yet. Run the v10 database update and this fills in for every item marked Delivered from then on.</div>';
+    } else if(!measured.length){
+      otHtml = '<div class="hr-note">Recording is on. Nothing with a due date has been delivered since it started, so there is nothing to compare yet.</div>';
+    } else {
+      const mx = Math.max(1, onTime.length, late.length);
+      otHtml = `<div class="hr-bar-row"><span class="lbl">On time</span><span class="hr-bar won"><i style="width:${Math.round(100*onTime.length/mx)}%"></i></span><span class="num">${onTime.length}</span></div>
+        <div class="hr-bar-row"><span class="lbl">Late</span><span class="hr-bar lost"><i style="width:${Math.round(100*late.length/mx)}%"></i></span><span class="num">${late.length}</span></div>`
+        + (late.length ? late.slice().sort((a,b) => b.lateBy - a.lateBy).slice(0, 5).map(m => `<div class="hr-stale-row" data-dr-open="${m.r.id}"><span>${escapeHtml(dItemName(m.r))} <span class="hs-muted" style="font-weight:500;">· ${escapeHtml(m.r.client || '')}</span></span><span class="dr-late">${m.lateBy} day${m.lateBy === 1 ? '' : 's'} late</span></div>`).join('') : '')
+        + '<div class="hr-note">On time means delivered on or before the due date. Only items delivered since recording started are counted.</div>';
+    }
+
+    // stalled: open items not edited for 30+ days
+    const stalled = live.filter(r => { const d = hDaysSince(r.updated_at); return d !== null && d >= 30; })
+      .sort((a,b) => (hDaysSince(b.updated_at)||0) - (hDaysSince(a.updated_at)||0));
+    const stShown = drShowAllStalled ? stalled : stalled.slice(0, 8);
+    const stHtml = stalled.length
+      ? stShown.map(r => `<div class="hr-stale-row" data-dr-open="${r.id}"><span>${escapeHtml(dItemName(r))} <span class="hs-muted" style="font-weight:500;">· ${escapeHtml(r.client || '')}</span></span><span class="hs-muted">${escapeHtml(hAgo(hDaysSince(r.updated_at)))}</span></div>`).join('')
+        + (stalled.length > 8 ? `<button type="button" class="hr-link-btn" id="drStalledToggle">${drShowAllStalled ? 'Show fewer' : 'See all ' + stalled.length}</button>` : '')
+      : '<div class="hr-note">Nothing has gone quiet. Every open item was touched in the last 30 days.</div>';
+
+    el.innerHTML = `
+      <div class="hr-filters">
+        <label>Client <select id="drClient"><option value="">All clients</option>${clients.map(c => `<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('')}</select></label>
+        <span class="hs-muted">Open counts are always as of today.</span>
+      </div>
+      <div class="hs-tiles">
+        <div class="hs-tile"><b>${pctAll}%</b><span>Delivered · ${totalDone} of ${totalAll}</span></div>
+        <div class="hs-tile over"><b>${overdue.length}</b><span>Overdue · ${dueWeek.length} more due this week</span></div>
+        <div class="hs-tile"><b>${noDate.length}</b><span>Open with no date set</span></div>
+        <div class="hs-tile"><b>${onTimePct === null ? '—' : onTimePct + '%'}</b><span>Delivered on time${measured.length ? ' · ' + onTime.length + ' of ' + measured.length : ''}</span></div>
+      </div>
+      <div class="hr-grid">
+        <div class="hr-panel dr-bars"><h3>${drClient ? 'Progress by category' : 'Progress by client'}</h3><p class="hr-sub">Delivered against contracted or logged.</p>${progHtml}</div>
+        <div class="hr-panel"><h3>Where it is slipping</h3><p class="hr-sub">Open items by ${drClient ? 'category' : 'client'}, worst first.</p>${slipHtml}</div>
+        ${contractHtml}
+        <div class="hr-panel"><h3>On time vs late</h3><p class="hr-sub">Delivery date against due date.</p>${otHtml}</div>
+        <div class="hr-panel"><h3>Stalled: not touched in 30+ days</h3><p class="hr-sub">Open items only, counted from the last edit.</p>${stHtml}</div>
+      </div>`;
+    document.getElementById('drClient').value = drClient;
+    document.getElementById('drClient').addEventListener('change', e => { drClient = e.target.value; drShowAllStalled = false; renderDeliveryReports(); });
+    const tg = document.getElementById('drStalledToggle');
+    if(tg) tg.addEventListener('click', () => { drShowAllStalled = !drShowAllStalled; renderDeliveryReports(); });
+    el.querySelectorAll('[data-dr-open]').forEach(r => r.addEventListener('click', () => {
+      const item = deliveryItems.find(x => x.id === r.getAttribute('data-dr-open'));
+      if(item) openDeliveryModal(item);
+    }));
+  }
+
   function renderDeliveryOutstandingCounter(){
     const el = document.getElementById('deliveryOutstandingCounter');
     if(!db || !deliveryItems.length){ el.innerHTML = ''; return; }
@@ -6382,6 +6701,20 @@
   function renderDelivery(){
     updateContractSetupToolbarBtn();
     dFillOwnerFilter();
+    // which of the three views is showing
+    document.querySelectorAll('#deliveryViewTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-dview') === deliveryView));
+    document.getElementById('deliveryTrackerView').hidden = deliveryView !== 'tracker';
+    document.getElementById('deliveryMineView').hidden = deliveryView !== 'mine';
+    document.getElementById('deliveryReportsView').hidden = deliveryView !== 'reports';
+    if(deliveryView !== 'tracker'){
+      // these controls only belong to the Tracker view
+      ['deliveryClientFilter','deliveryOwnerFilter','contractSetupToolbarBtn','deliveryHideDoneLabel'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+      if(!db){ document.getElementById(deliveryView === 'mine' ? 'deliveryMineView' : 'deliveryReportsView').innerHTML = '<div class="report-empty">Delivery Tracker needs the shared board connection.</div>'; return; }
+      if(deliveryView === 'mine') renderDeliveryMine(); else renderDeliveryReports();
+      return;
+    }
+    document.getElementById('deliveryClientFilter').style.display = '';
+    document.getElementById('deliveryHideDoneLabel').style.display = '';
     renderDeliveryOutstandingCounter();
     renderDeliveryCards();
     const resultsEl = document.getElementById('deliveryResults');
