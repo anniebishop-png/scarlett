@@ -805,7 +805,7 @@
   .wx-units{display:inline-flex; border:1px solid var(--hairline-strong); border-radius:8px; overflow:hidden;}
   .wx-units button{border:none; background:transparent; color:var(--ink-2); font:inherit; font-size:11px; font-weight:700; padding:4px 9px; cursor:pointer;}
   .wx-units button.on{background:var(--navy); color:#fff;}
-  .wx-search input{width:100%; font:inherit; font-size:13.5px; padding:9px 11px; border-radius:9px; border:1px solid var(--hairline-strong); background:var(--surface); color:var(--ink);}
+  .wx-search input{width:100%; font:inherit; font-size:16px; padding:9px 11px; border-radius:9px; border:1px solid var(--hairline-strong); background:var(--surface); color:var(--ink);}
   .wx-results{margin-top:6px; display:flex; flex-direction:column;}
   .wx-results button{text-align:left; border:none; background:transparent; font:inherit; font-size:13px; color:var(--ink); padding:8px; border-radius:8px; cursor:pointer;}
   .wx-results button:hover{background:var(--surface-2);}
@@ -4834,8 +4834,12 @@
     const panel = document.getElementById('wxPanel'), chip = document.getElementById('wxChip');
     if(!panel || !chip) return;
     const r = chip.getBoundingClientRect();
+    // Never wider than the screen, and always fully on it (on a phone the chip sits near the middle).
+    const w = Math.min(310, window.innerWidth - 16);
+    panel.style.width = w + 'px';
     panel.style.top = (r.bottom + 10) + 'px';
-    panel.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+    panel.style.right = 'auto';
+    panel.style.left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8) + 'px';
   }
   function wxOpenPanel(){
     const panel = document.getElementById('wxPanel');
@@ -4853,8 +4857,9 @@
     const path = e.composedPath ? e.composedPath() : []; if(panel && !panel.hidden && !path.includes(panel) && !path.includes(chip) && !panel.contains(e.target) && !chip.contains(e.target)) panel.hidden = true;
   });
   document.addEventListener('keydown', e => { if(e.key === 'Escape'){ const p = document.getElementById('wxPanel'); if(p) p.hidden = true; } });
-  window.addEventListener('scroll', e => { const p = document.getElementById('wxPanel'); if(p && !p.hidden && !p.contains(e.target)) p.hidden = true; }, {passive:true, capture:true});
-  window.addEventListener('resize', () => { document.getElementById('wxPanel').hidden = true; });
+  // Tapping the search box on a phone scrolls/resizes the page to make room for the keyboard; that must not close the panel.
+  window.addEventListener('scroll', e => { const p = document.getElementById('wxPanel'); if(p && !p.hidden && !p.contains(e.target) && !p.contains(document.activeElement)) p.hidden = true; }, {passive:true, capture:true});
+  window.addEventListener('resize', () => { const p = document.getElementById('wxPanel'); if(!p.hidden && p.contains(document.activeElement)){ wxPositionPanel(); return; } p.hidden = true; });
   document.getElementById('notifBellBtn').addEventListener('click', () => { document.getElementById('wxPanel').hidden = true; });
   wxLoadPrefs(); wxRenderChip(); wxFetch(true);
   setInterval(() => { if(!document.hidden) wxFetch(true); }, 30 * 60 * 1000);
