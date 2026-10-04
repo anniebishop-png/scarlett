@@ -225,7 +225,9 @@
   @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pc-platform.eventing-podcast{background:#2a3a6c; color:#c9d4ff;}}
   .pc-platform.jumping-podcast{background:var(--st-review-bg); color:var(--st-review-text);}
   .pc-platform.usea{background:var(--st-done-bg); color:var(--st-done-text);}
-  .pc-platform.us-open{background:var(--gold); color:#3A2A06;}
+  .pc-platform.us-open{background:#FBE0DD; color:#A32A1F;}
+  :root[data-theme="dark"] .pc-platform.us-open{background:#5a2420; color:#ffc9c2;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pc-platform.us-open{background:#5a2420; color:#ffc9c2;}}
   .pc-del-btn{border:none; background:none; color:var(--ink-muted); opacity:.6; cursor:pointer; font-size:14px; line-height:1; padding:4px; margin-left:auto; flex-shrink:0;}
   .pc-del-btn:hover{opacity:1; color:var(--st-blocked-text);}
   .pc-title{color:var(--ink); font-weight:600; font-size:13.5px; line-height:1.4;}
@@ -728,7 +730,9 @@
   .pcw-card{--pc-c:var(--ink-muted); border:1px solid var(--hairline); border-left:4px solid var(--pc-c); background:var(--surface-2); border-radius:9px; padding:7px 8px; cursor:pointer; min-width:0; text-align:left; font:inherit; color:inherit; display:block; width:100%;}
   .pcw-card:hover{border-color:var(--pc-c);}
   .pcw-card.eventing-podcast, .pcw-sw.eventing-podcast{--pc-c:#5B6FD6;} .pcw-card.jumping-podcast, .pcw-sw.jumping-podcast{--pc-c:var(--st-review-text);}
-  .pcw-card.usea, .pcw-sw.usea{--pc-c:var(--st-done-text);} .pcw-card.us-open, .pcw-sw.us-open{--pc-c:var(--gold);}
+  .pcw-card.usea, .pcw-sw.usea{--pc-c:var(--st-done-text);} .pcw-card.us-open, .pcw-sw.us-open{--pc-c:#C0392B;}
+  :root[data-theme="dark"] .pcw-card.us-open, :root[data-theme="dark"] .pcw-sw.us-open{--pc-c:#F08A80;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pcw-card.us-open, :root:not([data-theme="light"]) .pcw-sw.us-open{--pc-c:#F08A80;}}
   .pcw-sw{--pc-c:var(--ink-muted); background:var(--pc-c);}
   .pcw-show{font-size:10px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; color:var(--pc-c);}
   .pcw-title{font-size:12.5px; font-weight:700; color:var(--ink); line-height:1.3; margin:2px 0; overflow-wrap:anywhere;}
