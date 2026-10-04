@@ -7047,6 +7047,8 @@
     confirmDelete(msg, () => {
       items.forEach(r => { deliveryCol().doc(r.id).delete().catch(dSaveError); removeSpawnedTask(r.id); });
       if(hasContract){ contractClientsCol().doc(client).delete().catch(dSaveError); delete contractClients[client]; }
+      // clear it from the screen straight away; the live listener confirms it shortly
+      deliveryItems = deliveryItems.filter(r => r.client !== client);
       const sel = document.getElementById('deliveryClientFilter');
       if(sel.value === client) sel.value = '';
       renderDelivery();
