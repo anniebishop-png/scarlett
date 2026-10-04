@@ -4602,7 +4602,7 @@
   });
   document.addEventListener('click', e => {
     const panel = document.getElementById('wxPanel'), chip = document.getElementById('wxChip');
-    if(panel && !panel.hidden && !panel.contains(e.target) && !chip.contains(e.target)) panel.hidden = true;
+    const path = e.composedPath ? e.composedPath() : []; if(panel && !panel.hidden && !path.includes(panel) && !path.includes(chip) && !panel.contains(e.target) && !chip.contains(e.target)) panel.hidden = true;
   });
   document.addEventListener('keydown', e => { if(e.key === 'Escape'){ const p = document.getElementById('wxPanel'); if(p) p.hidden = true; } });
   window.addEventListener('scroll', e => { const p = document.getElementById('wxPanel'); if(p && !p.hidden && !p.contains(e.target)) p.hidden = true; }, {passive:true, capture:true});
