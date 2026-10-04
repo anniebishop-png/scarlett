@@ -4560,19 +4560,40 @@
     }));
   }
   let wxSearchSeq = 0;
+  // Open-Meteo's search matches the place NAME only, so "Lexington, Kentucky" or "Aachen Germany" find
+  // nothing. Try the whole text first, then peel words off the end and use them to filter by
+  // region / country instead.
+  function wxGeocode(name){
+    return fetch('https://geocoding-api.open-meteo.com/v1/search?count=10&language=en&format=json&name=' + encodeURIComponent(name))
+      .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(j => (j.results || []).map(r => ({name: r.name, admin1: r.admin1 || '', country: r.country || '', cc: r.country_code || '', lat: r.latitude, lon: r.longitude})));
+  }
+  const WX_US = {al:'alabama',ak:'alaska',az:'arizona',ar:'arkansas',ca:'california',co:'colorado',ct:'connecticut',de:'delaware',fl:'florida',ga:'georgia',hi:'hawaii',id:'idaho',il:'illinois',in:'indiana',ia:'iowa',ks:'kansas',ky:'kentucky',la:'louisiana',me:'maine',md:'maryland',ma:'massachusetts',mi:'michigan',mn:'minnesota',ms:'mississippi',mo:'missouri',mt:'montana',ne:'nebraska',nv:'nevada',nh:'new hampshire',nj:'new jersey',nm:'new mexico',ny:'new york',nc:'north carolina',nd:'north dakota',oh:'ohio',ok:'oklahoma',or:'oregon',pa:'pennsylvania',ri:'rhode island',sc:'south carolina',sd:'south dakota',tn:'tennessee',tx:'texas',ut:'utah',vt:'vermont',va:'virginia',wa:'washington',wv:'west virginia',wi:'wisconsin',wy:'wyoming'};
+  async function wxFind(q){
+    const norm = t => t.toLowerCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+    const words = norm(q).split(' ').filter(Boolean);
+    for(let n = words.length; n >= 1; n--){
+      const name = words.slice(0, n).join(' ');
+      const rest = words.slice(n).map(w => WX_US[w] || w);
+      const list = await wxGeocode(name);
+      if(!list.length) continue;
+      if(!rest.length) return list;
+      const restText = rest.join(' ');
+      const hit = list.filter(r => (r.admin1 + ' ' + r.country + ' ' + r.cc).toLowerCase().includes(restText) || rest.every(w => (r.admin1 + ' ' + r.country + ' ' + r.cc).toLowerCase().includes(w)));
+      if(hit.length) return hit;
+    }
+    return [];
+  }
   function wxSearch(q){
     q = (q || '').trim();
     const seq = ++wxSearchSeq;
     if(q.length < 2){ wx.results = []; wx.msg = ''; wxRenderResultsOnly(); return; }
-    fetch('https://geocoding-api.open-meteo.com/v1/search?count=6&language=en&format=json&name=' + encodeURIComponent(q))
-      .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(j => {
-        if(seq !== wxSearchSeq) return;
-        wx.results = (j.results || []).map(r => ({name: r.name, admin1: r.admin1 || '', country: r.country || '', cc: r.country_code || '', lat: r.latitude, lon: r.longitude}));
-        wx.msg = wx.results.length ? '' : 'No places found. Try a nearby town.';
-        wxRenderResultsOnly();
-      })
-      .catch(() => { if(seq === wxSearchSeq){ wx.results = []; wx.msg = "Couldn't search just now."; wxRenderResultsOnly(); } });
+    wxFind(q).then(list => {
+      if(seq !== wxSearchSeq) return;
+      wx.results = list.slice(0, 6);
+      wx.msg = wx.results.length ? '' : 'No places found. Try a nearby town.';
+      wxRenderResultsOnly();
+    }).catch(() => { if(seq === wxSearchSeq){ wx.results = []; wx.msg = "Couldn't search just now."; wxRenderResultsOnly(); } });
   }
   // Re-render only the results list so the search box keeps focus and what was typed.
   function wxRenderResultsOnly(){ wxRenderPanel(); }
