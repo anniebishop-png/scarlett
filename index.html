@@ -588,6 +588,7 @@
   @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --hs-overdue:#F2A072; --hs-overdue-bg:#4a2a18; --hs-due:#9DBBFF; --hs-due-bg:#233456; --hs-select:var(--gold); --hs-warn-bg:#4a3d12; --hs-warn:#F5D77A; } }
   .hs-notice{background:var(--hs-overdue-bg); color:var(--hs-overdue); border-radius:10px; padding:10px 14px; font-size:12.5px; font-weight:600; margin-bottom:14px;}
   .hs-notice[hidden]{display:none;}
+  .hs-notice.ok{background:var(--st-done-bg); color:var(--st-done-text);}
   .hs-section-head{display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 14px; margin:2px 0 10px;}
   .hs-section-head h3{margin:0; font-size:15px; font-weight:800; color:var(--ink);}
   .hs-section-head span{font-size:12px; color:var(--ink-muted);}
@@ -1159,6 +1160,7 @@
     </div>
     <button class="btn-primary" id="addEpisodeBtn" style="margin-left:auto;">+ Add episode</button>
   </div>
+  <div class="hs-notice" id="podcastNotice" hidden></div>
   <div class="hr-filters" id="podcastFilters"></div>
   <div id="podcastCalendar"></div>
   <div id="podcastResults"></div>
@@ -1595,6 +1597,7 @@
       </div>
       <div class="modal-actions">
         <div class="left">
+          <button type="button" class="btn-primary" id="sendToEditBtn" style="display:none;">Recorded: send to Sammy</button>
           <button type="button" class="btn-ghost" id="assignPodcastTaskBtn" style="display:none;">Assign task</button>
           <button type="button" class="btn-ghost" id="deleteEpisodeBtn" style="display:none;color:var(--st-blocked-text);border-color:var(--st-blocked-text);">Delete</button>
         </div>
@@ -5448,6 +5451,7 @@
     document.getElementById('e_notes').value = ep ? (ep.notes||'') : '';
     document.getElementById('deleteEpisodeBtn').style.display = ep ? 'inline-block' : 'none';
     document.getElementById('assignPodcastTaskBtn').style.display = ep ? 'inline-block' : 'none';
+    refreshSendToEditBtn(ep);
     // multi-date / weekly-repeat options only make sense when adding a brand new episode
     document.getElementById('episodeExtraDatesList').innerHTML = '';
     document.getElementById('e_repeat_weekly').checked = false;
@@ -5516,6 +5520,61 @@
     closeEpisodeModal();
   });
   document.getElementById('addEpisodeBtn').addEventListener('click', () => openEpisodeModal(null));
+
+  // "Recorded: send to Sammy" -- one click marks the episode Recorded and puts an edit task on the Board
+  // assigned to the editor, so they get tagged that it is ready. The task has a fixed id per episode, so
+  // pressing it twice can never create a second task.
+  const PODCAST_EDITOR = 'Sammy';
+  const PC_DIVISION = {'Eventing Podcast':'Content - Eventing', 'Jumping Podcast':'Content - Jumping', 'USEA':'Content - Eventing', 'US Open':'Content - US Open'};
+  function podcastNotice(msg, ok){
+    const el = document.getElementById('podcastNotice');
+    if(!el) return;
+    el.textContent = msg;
+    el.classList.toggle('ok', !!ok);
+    el.hidden = !msg;
+    if(msg) setTimeout(() => { if(el.textContent === msg) el.hidden = true; }, 9000);
+  }
+  function editTaskIdFor(epId){ return 'ep_edit_' + epId; }
+  function refreshSendToEditBtn(ep){
+    const btn = document.getElementById('sendToEditBtn');
+    if(!btn) return;
+    btn.disabled = false;
+    btn.textContent = 'Recorded: send to ' + PODCAST_EDITOR;
+    btn.style.display = (ep && canEdit && TEAM_ROSTER.some(p => p.name === PODCAST_EDITOR)) ? 'inline-block' : 'none';
+    if(!ep || !db) return;
+    const id = ep.id;
+    tasksCol().doc(editTaskIdFor(id)).get().then(snap => {
+      if(snap.exists && editingEpisodeId === id){ btn.disabled = true; btn.textContent = PODCAST_EDITOR + ' has been tagged'; }
+    }).catch(() => {});
+  }
+  document.getElementById('sendToEditBtn').addEventListener('click', () => {
+    if(!canEdit || !editingEpisodeId) return;
+    const epId = editingEpisodeId;
+    const platform = document.getElementById('e_platform').value;
+    const title = document.getElementById('e_title').value.trim();
+    const brand = document.getElementById('e_brand').value.trim();
+    const date = document.getElementById('e_date').value;
+    const lead = document.getElementById('e_lead').value;
+    const guest = document.getElementById('e_guest').value.trim();
+    if(!date){ document.getElementById('e_date').focus(); return; }
+    document.getElementById('e_status').value = 'recorded';
+    // save the episode exactly as the Save button would (it also keeps the Delivery Tracker in step)
+    document.getElementById('episodeForm').requestSubmit();
+    const today = toDateStr(new Date());
+    const dayBefore = addDays(date, -1);
+    const dateISO = dayBefore > today ? dayBefore : today;
+    const name = title || (platform + ' episode');
+    const taskId = editTaskIdFor(epId);
+    tasksCol().doc(taskId).get().then(snap => {
+      if(snap.exists){ podcastNotice(PODCAST_EDITOR + ' was already tagged for "' + name + '".', true); return; }
+      return tasksCol().doc(taskId).create({
+        client: brand || platform, dateISO, title: 'Edit: ' + name, tag: 'Podcast',
+        division: PC_DIVISION[platform] || '', owners: [PODCAST_EDITOR], status: 'notstarted',
+        notes: 'Recorded' + (lead ? ' by ' + lead : '') + (guest ? ' with ' + guest : '') + '. Release date ' + hFmtDate(date) + '.',
+        weekId: mondayOf(dateISO), showId: '', order: 80, calendarSynced: false,
+      }).then(() => podcastNotice('Sent to ' + PODCAST_EDITOR + ': "Edit: ' + name + '" is on the Board for ' + hFmtDate(dateISO) + ' (before the ' + hFmtDate(date) + ' release).', true));
+    }).catch(e => podcastNotice("That didn't save: " + ((e && e.message) || e)));
+  });
 
   // "Assign task" on an existing episode opens the normal Add-task modal, pre-filled from this
   // episode's current form values, so the resulting task lives on the Board like any other and
