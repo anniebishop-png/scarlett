@@ -579,6 +579,77 @@
     header.top .header-tools{justify-self:start;}
   }
 
+
+  /* ---------- Hustle: owner cards, follow-ups, My week ---------- */
+  :root{ --hs-overdue:#B4420C; --hs-overdue-bg:#FDE7D8; --hs-due:#1D4ED8; --hs-due-bg:#E3EBFD; --hs-select:var(--navy); --hs-warn-bg:#FFF1CC; --hs-warn:#7A5A00; }
+  :root[data-theme="dark"]{ --hs-overdue:#F2A072; --hs-overdue-bg:#4a2a18; --hs-due:#9DBBFF; --hs-due-bg:#233456; --hs-select:var(--gold); --hs-warn-bg:#4a3d12; --hs-warn:#F5D77A; }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --hs-overdue:#F2A072; --hs-overdue-bg:#4a2a18; --hs-due:#9DBBFF; --hs-due-bg:#233456; --hs-select:var(--gold); --hs-warn-bg:#4a3d12; --hs-warn:#F5D77A; } }
+  .hs-notice{background:var(--hs-overdue-bg); color:var(--hs-overdue); border-radius:10px; padding:10px 14px; font-size:12.5px; font-weight:600; margin-bottom:14px;}
+  .hs-notice[hidden]{display:none;}
+  .hs-section-head{display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 14px; margin:2px 0 10px;}
+  .hs-section-head h3{margin:0; font-size:15px; font-weight:800; color:var(--ink);}
+  .hs-section-head span{font-size:12px; color:var(--ink-muted);}
+  .hs-cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(176px,1fr)); gap:12px; margin-bottom:18px;}
+  .hs-card{display:flex; flex-direction:column; gap:11px; text-align:left; font:inherit; color:var(--ink); background:var(--surface); border:1px solid var(--hairline); border-radius:14px; padding:14px 16px; cursor:pointer;}
+  .hs-card:hover{border-color:var(--hairline-strong);}
+  .hs-card.selected{border:2px solid var(--hs-select); padding:13px 15px; box-shadow:0 2px 10px rgba(30,42,58,.12);}
+  .hs-card:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+  .hs-card-top{display:flex; align-items:center; gap:9px;}
+  .hs-avatar{display:inline-flex; align-items:center; justify-content:center; min-width:30px; height:30px; padding:0 4px; border-radius:999px; background:var(--surface-2); border:1px solid var(--hairline); font-weight:800; font-size:11px;}
+  .hs-card-name{font-weight:800; font-size:14px;}
+  .hs-card-open{display:flex; align-items:baseline; gap:6px; font-size:12px; color:var(--ink-muted);}
+  .hs-card-open b{font-size:30px; line-height:1; color:var(--ink); font-weight:800; font-variant-numeric:tabular-nums;}
+  .hs-card-grid{display:grid; grid-template-columns:1fr 1fr; gap:5px 12px; font-size:11.5px;}
+  .hs-card-grid > span, .hs-card-foot{display:flex; justify-content:space-between; gap:6px; align-items:baseline;}
+  .hs-card i, .hs-card-foot i{font-style:normal; color:var(--ink-muted);}
+  .hs-card b.due{color:var(--hs-due);} .hs-card b.over{color:var(--hs-overdue);} .hs-card b.won{color:var(--st-done-text);} .hs-card b.lost{color:var(--st-blocked-text);}
+  .hs-card-foot{padding-top:9px; border-top:1px solid var(--hairline); font-size:12px;}
+  .hs-shape{background:var(--surface); border:1px solid var(--hairline); border-radius:14px; padding:14px 16px; margin-bottom:18px;}
+  .hs-shape-scroll{overflow-x:auto;}
+  .hs-shape table{width:100%; border-collapse:collapse; font-size:12.5px; min-width:640px; font-variant-numeric:tabular-nums;}
+  .hs-shape th{color:var(--ink-muted); font-weight:700; text-align:right; padding:7px 9px; border-bottom:1px solid var(--hairline);}
+  .hs-shape td{text-align:right; padding:8px 9px; border-bottom:1px solid var(--hairline);}
+  .hs-shape th:first-child, .hs-shape td:first-child{text-align:left; font-weight:700;}
+  .hs-shape tr.total td{font-weight:800; border-bottom:none; background:var(--surface-2);}
+  .hs-shape td.dim{color:var(--ink-muted);}
+  .hs-filter-chip{display:inline-flex; align-items:center; gap:8px; background:var(--navy); color:#fff; border-radius:999px; padding:6px 8px 6px 14px; font-size:12.5px; font-weight:700;}
+  .hs-filter-chip button{border:none; background:rgba(255,255,255,.18); color:#fff; width:22px; height:22px; border-radius:999px; cursor:pointer; font-size:14px; line-height:1;}
+  :root[data-theme="dark"] .hs-filter-chip{background:var(--gold); color:#3A2A06;} :root[data-theme="dark"] .hs-filter-chip button{background:rgba(0,0,0,.15); color:#3A2A06;}
+  .hs-row{border-left:4px solid transparent;}
+  .hs-row.overdue{border-left-color:var(--hs-overdue);}
+  .hs-row.dueweek{border-left-color:var(--hs-due);}
+  .hs-chip{display:inline-flex; align-items:center; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; background:var(--surface-2); color:var(--ink-2);}
+  .hs-chip.overdue{background:var(--hs-overdue-bg); color:var(--hs-overdue);}
+  .hs-chip.soon{background:var(--hs-due-bg); color:var(--hs-due);}
+  .hs-chip.warn{background:var(--hs-warn-bg); color:var(--hs-warn);}
+  .hs-muted{color:var(--ink-muted); font-size:11.5px;}
+  .hs-next b{font-weight:800;}
+  .hs-nextblock{background:var(--surface-2); border:1px solid var(--hairline); border-left:4px solid var(--gold); border-radius:12px; padding:12px 12px 2px; margin-bottom:13px;}
+  .hs-req{text-transform:none; font-weight:600; color:var(--ink-muted); letter-spacing:normal;}
+  .hs-updated{font-size:11.5px; color:var(--ink-muted); margin:-4px 0 14px;}
+  .hs-modal-sub{margin:-4px 0 14px; font-size:12.5px; color:var(--ink-muted); line-height:1.5;}
+  .hs-snooze-opts{display:flex; gap:8px; margin-bottom:14px;}
+  .hs-snooze-pick{display:flex; gap:8px;}
+  .hs-snooze-pick input{flex:1;}
+  .hs-tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:18px;}
+  .hs-tile{background:var(--surface); border:1px solid var(--hairline); border-radius:14px; padding:12px 16px;}
+  .hs-tile b{display:block; font-size:28px; line-height:1.1; font-weight:800; font-variant-numeric:tabular-nums;}
+  .hs-tile span{font-size:12px; color:var(--ink-muted); font-weight:600;}
+  .hs-tile.over b{color:var(--hs-overdue);} .hs-tile.due b{color:var(--hs-due);}
+  .hs-mw-row{display:grid; grid-template-columns:92px 1fr auto; gap:6px 14px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--hairline); font-size:12.5px; cursor:pointer;}
+  .hs-mw-row:last-child{border-bottom:none;}
+  .hs-mw-row:hover{background:var(--surface-2);}
+  .hs-mw-date{font-weight:700; font-variant-numeric:tabular-nums;}
+  .hs-mw-date.over{color:var(--hs-overdue);}
+  .hs-mw-name{font-weight:700; font-size:13.5px; color:var(--ink);}
+  .hs-mw-name span{font-weight:600; color:var(--ink-muted); font-size:12px;}
+  .hs-mw-next{color:var(--ink-2); margin-top:2px;}
+  .hs-mw-actions{display:flex; gap:6px;}
+  .hs-mw-actions button{padding:6px 11px; font-size:12px;}
+  .hs-mw-group-note{font-weight:500; font-size:12px; color:var(--ink-muted);}
+  @media (max-width:640px){ .hs-mw-row{grid-template-columns:1fr; } }
+  .hs-stage.parked{background:var(--hs-warn-bg); color:var(--hs-warn);}
+
   /* ---------- Due-item notifications (bell + panel, login banner) ---------- */
   .notif-wrap{position:relative;}
   .notif-bell{position:relative; display:flex; align-items:center; justify-content:center; width:34px; height:34px;
@@ -995,14 +1066,29 @@
     <h2>Hustle Pipeline</h2>
   </div>
   <div class="report-controls">
-    <div class="segmented" id="hustleStageTabs"></div>
-    <div class="segmented" id="hustleSortTabs">
-      <button type="button" data-sort="name" class="active">Name</button>
-      <button type="button" data-sort="owner">Person</button>
+    <div class="segmented" id="hustleViewTabs">
+      <button type="button" data-view="pipeline" class="active">Pipeline</button>
+      <button type="button" data-view="myweek">My week</button>
     </div>
     <button class="btn-primary" id="addHustleBtn" style="margin-left:auto;">+ Add opportunity</button>
   </div>
-  <div id="hustleResults"></div>
+  <div class="hs-notice" id="hustleNotice" hidden></div>
+  <div id="hustlePipelineView">
+    <div id="hustleOwnerCards"></div>
+    <div id="hustleShape"></div>
+    <div class="report-controls">
+      <div class="segmented" id="hustleStageTabs"></div>
+      <div class="segmented" id="hustleSortTabs">
+        <button type="button" data-sort="due" class="active" title="Soonest next action first">Due date</button>
+        <button type="button" data-sort="name">Name</button>
+        <button type="button" data-sort="touched" title="Longest since anyone touched it first">Last touched</button>
+        <button type="button" data-sort="owner">Person</button>
+      </div>
+      <span id="hustleOwnerChip"></span>
+    </div>
+    <div id="hustleResults"></div>
+  </div>
+  <div id="hustleMyWeekView" hidden></div>
   <footer class="note">New-business pipeline — prospects through won/lost, by stage. No pricing shown here.</footer>
 </div>
 
@@ -1405,24 +1491,31 @@
             <option value="4. Close">4. Close</option>
             <option value="5. Won">5. Won</option>
             <option value="6. Lost">6. Lost</option>
+            <option value="7. Parked">7. Parked</option>
           </select>
         </div>
         <div class="field"><label>Owner</label><select id="h_owner"></select></div>
       </div>
-      <div class="field"><label>Next action</label>
-        <select id="h_nextAction">
-          <option value="">—</option>
-          <option value="Identify Opportunity">Identify Opportunity</option>
-          <option value="Identify Key Contact">Identify Key Contact</option>
-          <option value="Engage Key Contact">Engage Key Contact</option>
-          <option value="Build Proposal">Build Proposal</option>
-          <option value="Present Proposal">Present Proposal</option>
-          <option value="Agree Terms">Agree Terms</option>
-          <option value="Sign Contract">Sign Contract</option>
-          <option value="Deliver">Deliver</option>
-          <option value="Report">Report</option>
-          <option value="Nurture">Nurture</option>
-          <option value="Parked">Parked</option>
+      <div class="hs-nextblock">
+        <div class="field-row">
+          <div class="field"><label>Next action <span class="hs-req" id="h_reqNote"></span></label>
+            <input id="h_nextAction" list="hNextActionList" placeholder="e.g. Send revised proposal" autocomplete="off">
+            <datalist id="hNextActionList">
+              <option value="Identify Opportunity"><option value="Identify Key Contact"><option value="Engage Key Contact">
+              <option value="Build Proposal"><option value="Present Proposal"><option value="Agree Terms">
+              <option value="Sign Contract"><option value="Deliver"><option value="Report">
+            </datalist>
+          </div>
+          <div class="field"><label>Due date</label><input type="date" id="h_nextActionDate"></div>
+        </div>
+      </div>
+      <div class="field" id="h_closedReasonWrap" hidden>
+        <label>Closed reason <span class="hs-req">(required for Lost or Parked)</span></label>
+        <select id="h_closedReason">
+          <option value="">Select a reason</option>
+          <option value="Price">Price</option><option value="Timing">Timing</option>
+          <option value="Went elsewhere">Went elsewhere</option><option value="No response">No response</option>
+          <option value="Not a fit">Not a fit</option><option value="Parked">Parked</option>
         </select>
       </div>
       <div class="field-row">
@@ -1453,6 +1546,7 @@
         <div class="field"><label>End <span style="text-transform:none;font-weight:500;">(optional)</span></label><select id="h_end"></select></div>
       </div>
       <div class="field"><label>Engage <span style="text-transform:none;font-weight:500;">(next check-in month, optional)</span></label><select id="h_engage"></select></div>
+      <div class="hs-updated" id="h_updatedNote"></div>
       <div class="modal-actions">
         <div class="left">
           <button type="button" class="btn-ghost" id="assignHustleTaskBtn" style="display:none;">Assign task</button>
@@ -1464,6 +1558,42 @@
         </div>
       </div>
     </form>
+  </div>
+</div>
+
+<div class="overlay" id="hsNextOverlay" hidden style="z-index:25;">
+  <div class="modal">
+    <h3 id="hsNextTitle">Next step</h3>
+    <p class="hs-modal-sub" id="hsNextSub"></p>
+    <form id="hsNextForm">
+      <div class="field"><label>Next action</label><input id="hsNextText" list="hNextActionList" placeholder="e.g. Send revised proposal" autocomplete="off" required></div>
+      <div class="field"><label>Due date</label><input type="date" id="hsNextDate" required></div>
+      <div class="modal-actions">
+        <div class="left"></div>
+        <div class="right">
+          <button type="button" class="btn-ghost" id="hsNextCancel">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="hsSnoozeOverlay" hidden style="z-index:25;">
+  <div class="modal">
+    <h3>Snooze</h3>
+    <p class="hs-modal-sub" id="hsSnoozeSub"></p>
+    <div class="hs-snooze-opts">
+      <button type="button" class="btn-ghost" data-snooze="week">+1 week</button>
+      <button type="button" class="btn-ghost" data-snooze="month">+1 month</button>
+    </div>
+    <div class="field"><label>Or pick a date</label>
+      <div class="hs-snooze-pick"><input type="date" id="hsSnoozeDate"><button type="button" class="btn-primary" id="hsSnoozeSet">Set date</button></div>
+    </div>
+    <div class="modal-actions">
+      <div class="left"></div>
+      <div class="right"><button type="button" class="btn-ghost" id="hsSnoozeCancel">Cancel</button></div>
+    </div>
   </div>
 </div>
 
@@ -1653,7 +1783,7 @@
   let unsubHustle = null;
   let editingHustleId = null;
   let hustleStageFilter = null; // one of HUSTLE_STAGES, or null for all
-  let hustleSortBy = 'name';    // 'name' (alphabetical) or 'owner' (grouped by person)
+  let hustleSortBy = 'due';     // 'due' (soonest next action), 'name', 'touched' (stalest first) or 'owner' (grouped by person)
   let selectedDisciplines = []; // disciplines checked in the open hustle-opportunity form
   let deliveryItems = [];    // client deliverables/contract-fulfillment tracker, loaded when that page is open
   let unsubDelivery = null;
@@ -1675,7 +1805,7 @@
   const PODCAST_LEADS = ['Nicole','Annie','Diarm','Spike','Sam','Charlotte','Guest Lead'];
 
   // ---------- Hustle pipeline (new-business tracker — mirrors the "27 Pipeline" sheet, minus value/pricing) ----------
-  const HUSTLE_STAGES = ['1. Prospect','2. Qualify','3. Present','4. Close','5. Won','6. Lost'];
+  const HUSTLE_STAGES = ['1. Prospect','2. Qualify','3. Present','4. Close','5. Won','6. Lost','7. Parked'];
   const HUSTLE_STAGE_META = {
     '1. Prospect': {short:'Prospect', cls:'prospect'},
     '2. Qualify':  {short:'Qualify',  cls:'qualify'},
@@ -1683,6 +1813,7 @@
     '4. Close':    {short:'Close',    cls:'close'},
     '5. Won':      {short:'Won',      cls:'won'},
     '6. Lost':     {short:'Lost',     cls:'lost'},
+    '7. Parked':   {short:'Parked',   cls:'parked'},
   };
   const HUSTLE_DIVISIONS = ['HP & Risk','Sports Promo'];
   const HUSTLE_SERVICES = ['Brand','Event','HP','Media','Risk'];
@@ -5073,23 +5204,197 @@
   });
 
   // ---------------- hustle pipeline page ----------------
+  // Follow-up model (from the Hustle build brief): every live deal (Qualify, Present, Close) carries a
+  // next action + a due date, and everything below (owner cards, My week, Overdue / Due this week /
+  // Stale) is COMPUTED from those fields and from updated_at, never ticked by hand.
+  const HUSTLE_OPEN = ['2. Qualify','3. Present','4. Close'];
+  const HUSTLE_OWNER_ORDER = ['Diarm','Brayden','Nicole','Annie','Sam'];
+  let hustleView = 'pipeline';     // 'pipeline' or 'myweek'
+  let hustleOwnerFilter = null;    // owner name from a clicked owner card, or null
+  let myWeekOwner = null;          // whose follow-ups the My week view is showing
+  let hsNextCtx = null;            // {id, mode:'done'|'set'} for the next-step prompt
+  let hsSnoozeId = null;
+
+  function hOpen(op){ return HUSTLE_OPEN.includes(op.stage); }
+  function hToday(){ return toDateStr(new Date()); }
+  function hWeekEnd(){ return addDays(mondayOf(hToday()), 6); }
+  function hDaysSince(iso){
+    if(!iso) return null;
+    const t = new Date(iso).getTime();
+    return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000);
+  }
+  function hIsOverdue(op, today){ return hOpen(op) && !!op.nextActionDate && op.nextActionDate < today; }
+  // "Due this week" = still ahead of you this Mon-Sun week (today onwards), so an item is never counted as both Overdue and Due this week.
+  function hIsDueWeek(op, today, wkEnd){ return hOpen(op) && !!op.nextActionDate && op.nextActionDate >= today && op.nextActionDate <= wkEnd; }
+  function hNoNext(op){ return hOpen(op) && !op.nextActionDate; }
+  function hIsStale(op){ const d = hDaysSince(op.updated_at); return hOpen(op) && d !== null && d > 30; }
+  // Won / Lost count for the current calendar year. Older rows have no stageChangedAt, so they count as this year.
+  function hClosedThisYear(op){
+    if(!op.stageChangedAt) return true;
+    return new Date(op.stageChangedAt).getFullYear() === new Date().getFullYear();
+  }
+  function hFmtDate(dateStr){
+    if(!dateStr) return '';
+    const d = new Date(dateStr + 'T12:00:00');
+    if(isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'});
+  }
+  function hAgo(days){
+    if(days === null) return '';
+    if(days <= 0) return 'today';
+    return days === 1 ? '1 day ago' : days + ' days ago';
+  }
+  function hAddMonth(dateStr){
+    const p = dateStr.split('-').map(Number);
+    const last = new Date(p[0], p[1] + 1, 0).getDate();
+    return toDateStr(new Date(p[0], p[1], Math.min(p[2], last)));
+  }
+  function hustleNotice(msg){
+    const el = document.getElementById('hustleNotice');
+    if(!el) return;
+    el.textContent = msg;
+    el.hidden = !msg;
+    if(msg) setTimeout(() => { if(el.textContent === msg) el.hidden = true; }, 9000);
+  }
+  function hSaveError(e){
+    const m = (e && e.message) ? e.message : String(e || 'unknown error');
+    hustleNotice("That change didn't save: " + m);
+  }
+
+  function hOwnerStats(list){
+    const today = hToday(), wk = hWeekEnd();
+    const s = {open:0, due:0, overdue:0, noNext:0, stale:0, won:0, lost:0, parked:0, prospect:0, qualify:0, present:0, close:0};
+    list.forEach(op => {
+      if(op.stage === '1. Prospect') s.prospect++;
+      if(op.stage === '2. Qualify') s.qualify++;
+      if(op.stage === '3. Present') s.present++;
+      if(op.stage === '4. Close') s.close++;
+      if(hOpen(op)){
+        s.open++;
+        if(hIsOverdue(op, today)) s.overdue++;
+        if(hIsDueWeek(op, today, wk)) s.due++;
+        if(hNoNext(op)) s.noNext++;
+        if(hIsStale(op)) s.stale++;
+      }
+      if(op.stage === '5. Won' && hClosedThisYear(op)) s.won++;
+      if(op.stage === '6. Lost' && hClosedThisYear(op)) s.lost++;
+      if(op.stage === '7. Parked') s.parked++;
+    });
+    // Parked is left out of both sides of the win rate.
+    s.winRate = (s.won + s.lost) ? Math.round(100 * s.won / (s.won + s.lost)) : null;
+    return s;
+  }
+  function hOwnerList(){
+    const names = new Set();
+    hustleOpportunities.forEach(o => { if(o.owner) names.add(o.owner); });
+    const first = HUSTLE_OWNER_ORDER.filter(n => names.has(n));
+    const rest = [...names].filter(n => !HUSTLE_OWNER_ORDER.includes(n)).sort((a,b) => a.localeCompare(b));
+    return first.concat(rest);
+  }
+
   function subscribeHustle(){
     if(unsubHustle) unsubHustle();
-    if(!db){ renderHustle(); return; }
+    if(!db){ renderHustleAll(); return; }
     unsubHustle = hustleCol().onSnapshot(snap => {
       hustleOpportunities = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
       hustleOpportunities.sort((a,b) => (a.opportunity||'').localeCompare(b.opportunity||''));
-      renderHustleStageTabs();
-      renderHustle();
+      renderHustleAll();
     }, () => {});
   }
   function unsubscribeHustle(){ if(unsubHustle){ unsubHustle(); unsubHustle = null; } }
+
+  function renderHustleAll(){
+    document.getElementById('hustlePipelineView').hidden = hustleView !== 'pipeline';
+    document.getElementById('hustleMyWeekView').hidden = hustleView !== 'myweek';
+    document.querySelectorAll('#hustleViewTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-view') === hustleView));
+    if(hustleView === 'myweek'){ renderHustleMyWeek(); return; }
+    renderHustleOwnerCards();
+    renderHustleShape();
+    renderHustleOwnerChip();
+    renderHustleStageTabs();
+    renderHustle();
+  }
+
+  function renderHustleOwnerCards(){
+    const el = document.getElementById('hustleOwnerCards');
+    const owners = hOwnerList();
+    if(!owners.length){ el.innerHTML = ''; return; }
+    el.innerHTML = `<div class="hs-section-head"><h3>By owner</h3><span>Click a card to filter the list. Open means Qualify to Close; Prospects are counted separately.</span></div>
+      <div class="hs-cards">` + owners.map(name => {
+        const s = hOwnerStats(hustleOpportunities.filter(o => o.owner === name));
+        return `<button type="button" class="hs-card ${hustleOwnerFilter===name?'selected':''}" data-owner-card="${escapeAttr(name)}" aria-pressed="${hustleOwnerFilter===name}">
+          <span class="hs-card-top"><span class="hs-avatar" style="color:${ownerColor(name)}">${escapeHtml(initials(name))}</span><span class="hs-card-name">${escapeHtml(name)}</span></span>
+          <span class="hs-card-open"><b>${s.open}</b> open</span>
+          <span class="hs-card-grid">
+            <span><i>Due this week</i><b class="due">${s.due}</b></span>
+            <span><i>Overdue</i><b class="over">${s.overdue}</b></span>
+            <span><i>Won ${new Date().getFullYear()}</i><b class="won">${s.won}</b></span>
+            <span><i>Lost ${new Date().getFullYear()}</i><b class="lost">${s.lost}</b></span>
+          </span>
+          <span class="hs-card-foot"><i>Win rate</i><b>${s.winRate === null ? '—' : s.winRate + '%'}</b></span>
+        </button>`;
+      }).join('') + `</div>`;
+    el.querySelectorAll('[data-owner-card]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const n = btn.getAttribute('data-owner-card');
+        hustleOwnerFilter = hustleOwnerFilter === n ? null : n;
+        renderHustleAll();
+      });
+    });
+  }
+
+  function renderHustleShape(){
+    const el = document.getElementById('hustleShape');
+    if(!hustleOpportunities.length){ el.innerHTML = ''; return; }
+    const owners = hOwnerList();
+    const cols = [['qualify','Qualify'],['present','Present'],['close','Close'],['won','Won'],['lost','Lost'],['parked','Parked'],['prospect','Prospects'],['stale','Stale 30d+']];
+    const rowFor = (label, list, dimZeros, cls) => {
+      const s = hOwnerStats(list);
+      return `<tr class="${cls||''}"><td>${escapeHtml(label)}</td>` + cols.map(c => {
+        const v = s[c[0]];
+        return v === 0 && dimZeros ? '<td class="dim">—</td>' : `<td>${v}</td>`;
+      }).join('') + '</tr>';
+    };
+    const unassigned = hustleOpportunities.filter(o => !o.owner);
+    el.innerHTML = `<div class="hs-shape">
+      <div class="hs-section-head"><h3>Pipeline shape</h3><span>Live deals by stage and owner. Parked is tracked separately from Lost. Won and Lost are this year.</span></div>
+      <div class="hs-shape-scroll"><table>
+        <thead><tr><th>Owner</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${owners.map(n => rowFor(n, hustleOpportunities.filter(o => o.owner === n), false)).join('')}
+          ${rowFor('Unassigned', unassigned, true)}
+          ${rowFor('Total', hustleOpportunities, false, 'total')}
+        </tbody>
+      </table></div>
+    </div>`;
+  }
+
+  function renderHustleOwnerChip(){
+    const el = document.getElementById('hustleOwnerChip');
+    if(!hustleOwnerFilter){ el.innerHTML = ''; return; }
+    el.innerHTML = `<span class="hs-filter-chip">Showing: ${escapeHtml(hustleOwnerFilter)} <button type="button" aria-label="Clear owner filter" id="hustleOwnerClear">×</button></span>`;
+    document.getElementById('hustleOwnerClear').addEventListener('click', () => { hustleOwnerFilter = null; renderHustleAll(); });
+  }
 
   function hustleRowHtml(op){
     const stageMeta = HUSTLE_STAGE_META[op.stage] || HUSTLE_STAGE_META['1. Prospect'];
     const metaBits = [op.division, op.service, (op.discipline||[]).join(', ')].filter(Boolean).join(' · ');
     const windowBits = [op.start, op.end].filter(Boolean).join(' – ');
-    return `<div class="hs-row" data-open-hustle="${op.id}">
+    const today = hToday(), wk = hWeekEnd();
+    const open = hOpen(op);
+    let rowCls = '', dueChip = '';
+    if(op.nextActionDate){
+      const f = hFmtDate(op.nextActionDate);
+      if(hIsOverdue(op, today)){ rowCls = ' overdue'; dueChip = `<span class="hs-chip overdue">Overdue · due ${escapeHtml(f)}</span>`; }
+      else if(hIsDueWeek(op, today, wk)){ rowCls = ' dueweek'; dueChip = `<span class="hs-chip soon">Due ${escapeHtml(f)}</span>`; }
+      else dueChip = `<span class="hs-chip">Due ${escapeHtml(f)}</span>`;
+    } else if(open){
+      dueChip = `<span class="hs-chip warn">No next action set</span>`;
+    }
+    const days = hDaysSince(op.updated_at);
+    const touched = open && days !== null ? `<span class="hs-muted">Last touched ${escapeHtml(hAgo(days))}</span>${hIsStale(op) ? '<span class="hs-chip warn">Stale</span>' : ''}` : '';
+    const reason = (op.stage === '6. Lost' || op.stage === '7. Parked') && op.closedReason ? `<span class="hs-muted">Reason: ${escapeHtml(op.closedReason.toLowerCase())}</span>` : '';
+    return `<div class="hs-row${rowCls}" data-open-hustle="${op.id}">
       <div class="hs-row-top">
         <span class="hs-stage ${stageMeta.cls}">${escapeHtml(stageMeta.short)}</span>
         ${op.owner ? `<span class="hs-owner" style="color:${ownerColor(op.owner)}">${escapeHtml(initials(op.owner))}</span>` : ''}
@@ -5098,7 +5403,10 @@
       <div class="hs-title">${escapeHtml(op.opportunity||'(untitled)')}</div>
       ${metaBits ? `<div class="hs-meta">${escapeHtml(metaBits)}</div>` : ''}
       <div class="hs-row-bottom">
-        <span class="hs-next">${escapeHtml(op.nextAction||'—')}</span>
+        ${op.nextAction ? `<span class="hs-next"><b>Next:</b> ${escapeHtml(op.nextAction)}</span>` : ''}
+        ${dueChip}
+        ${touched}
+        ${reason}
         ${windowBits ? `<span class="hs-window">${escapeHtml(windowBits)}</span>` : ''}
         ${op.engage ? `<span class="hs-engage">Engage ${escapeHtml(op.engage)}</span>` : ''}
       </div>
@@ -5119,7 +5427,7 @@
         const hId = btn.getAttribute('data-delete-hustle');
         const h = hustleOpportunities.find(x => x.id === hId);
         confirmDelete(`Delete the opportunity ${quoted(h && h.opportunity, 'this opportunity')}? This can't be undone.`, () => {
-          hustleCol().doc(hId).delete().catch(()=>{});
+          hustleCol().doc(hId).delete().catch(hSaveError);
         });
       });
     });
@@ -5127,9 +5435,10 @@
 
   function renderHustleStageTabs(){
     const tabsEl = document.getElementById('hustleStageTabs');
+    const base = hustleOwnerFilter ? hustleOpportunities.filter(o => o.owner === hustleOwnerFilter) : hustleOpportunities;
     const counts = {};
-    hustleOpportunities.forEach(op => { counts[op.stage] = (counts[op.stage]||0) + 1; });
-    const btns = ['<button data-stage="" class="' + (hustleStageFilter ? '' : 'active') + '">All (' + hustleOpportunities.length + ')</button>']
+    base.forEach(op => { counts[op.stage] = (counts[op.stage]||0) + 1; });
+    const btns = ['<button data-stage="" class="' + (hustleStageFilter ? '' : 'active') + '">All (' + base.length + ')</button>']
       .concat(HUSTLE_STAGES.map(s => {
         const meta = HUSTLE_STAGE_META[s];
         return `<button data-stage="${s}" class="${hustleStageFilter===s?'active':''}">${meta.short} (${counts[s]||0})</button>`;
@@ -5144,6 +5453,28 @@
     });
   }
 
+  function hSortRows(rows){
+    const byName = (a,b) => (a.opportunity||'').localeCompare(b.opportunity||'');
+    if(hustleSortBy === 'due'){
+      return rows.slice().sort((a,b) => {
+        const ad = a.nextActionDate || '', bd = b.nextActionDate || '';
+        if(ad && bd && ad !== bd) return ad.localeCompare(bd);
+        if(ad && !bd) return -1;
+        if(!ad && bd) return 1;
+        return byName(a,b);
+      });
+    }
+    if(hustleSortBy === 'touched'){
+      const t = op => op.updated_at ? new Date(op.updated_at).getTime() : Infinity;
+      return rows.slice().sort((a,b) => {
+        const at = t(a), bt = t(b);
+        if(at !== bt) return at < bt ? -1 : 1;
+        return byName(a,b);
+      });
+    }
+    return rows.slice().sort(byName);
+  }
+
   function renderHustle(){
     const resultsEl = document.getElementById('hustleResults');
     if(!db){
@@ -5152,6 +5483,7 @@
     }
     let rows = hustleOpportunities.slice();
     if(hustleStageFilter) rows = rows.filter(op => op.stage === hustleStageFilter);
+    if(hustleOwnerFilter) rows = rows.filter(op => op.owner === hustleOwnerFilter);
     if(!rows.length){
       resultsEl.innerHTML = '<div class="report-empty">No opportunities here yet — add one to get started.</div>';
       return;
@@ -5172,11 +5504,140 @@
         </div>`;
       }).join('');
     } else {
-      rows = rows.slice().sort((a,b) => (a.opportunity||'').localeCompare(b.opportunity||''));
-      resultsEl.innerHTML = `<div class="report-group">` + rows.map(hustleRowHtml).join('') + `</div>`;
+      resultsEl.innerHTML = `<div class="report-group">` + hSortRows(rows).map(hustleRowHtml).join('') + `</div>`;
     }
     bindHustleRowEvents(resultsEl, hustleOpportunities);
   }
+
+  // ---- My week: one person's follow-ups, grouped by what needs doing ----
+  function renderHustleMyWeek(){
+    const el = document.getElementById('hustleMyWeekView');
+    const owners = hOwnerList();
+    if(currentUserName && !owners.includes(currentUserName)) owners.push(currentUserName);
+    if(!myWeekOwner) myWeekOwner = owners.includes(currentUserName) ? currentUserName : (owners[0] || '');
+    const mine = hustleOpportunities.filter(o => o.owner === myWeekOwner);
+    const today = hToday(), wk = hWeekEnd();
+    const byDate = (a,b) => (a.nextActionDate||'').localeCompare(b.nextActionDate||'') || (a.opportunity||'').localeCompare(b.opportunity||'');
+    const overdue = mine.filter(o => hIsOverdue(o, today)).sort(byDate);
+    const week = mine.filter(o => hIsDueWeek(o, today, wk)).sort(byDate);
+    const noNext = mine.filter(hNoNext).sort((a,b) => {
+      const ad = hDaysSince(a.updated_at), bd = hDaysSince(b.updated_at);
+      return ((bd === null ? -1 : bd) - (ad === null ? -1 : ad)) || (a.opportunity||'').localeCompare(b.opportunity||'');
+    });
+    const parked = mine.filter(o => o.stage === '7. Parked');
+    const mondayLabel = new Date(mondayOf(today) + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'long'});
+
+    const row = (op, withDate) => {
+      const meta = HUSTLE_STAGE_META[op.stage] || HUSTLE_STAGE_META['1. Prospect'];
+      const days = hDaysSince(op.updated_at);
+      const bits = [];
+      if(op.nextAction) bits.push(escapeHtml(op.nextAction));
+      if(days !== null && (!op.nextActionDate || hIsStale(op))) bits.push('last touched ' + escapeHtml(hAgo(days)) + (hIsStale(op) ? ' · stale' : ''));
+      const dateCell = op.nextActionDate ? hFmtDate(op.nextActionDate) : '—';
+      const isOver = hIsOverdue(op, today);
+      return `<div class="hs-mw-row" data-mw-open="${op.id}">
+        <div class="hs-mw-date ${isOver?'over':''}">${dateCell}</div>
+        <div>
+          <div class="hs-mw-name">${escapeHtml(op.opportunity||'(untitled)')} <span>· ${escapeHtml(meta.short)}</span></div>
+          <div class="hs-mw-next">${bits.join(' · ') || '<span class="hs-muted">No next action yet</span>'}</div>
+        </div>
+        <div class="hs-mw-actions">
+          ${op.nextActionDate
+            ? `<button type="button" class="btn-ghost" data-mw-snooze="${op.id}">Snooze</button><button type="button" class="btn-primary" data-mw-done="${op.id}">Done</button>`
+            : `<button type="button" class="btn-primary" data-mw-set="${op.id}">Set next action</button>`}
+        </div>
+      </div>`;
+    };
+    const group = (title, note, list) => `<div class="report-group">
+      <div class="report-group-head"><span>${title} <span class="hs-mw-group-note">${note}</span></span><span>${list.length}</span></div>
+      ${list.length ? list.map(op => row(op)).join('') : '<div class="report-empty" style="padding:16px;">Nothing here.</div>'}
+    </div>`;
+
+    el.innerHTML = `
+      <div class="report-controls">
+        <label style="font-size:12.5px;font-weight:700;color:var(--ink-2);">Viewing as
+          <select id="hustleMyWeekOwner" style="margin-left:6px;">${owners.map(n => `<option value="${escapeAttr(n)}" ${n===myWeekOwner?'selected':''}>${escapeHtml(n)}</option>`).join('')}</select>
+        </label>
+        <span class="hs-muted">Week of ${escapeHtml(mondayLabel)} · sorted by next action date. Done asks for the next step; Snooze pushes the date.</span>
+      </div>
+      <div class="hs-tiles">
+        <div class="hs-tile over"><b>${overdue.length}</b><span>Overdue</span></div>
+        <div class="hs-tile due"><b>${week.length}</b><span>Due this week</span></div>
+        <div class="hs-tile"><b>${noNext.length}</b><span>No next action set</span></div>
+        <div class="hs-tile"><b>${parked.length}</b><span>Parked</span></div>
+      </div>
+      ${group('Overdue', '', overdue)}
+      ${group('This week', '', week)}
+      ${group('Open with no next action', 'these are the ones that slip', noNext)}`;
+
+    document.getElementById('hustleMyWeekOwner').addEventListener('change', e => { myWeekOwner = e.target.value; renderHustleMyWeek(); });
+    el.querySelectorAll('[data-mw-open]').forEach(r => r.addEventListener('click', e => {
+      if(e.target.closest('button')) return;
+      const op = hustleOpportunities.find(x => x.id === r.getAttribute('data-mw-open'));
+      if(op) openHustleModal(op);
+    }));
+    el.querySelectorAll('[data-mw-snooze]').forEach(b => b.addEventListener('click', () => openHsSnooze(b.getAttribute('data-mw-snooze'))));
+    el.querySelectorAll('[data-mw-done]').forEach(b => b.addEventListener('click', () => openHsNext(b.getAttribute('data-mw-done'), 'done')));
+    el.querySelectorAll('[data-mw-set]').forEach(b => b.addEventListener('click', () => openHsNext(b.getAttribute('data-mw-set'), 'set')));
+  }
+
+  function openHsNext(id, mode){
+    if(!canEdit) return;
+    const op = hustleOpportunities.find(x => x.id === id);
+    if(!op) return;
+    hsNextCtx = {id, mode};
+    document.getElementById('hsNextTitle').textContent = mode === 'done' ? 'Done. What happens next?' : 'Set the next action';
+    document.getElementById('hsNextSub').textContent = (op.opportunity || 'This deal') + (mode === 'done' && op.nextAction ? ' · finished: ' + op.nextAction : '') + '. Every live deal needs a next step and a date.';
+    document.getElementById('hsNextText').value = '';
+    document.getElementById('hsNextDate').value = toDateStr(new Date(Date.now() + 7*86400000));
+    document.getElementById('hsNextOverlay').hidden = false;
+    document.getElementById('hsNextText').focus();
+  }
+  function closeHsNext(){ document.getElementById('hsNextOverlay').hidden = true; hsNextCtx = null; }
+  document.getElementById('hsNextCancel').addEventListener('click', closeHsNext);
+  document.getElementById('hsNextOverlay').addEventListener('click', e => { if(e.target.id === 'hsNextOverlay') closeHsNext(); });
+  document.getElementById('hsNextForm').addEventListener('submit', e => {
+    e.preventDefault();
+    if(!hsNextCtx || !canEdit){ closeHsNext(); return; }
+    const id = hsNextCtx.id;
+    const text = document.getElementById('hsNextText').value.trim();
+    const date = document.getElementById('hsNextDate').value;
+    if(!text || !date) return;
+    closeHsNext();
+    hustleCol().doc(id).update({nextAction: text, nextActionDate: date}).catch(hSaveError);
+  });
+
+  function openHsSnooze(id){
+    if(!canEdit) return;
+    const op = hustleOpportunities.find(x => x.id === id);
+    if(!op) return;
+    hsSnoozeId = id;
+    document.getElementById('hsSnoozeSub').textContent = (op.opportunity || 'This deal') + ' is due ' + hFmtDate(op.nextActionDate) + '. Push it back to:';
+    document.getElementById('hsSnoozeDate').value = '';
+    document.getElementById('hsSnoozeOverlay').hidden = false;
+  }
+  function closeHsSnooze(){ document.getElementById('hsSnoozeOverlay').hidden = true; hsSnoozeId = null; }
+  function applySnooze(newDate){
+    if(!hsSnoozeId || !newDate){ return; }
+    const id = hsSnoozeId;
+    closeHsSnooze();
+    hustleCol().doc(id).update({nextActionDate: newDate}).catch(hSaveError);
+  }
+  document.querySelectorAll('#hsSnoozeOverlay [data-snooze]').forEach(b => b.addEventListener('click', () => {
+    const op = hustleOpportunities.find(x => x.id === hsSnoozeId);
+    if(!op) return;
+    // Counts forward from the later of its current date and today, so snoozing an overdue item always lands in the future.
+    const today = hToday();
+    const base = op.nextActionDate && op.nextActionDate > today ? op.nextActionDate : today;
+    applySnooze(b.getAttribute('data-snooze') === 'week' ? addDays(base, 7) : hAddMonth(base));
+  }));
+  document.getElementById('hsSnoozeSet').addEventListener('click', () => applySnooze(document.getElementById('hsSnoozeDate').value));
+  document.getElementById('hsSnoozeCancel').addEventListener('click', closeHsSnooze);
+  document.getElementById('hsSnoozeOverlay').addEventListener('click', e => { if(e.target.id === 'hsSnoozeOverlay') closeHsSnooze(); });
+
+  document.querySelectorAll('#hustleViewTabs button').forEach(btn => {
+    btn.addEventListener('click', () => { hustleView = btn.getAttribute('data-view'); renderHustleAll(); });
+  });
 
   function renderHustleDisciplineList(){
     const list = document.getElementById('hustleDisciplineList');
@@ -5192,13 +5653,29 @@
     });
   }
 
+  // Stage rules for the edit form: Qualify to Close need a next action + date; Lost / Parked need a closed reason.
+  function applyHustleStageRules(){
+    const stage = document.getElementById('h_stage').value;
+    const live = HUSTLE_OPEN.includes(stage);
+    const closed = stage === '6. Lost' || stage === '7. Parked';
+    document.getElementById('h_nextAction').required = live;
+    document.getElementById('h_nextActionDate').required = live;
+    document.getElementById('h_reqNote').textContent = live ? '(required while the deal is live)' : '';
+    document.getElementById('h_closedReasonWrap').hidden = !closed;
+    document.getElementById('h_closedReason').required = closed;
+    if(stage === '7. Parked' && !document.getElementById('h_closedReason').value) document.getElementById('h_closedReason').value = 'Parked';
+  }
+  document.getElementById('h_stage').addEventListener('change', applyHustleStageRules);
+
   function openHustleModal(op){
     editingHustleId = op ? op.id : null;
     document.getElementById('hustleModalTitle').textContent = op ? 'Edit opportunity' : 'Add opportunity';
     document.getElementById('h_opportunity').value = op ? (op.opportunity||'') : '';
     document.getElementById('h_stage').value = op && op.stage ? op.stage : (hustleStageFilter || '1. Prospect');
-    document.getElementById('h_owner').value = op ? (op.owner||'') : '';
+    document.getElementById('h_owner').value = op ? (op.owner||'') : (hustleOwnerFilter || '');
     document.getElementById('h_nextAction').value = op ? (op.nextAction||'') : '';
+    document.getElementById('h_nextActionDate').value = op ? (op.nextActionDate||'') : '';
+    document.getElementById('h_closedReason').value = op ? (op.closedReason||'') : '';
     document.getElementById('h_division').value = op ? (op.division||'') : '';
     document.getElementById('h_service').value = op ? (op.service||'') : '';
     selectedDisciplines = op ? (op.discipline||[]).slice() : [];
@@ -5206,8 +5683,12 @@
     document.getElementById('h_start').value = op ? (op.start||'') : '';
     document.getElementById('h_end').value = op ? (op.end||'') : '';
     document.getElementById('h_engage').value = op ? (op.engage||'') : '';
+    document.getElementById('h_updatedNote').textContent = op && op.updated_at
+      ? 'Last updated ' + new Date(op.updated_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) + ' · set automatically'
+      : '';
     document.getElementById('deleteHustleBtn').style.display = op ? 'inline-block' : 'none';
     document.getElementById('assignHustleTaskBtn').style.display = op ? 'inline-block' : 'none';
+    applyHustleStageRules();
     document.getElementById('hustleOverlay').hidden = false;
   }
   function closeHustleModal(){
@@ -5218,11 +5699,15 @@
   document.getElementById('hustleForm').addEventListener('submit', e => {
     e.preventDefault();
     if(!canEdit){ closeHustleModal(); return; }
+    const stage = document.getElementById('h_stage').value;
+    const closed = stage === '6. Lost' || stage === '7. Parked';
     const data = {
       opportunity: document.getElementById('h_opportunity').value.trim(),
-      stage: document.getElementById('h_stage').value,
+      stage,
       owner: document.getElementById('h_owner').value,
-      nextAction: document.getElementById('h_nextAction').value,
+      nextAction: document.getElementById('h_nextAction').value.trim(),
+      nextActionDate: document.getElementById('h_nextActionDate').value || null,
+      closedReason: closed ? (document.getElementById('h_closedReason').value || null) : null,
       division: document.getElementById('h_division').value,
       service: document.getElementById('h_service').value,
       discipline: selectedDisciplines.slice(),
@@ -5231,10 +5716,13 @@
       engage: document.getElementById('h_engage').value,
     };
     if(!data.opportunity){ closeHustleModal(); return; }
+    const before = editingHustleId ? hustleOpportunities.find(x => x.id === editingHustleId) : null;
+    // stageChangedAt feeds "Won / Lost this year": stamp it when a deal is created or its stage actually changes.
+    if(!before || before.stage !== stage) data.stageChangedAt = new Date().toISOString();
     if(editingHustleId){
-      hustleCol().doc(editingHustleId).update(data).catch(()=>{});
+      hustleCol().doc(editingHustleId).update(data).catch(hSaveError);
     } else {
-      hustleCol().add(data).catch(()=>{});
+      hustleCol().add(data).catch(hSaveError);
     }
     closeHustleModal();
   });
@@ -5244,7 +5732,7 @@
       const hId = editingHustleId;
       const h = hustleOpportunities.find(x => x.id === hId);
       confirmDelete(`Delete the opportunity ${quoted(h && h.opportunity, 'this opportunity')}? This can't be undone.`, () => {
-        hustleCol().doc(hId).delete().catch(()=>{});
+        hustleCol().doc(hId).delete().catch(hSaveError);
         closeHustleModal();
       });
       return;
@@ -5261,11 +5749,13 @@
     if(!opportunity) return;
     const owner = document.getElementById('h_owner').value;
     const nextAction = document.getElementById('h_nextAction').value;
+    const nextDate = document.getElementById('h_nextActionDate').value;
     closeHustleModal();
     openTaskModal(null);
     document.getElementById('f_client').value = opportunity;
     document.getElementById('f_title').value = nextAction || 'Follow up';
     document.getElementById('f_tag').value = 'Hustle';
+    if(nextDate) document.getElementById('f_date').value = nextDate;
     document.getElementById('f_division').value = 'Business Development';
     if(owner){ selectedOwners = [owner]; updateOwnersBtnLabel(); }
   });
