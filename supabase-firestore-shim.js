@@ -30,6 +30,24 @@ function createFirestoreShim(supabaseClient) {
   const KEY_COLUMN = { contractClients: 'client' };
   function keyOf(table) { return KEY_COLUMN[table] || 'id'; }
 
+  // Live refresh after our own saves. Postgres Realtime is what normally tells a screen that data
+  // changed, but it only works for tables added to Supabase's realtime publication. So that a save
+  // shows up on screen at once either way, every successful write here also asks the open
+  // subscriptions on that table to re-read. Writes in a burst are coalesced into one re-read.
+  const liveRefresh = {};
+  const refreshTimers = {};
+  function registerLive(table, fn) {
+    (liveRefresh[table] = liveRefresh[table] || new Set()).add(fn);
+    return () => { liveRefresh[table].delete(fn); };
+  }
+  function notifyChanged(table) {
+    if (refreshTimers[table]) return;
+    refreshTimers[table] = setTimeout(() => {
+      refreshTimers[table] = null;
+      (liveRefresh[table] || []).forEach(fn => { try { fn(); } catch (e) {} });
+    }, 120);
+  }
+
   function applyCondition(query, field, op, value) {
     switch (op) {
       case '==': return query.eq(field, value);
@@ -85,7 +103,8 @@ function createFirestoreShim(supabaseClient) {
             if (status === 'SUBSCRIBED') deliver(); // initial load, once the channel is actually live
             else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') { if (onError) onError(new Error('Realtime subscription failed: ' + status)); }
           });
-        return () => { cancelled = true; supabaseClient.removeChannel(channel); };
+        const unregister = registerLive(table, deliver);
+        return () => { cancelled = true; unregister(); supabaseClient.removeChannel(channel); };
       },
     };
   }
@@ -98,6 +117,7 @@ function createFirestoreShim(supabaseClient) {
       async set(data) {
         const { error } = await supabaseClient.from(table).upsert(Object.assign({ [keyOf(table)]: id }, data), { onConflict: keyOf(table) });
         if (error) throw error;
+        notifyChanged(table);
       },
 
       // One-off read of this doc (Firestore's DocumentReference.get()) -- distinct from
@@ -120,19 +140,25 @@ function createFirestoreShim(supabaseClient) {
         if (!rows || rows.length === 0) {
           throw new Error('Nothing was saved to "' + table + '" (row ' + id + ') -- the row is missing or an UPDATE policy is blocking it.');
         }
+        notifyChanged(table);
       },
 
       // Insert only if this id doesn't exist yet; never overwrite an existing row. Used by the
       // auto-spawn routines (recurring tasks, show delivery tasks, client ops) so re-running them
       // can't reset a task someone has already marked done back to "not started".
       async create(data) {
-        const { error } = await supabaseClient.from(table).upsert(Object.assign({ [keyOf(table)]: id }, data), { onConflict: keyOf(table), ignoreDuplicates: true });
+        // select() hands back only the rows actually inserted. When the row already existed nothing
+        // changed, so no refresh is requested (several routines call create() on every load, and
+        // refreshing for those would keep the screen re-reading forever).
+        const { data: inserted, error } = await supabaseClient.from(table).upsert(Object.assign({ [keyOf(table)]: id }, data), { onConflict: keyOf(table), ignoreDuplicates: true }).select(keyOf(table));
         if (error) throw error;
+        if (inserted && inserted.length) notifyChanged(table);
       },
 
       async delete() {
         const { error } = await supabaseClient.from(table).delete().eq(keyOf(table), id);
         if (error) throw error;
+        notifyChanged(table);
       },
 
       onSnapshot(onNext, onError) {
@@ -151,7 +177,8 @@ function createFirestoreShim(supabaseClient) {
             if (status === 'SUBSCRIBED') deliver();
             else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') { if (onError) onError(new Error('Realtime subscription failed: ' + status)); }
           });
-        return () => { cancelled = true; supabaseClient.removeChannel(channel); };
+        const unregister = registerLive(table, deliver);
+        return () => { cancelled = true; unregister(); supabaseClient.removeChannel(channel); };
       },
     };
   }
@@ -166,6 +193,7 @@ function createFirestoreShim(supabaseClient) {
         const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(16).slice(2));
         const { error } = await supabaseClient.from(table).insert(Object.assign({ id }, data));
         if (error) throw error;
+        notifyChanged(table);
         return { id };
       },
 

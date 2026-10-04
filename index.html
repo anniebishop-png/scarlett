@@ -1763,7 +1763,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-firestore-shim.js?v=2"></script>
+<script src="supabase-firestore-shim.js?v=3"></script>
 
 <script>
 (function(){
@@ -4544,6 +4544,7 @@
     enteringEl.style.display = 'block';
     enteringEl.classList.remove('view-enter'); void enteringEl.offsetWidth; enteringEl.classList.add('view-enter');
     currentAppPage = target;
+    try{ localStorage.setItem('scarlett.page', target); }catch(e){}
     document.querySelectorAll('[data-nav]').forEach(btn => {
       btn.classList.toggle('active-nav', btn.getAttribute('data-nav') === target);
     });
@@ -5919,7 +5920,7 @@
   document.getElementById('hsSnoozeOverlay').addEventListener('click', e => { if(e.target.id === 'hsSnoozeOverlay') closeHsSnooze(); });
 
   document.querySelectorAll('#hustleViewTabs button').forEach(btn => {
-    btn.addEventListener('click', () => { hustleView = btn.getAttribute('data-view'); renderHustleAll(); });
+    btn.addEventListener('click', () => { hustleView = btn.getAttribute('data-view'); try{ localStorage.setItem('scarlett.hustleView', hustleView); }catch(e){} renderHustleAll(); });
   });
 
   function renderHustleDisciplineList(){
@@ -6475,7 +6476,7 @@
   document.getElementById('dSnoozeOverlay').addEventListener('click', e => { if(e.target.id === 'dSnoozeOverlay') closeDSnooze(); });
 
   document.querySelectorAll('#deliveryViewTabs button').forEach(btn => {
-    btn.addEventListener('click', () => { deliveryView = btn.getAttribute('data-dview'); dShowAllAttention = false; renderDelivery(); });
+    btn.addEventListener('click', () => { deliveryView = btn.getAttribute('data-dview'); dShowAllAttention = false; try{ localStorage.setItem('scarlett.deliveryView', deliveryView); }catch(e){} renderDelivery(); });
   });
 
   function dOwnerPool(){
@@ -7149,6 +7150,14 @@
     subscribeContractClients();
     // Global so the board, calendar and Client Ops all know which shows are archived.
     subscribeArchivedShows();
+    // After a refresh, go back to the page (and Delivery / Hustle view) you were on, not Home.
+    try{
+      const dv = localStorage.getItem('scarlett.deliveryView'), hv = localStorage.getItem('scarlett.hustleView');
+      if(['tracker','mine','reports'].includes(dv)) deliveryView = dv;
+      if(['pipeline','myweek','reports'].includes(hv)) hustleView = hv;
+      const pg = localStorage.getItem('scarlett.page');
+      if(pg && pg !== 'board' && APP_PAGES[pg]) switchApp(pg);
+    }catch(e){}
   }
 
   supabaseClient.auth.onAuthStateChange((event, session) => {
