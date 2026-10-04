@@ -168,6 +168,51 @@
   .ops-del-btn:hover{opacity:1; color:var(--st-blocked-text);}
   @media (max-width:640px){ .ops-row{grid-template-columns:1fr 1fr; grid-template-areas:"kind action" "event event" "date status"; row-gap:6px;} .ops-row .ops-kind{grid-area:kind;} .ops-row .oevent{grid-area:event;} .ops-row .odate{grid-area:date;} .ops-row .ops-status{grid-area:status;} .ops-row .ops-actions{grid-area:action; justify-self:end;} }
 
+  /* ---------- Archive ---------- */
+  .arc-search{font:inherit; font-size:12.5px; padding:8px 11px; border-radius:9px; border:1px solid var(--hairline-strong); background:var(--surface); color:var(--ink); min-width:190px; flex:1 1 190px; max-width:280px;}
+  .arc-search:focus-visible, .arc-row:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+  .arc-controls-right{display:flex; gap:8px; margin-left:auto; flex-wrap:wrap;}
+  .arc-setup{background:var(--surface); border:1px solid var(--hairline); border-left:4px solid var(--gold); border-radius:14px; padding:18px 20px; font-size:13px; line-height:1.55; color:var(--ink);}
+  .arc-setup h3{margin:0 0 6px; font-family:var(--font-display); font-size:15px;}
+  .arc-setup ol{margin:8px 0 0; padding-left:20px;}
+  .arc-setup pre{background:var(--surface-2); border:1px solid var(--hairline); border-radius:9px; padding:10px 12px; font-size:12px; white-space:pre-wrap; word-break:break-word; margin:8px 0;}
+  .arc-season-head{display:flex; align-items:baseline; gap:12px; margin:22px 0 10px;}
+  .arc-season-head:first-child{margin-top:4px;}
+  .arc-season-head h3{margin:0; font-family:var(--font-display); font-size:26px; font-weight:800; color:var(--navy); letter-spacing:-.01em; font-variant-numeric:tabular-nums;}
+  :root[data-theme="dark"] .arc-season-head h3{color:var(--gold);}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .arc-season-head h3{color:var(--gold);}}
+  .arc-season-head span{color:var(--ink-muted); font-size:12.5px; font-weight:600;}
+  .arc-row{display:grid; grid-template-columns:96px 1fr 150px auto; gap:12px; align-items:center; padding:11px 16px; border-bottom:1px solid var(--hairline); font-size:12.5px; cursor:pointer;}
+  .arc-row:hover{background:var(--surface-2);}
+  .arc-item:last-child .arc-row, .arc-item.open .arc-row{border-bottom:none;}
+  .arc-item.open{border-bottom:1px solid var(--hairline);}
+  .arc-item:last-child.open{border-bottom:none;}
+  .arc-date{color:var(--ink-muted); font-size:11.5px; font-variant-numeric:tabular-nums;}
+  .arc-name{font-weight:700; color:var(--ink); display:flex; flex-wrap:wrap; align-items:center; gap:6px;}
+  .arc-clients{font-weight:500; color:var(--ink-muted); font-size:11.5px;}
+  .arc-disc{font-size:10px; font-weight:800; border-radius:999px; padding:2px 7px; background:var(--surface-2); color:var(--ink-2);}
+  .arc-disc.eventing{background:#E3E9FB; color:#2a3a8c;}
+  :root[data-theme="dark"] .arc-disc.eventing{background:#2a3a6c; color:#c9d4ff;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .arc-disc.eventing{background:#2a3a6c; color:#c9d4ff;}}
+  .arc-progress{display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--ink-muted); font-variant-numeric:tabular-nums;}
+  .arc-bar{height:5px; border-radius:99px; background:var(--surface-2); overflow:hidden; border:1px solid var(--hairline);}
+  .arc-bar i{display:block; height:100%; background:var(--st-done-dot);}
+  .arc-restore{border:1px solid var(--hairline-strong); background:none; color:var(--ink); padding:5px 10px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;}
+  .arc-restore:hover{border-color:var(--navy);}
+  .arc-detail{padding:4px 16px 16px 124px; display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:18px;}
+  .arc-detail h4{margin:8px 0 6px; font-size:11.5px; font-weight:800; color:var(--ink-2);}
+  .arc-task{display:grid; grid-template-columns:58px 1fr auto; gap:8px; align-items:center; padding:5px 0; border-bottom:1px dashed var(--hairline); font-size:12px;}
+  .arc-task:last-child{border-bottom:none;}
+  .arc-task .pill{font-size:10.5px; padding:3px 8px;}
+  .arc-note{font-size:12px; line-height:1.5; color:var(--ink); white-space:pre-wrap; margin:0 0 8px;}
+  .arc-meta{font-size:11px; color:var(--ink-muted); margin-top:10px;}
+  .arc-muted{color:var(--ink-muted); font-size:12px;}
+  @media (max-width:640px){
+    .arc-row{grid-template-columns:1fr auto; grid-template-areas:"name action" "date progress"; row-gap:6px;}
+    .arc-row .arc-name{grid-area:name;} .arc-row .arc-date{grid-area:date;} .arc-row .arc-progress{grid-area:progress;} .arc-row .arc-actions{grid-area:action;}
+    .arc-detail{padding:4px 16px 16px; grid-template-columns:1fr;}
+  }
+
   /* ---------- Podcast schedule ---------- */
   .pc-row{display:flex; flex-direction:column; gap:7px; padding:14px 16px; border-bottom:1px solid var(--hairline); font-size:12.5px; cursor:pointer;}
   .pc-row:last-child{border-bottom:none;}
@@ -274,6 +319,8 @@
   .show-chip .client-badge{background:var(--gold); color:#3A2A06; border-radius:999px; padding:2px 7px; font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.03em;}
   .chip-debrief{border:1px solid currentColor; background:none; opacity:.6; color:inherit; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.02em; border-radius:999px; padding:2px 7px; cursor:pointer;}
   .chip-debrief:hover{opacity:1;}
+  .chip-archive{border:1px solid currentColor; background:none; opacity:.6; color:inherit; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.02em; border-radius:999px; padding:2px 7px; cursor:pointer;}
+  .chip-archive:hover{opacity:1;}
   .chip-debrief.has-notes{opacity:1; border-color:transparent; background:rgba(0,0,0,.12);}
   .shows-hint{font-size:10.5px; color:var(--ink-muted); margin-top:7px;}
   .other-shows-toggle{border:none; background:none; color:var(--ink-muted); font-weight:700; font-size:11.5px; cursor:pointer; display:flex; align-items:center; gap:5px; padding:0; margin-top:8px;}
@@ -689,6 +736,7 @@
       <button class="header-btn" id="podcastBtn" data-nav="podcast">Podcast</button>
       <button class="header-btn" id="hustleBtn" data-nav="hustle">Hustle</button>
       <button class="header-btn" id="reportsBtn" data-nav="reports">Reports</button>
+      <button class="header-btn" id="archiveBtn" data-nav="archive">Archive</button>
     </div>
     <div class="theme-toggle" id="themeToggle" role="group" aria-label="Theme">
       <button type="button" data-theme-choice="auto" title="Match your device">Auto</button>
@@ -775,6 +823,7 @@
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="archive">Archive</button>
     </div>
     <h2>Delivered report</h2>
   </div>
@@ -803,6 +852,7 @@
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="archive">Archive</button>
     </div>
     <h2>Client Ops</h2>
   </div>
@@ -825,6 +875,7 @@
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="archive">Archive</button>
     </div>
     <h2>Show Calendar</h2>
   </div>
@@ -841,6 +892,43 @@
   <footer class="note">Shows are grouped by their event week. Click a show to flag it as a client, add a debrief, or remove it — same as the weekly board.</footer>
 </div>
 
+<div class="app" id="archiveApp" style="display:none;">
+  <div class="report-header">
+    <div class="global-nav">
+      <button class="global-nav-btn" data-nav="board">Home</button>
+      <button class="global-nav-btn" data-nav="calendar">Calendar</button>
+      <button class="global-nav-btn" data-nav="ops">Client Ops</button>
+      <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="hustle">Hustle</button>
+      <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="archive">Archive</button>
+    </div>
+    <h2>Archive</h2>
+  </div>
+  <div id="arcSetup" hidden></div>
+  <div id="arcMain">
+    <div class="report-controls">
+      <div class="segmented" id="arcDiscTabs">
+        <button data-disc="all" class="active">All</button>
+        <button data-disc="eventing">Eventing</button>
+        <button data-disc="jumping">Jumping</button>
+        <button data-disc="other">Other</button>
+      </div>
+      <select id="arcSeason" aria-label="Season"><option value="">All seasons</option></select>
+      <input type="search" class="arc-search" id="arcSearch" placeholder="Search shows or clients" aria-label="Search the archive">
+      <label class="checkbox-row" style="margin:0;"><input type="checkbox" id="arcClientOnly" checked> <span style="font-size:12.5px;font-weight:600;color:var(--ink);">Client shows only</span></label>
+      <div class="arc-controls-right">
+        <button class="btn-ghost" id="arcExportBtn">Export CSV</button>
+        <button class="btn-primary" id="arcBulkBtn">Archive past shows</button>
+      </div>
+    </div>
+    <div class="report-summary" id="arcSummary"></div>
+    <div id="arcList"></div>
+  </div>
+  <footer class="note">Archived shows are kept in full, with every task, debrief and client op, but they come off the board and calendar. Restore a show to put it back.</footer>
+</div>
+
 <div class="app" id="podcastApp" style="display:none;">
   <div class="report-header">
     <div class="global-nav">
@@ -851,6 +939,7 @@
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="archive">Archive</button>
     </div>
     <h2>Podcast Schedule</h2>
   </div>
@@ -876,6 +965,7 @@
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="archive">Archive</button>
     </div>
     <h2>Hustle Pipeline</h2>
   </div>
@@ -901,6 +991,7 @@
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="archive">Archive</button>
     </div>
     <h2>Delivery Tracker</h2>
   </div>
@@ -1487,6 +1578,7 @@
   // ---------------- state ----------------
   let db = null;
   let canEdit = true; // optimistic; flips false if db unavailable
+  let currentUserEmail = null; // signed-in email, stamped on archive actions
   let currentUserName = null; // TEAM_ROSTER name matched from the signed-in email, for "Mine only" filtering
   function nameFromEmail(email){
     if(!email) return null;
@@ -2308,6 +2400,7 @@
       ${escapeHtml(s.eventName)}
       ${s.discipline?`<span class="disc ${isJumpingText(s.discipline)?'disc-jumping':(isEventingText(s.discipline)?'disc-eventing':'')}">${escapeHtml(s.discipline)}</span>`:''}
       ${(isClient && isPast)?`<button class="chip-debrief ${hasNotes?'has-notes':''}" data-debrief-show="${s.id}">${hasNotes?'Debrief ✓':'Debrief'}</button>`:''}
+      ${(canEdit && isPast && archiveReady)?`<button class="chip-archive" data-archive-show="${s.id}" title="Move this show to the Archive">Archive</button>`:''}
       ${canEdit?`<button class="chip-x" data-remove-show="${s.id}">×</button>`:''}
     </span>`;
   }
@@ -2367,7 +2460,7 @@
     if(!canEdit) return;
     document.querySelectorAll('#showsChips .show-chip, #otherShowsChips .show-chip').forEach(chip => {
       chip.addEventListener('click', (e) => {
-        if(e.target.closest('[data-remove-show], [data-debrief-show]')) return;
+        if(e.target.closest('[data-remove-show], [data-debrief-show], [data-archive-show]')) return;
         toggleShowClient(chip.getAttribute('data-show'));
       });
     });
@@ -2376,6 +2469,9 @@
         e.stopPropagation();
         confirmDeleteShow(btn.getAttribute('data-remove-show'), true);
       });
+    });
+    document.querySelectorAll('#showsChips [data-archive-show], #otherShowsChips [data-archive-show]').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); confirmArchiveShows([btn.getAttribute('data-archive-show')]); });
     });
   }
 
@@ -2739,7 +2835,10 @@
     opts = opts || {};
     document.getElementById('confirmDeleteTitle').textContent = opts.title || 'Are you sure?';
     document.getElementById('confirmDeleteBody').textContent = message;
-    document.getElementById('confirmDeleteYesBtn').textContent = opts.confirmLabel || 'Delete';
+    const yesBtn = document.getElementById('confirmDeleteYesBtn');
+    yesBtn.textContent = opts.confirmLabel || 'Delete';
+    // Non-destructive confirms (archive, restore) get the normal primary button, not the red one.
+    yesBtn.className = opts.safe ? 'btn-primary' : 'btn-danger';
     confirmDeleteAction = onConfirm;
     document.getElementById('confirmDeleteOverlay').hidden = false;
     document.getElementById('confirmDeleteNoBtn').focus();
@@ -3710,7 +3809,7 @@
     if(unsubShows) unsubShows();
     if(!db){ renderChips(); return; }
     unsubShows = showsCol().where('weekId','==', currentWeekId).onSnapshot(snap => {
-      showsWeek = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+      showsWeek = snap.docs.map(d => Object.assign({id:d.id}, d.data())).filter(s => !s.archivedAt);
       showsWeek.sort((a,b) => (a.eventName||'').localeCompare(b.eventName||''));
       renderChips();
       fixFixedDayTaskDates();
@@ -3723,7 +3822,7 @@
     if(unsubUpcomingShows) unsubUpcomingShows();
     if(!db) return;
     unsubUpcomingShows = showsCol().where('weekId','>=', currentWeekId).onSnapshot(snap => {
-      upcomingShows = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+      upcomingShows = snap.docs.map(d => Object.assign({id:d.id}, d.data())).filter(s => !s.archivedAt);
       upcomingShows.sort((a,b) => (a.weekId||'').localeCompare(b.weekId||'') || (a.eventName||'').localeCompare(b.eventName||''));
       fixFixedDayTaskDates();
     }, () => {});
@@ -3984,7 +4083,7 @@
     if(!db){ calendarShows = []; renderCalendarList(); return; }
     const {gridStart, gridEnd} = calGridRange();
     unsubCalendarShows = showsCol().where('weekId','>=',gridStart).where('weekId','<=',gridEnd).onSnapshot(snap => {
-      calendarShows = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+      calendarShows = snap.docs.map(d => Object.assign({id:d.id}, d.data())).filter(s => !s.archivedAt);
       renderCalendarList();
     }, () => { calendarShows = []; renderCalendarList(); });
   }
@@ -4016,7 +4115,7 @@
   function attachCalendarChipHandlers(){
     document.querySelectorAll('#calList .show-chip').forEach(chip => {
       chip.addEventListener('click', (e) => {
-        if(e.target.closest('[data-remove-show], [data-debrief-show]')) return;
+        if(e.target.closest('[data-remove-show], [data-debrief-show], [data-archive-show]')) return;
         if(!canEdit) return;
         toggleShowClient(chip.getAttribute('data-show'));
       });
@@ -4026,6 +4125,9 @@
         e.stopPropagation();
         openDebriefModal(btn.getAttribute('data-debrief-show'));
       });
+    });
+    document.querySelectorAll('#calList [data-archive-show]').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); confirmArchiveShows([btn.getAttribute('data-archive-show')]); });
     });
     document.querySelectorAll('#calList [data-remove-show]').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -4163,6 +4265,7 @@
     // page is open — syncEpisodeToDelivery/syncTaskToDelivery (podcast/task saves, which can
     // happen from any page) need it to know which clients are set up, not only visits to this page.
     delivery: { el: 'deliveryApp', onEnter: subscribeDelivery, onLeave: unsubscribeDelivery },
+    archive:  { el: 'archiveApp',  onEnter: enterArchive },
   };
   let currentAppPage = 'board';
   function switchApp(target){
@@ -4192,6 +4295,328 @@
     renderCalMonthLabel();
     subscribeCalendarShows();
   });
+
+  // ---------------- archive ----------------
+  // Archiving is a flag on the show row ("archivedAt" + "archivedBy" columns on the shows table),
+  // never a move or a delete: the show's tasks, delivery-tracker items, client ops and debrief all
+  // stay exactly where they are. An archived show just drops off the board chips, the calendar
+  // and the Add task Event picker, and its finished client ops drop off Client Ops. Restoring
+  // clears the flag. If the columns haven't been added in Supabase yet, the query below errors,
+  // archiveReady stays false, the Archive buttons stay hidden, and the Archive page shows setup steps.
+  const ARCHIVE_SQL = 'alter table public.shows\n  add column if not exists "archivedAt" text,\n  add column if not exists "archivedBy" text;';
+  let archiveReady = false;
+  let archiveChecked = false;
+  let archivedShows = [];
+  let archivedShowIds = new Set();
+  let unsubArchived = null;
+  let arcDisc = 'all';
+  let arcExpanded = new Set();
+  const arcTaskCache = {}; // showId -> tasks[] (fetched lazily; archived shows don't change much)
+  let arcFetching = new Set();
+
+  function subscribeArchivedShows(){
+    if(unsubArchived) unsubArchived();
+    if(!db) return;
+    unsubArchived = showsCol().where('archivedAt','>=','2000').onSnapshot(snap => {
+      archivedShows = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+      archivedShowIds = new Set(archivedShows.map(s => s.id));
+      const firstTime = !archiveReady;
+      archiveReady = true; archiveChecked = true;
+      if(firstTime){ renderChips(); if(currentAppPage === 'calendar') renderCalendarList(); }
+      if(currentAppPage === 'ops') renderOps();
+      if(currentAppPage === 'archive') enterArchive();
+    }, () => {
+      archiveReady = false; archiveChecked = true;
+      if(currentAppPage === 'archive') renderArchive();
+    });
+  }
+
+  function discKey(s){
+    if(isEventingText(s.discipline)) return 'eventing';
+    if(isJumpingText(s.discipline)) return 'jumping';
+    return 'other';
+  }
+  function seasonOf(s){ return (s.weekId || '').slice(0,4) || 'Undated'; }
+
+  function fetchArchiveTasks(showIds){
+    const todo = showIds.filter(id => !arcTaskCache[id] && !arcFetching.has(id));
+    if(!todo.length || !db) return Promise.resolve();
+    todo.forEach(id => arcFetching.add(id));
+    // Small batches so a whole season doesn't fire dozens of requests at once.
+    const batches = [];
+    for(let i = 0; i < todo.length; i += 6) batches.push(todo.slice(i, i + 6));
+    return batches.reduce((p, batch) => p.then(() => Promise.all(batch.map(id =>
+      tasksCol().where('showId','==',id).get()
+        .then(snap => { arcTaskCache[id] = snap.docs.map(d => Object.assign({id:d.id}, d.data())); })
+        .catch(() => { arcTaskCache[id] = []; })
+        .finally(() => arcFetching.delete(id))
+    )).then(() => { if(currentAppPage === 'archive') renderArchive(); })), Promise.resolve());
+  }
+
+  function enterArchive(){
+    renderArchive();
+    fetchArchiveTasks(filteredArchive().map(s => s.id));
+  }
+
+  function filteredArchive(){
+    const season = document.getElementById('arcSeason').value;
+    const q = document.getElementById('arcSearch').value.trim().toLowerCase();
+    const clientOnly = document.getElementById('arcClientOnly').checked;
+    return archivedShows.filter(s => {
+      if(arcDisc !== 'all' && discKey(s) !== arcDisc) return false;
+      if(season && seasonOf(s) !== season) return false;
+      if(clientOnly && !(s.clients||[]).length) return false;
+      if(q){
+        const hay = [s.eventName, (s.clients||[]).join(' '), s.discipline].join(' ').toLowerCase();
+        if(!hay.includes(q)) return false;
+      }
+      return true;
+    }).sort((a,b) => (b.weekId||'').localeCompare(a.weekId||'') || (a.eventName||'').localeCompare(b.eventName||''));
+  }
+
+  function refreshArchiveSeasons(){
+    const sel = document.getElementById('arcSeason');
+    const keep = sel.value;
+    const seasons = [...new Set(archivedShows.map(seasonOf))].sort().reverse();
+    sel.innerHTML = '<option value="">All seasons</option>' + seasons.map(y => `<option value="${escapeAttr(y)}">${escapeHtml(y)}</option>`).join('');
+    sel.value = seasons.includes(keep) ? keep : '';
+  }
+
+  function renderArchiveSetup(){
+    const el = document.getElementById('arcSetup');
+    el.innerHTML = `<div class="arc-setup">
+      <h3>One setup step before the Archive works</h3>
+      The shows table needs two new columns to remember which shows are archived. Add them once in Supabase:
+      <ol>
+        <li>Open your Scarlett project in Supabase and go to the SQL Editor.</li>
+        <li>Paste this in and press Run:<pre>${escapeHtml(ARCHIVE_SQL)}</pre></li>
+        <li>Come back here and refresh the page.</li>
+      </ol>
+      <div style="margin-top:10px;"><button class="btn-ghost" id="arcCopySqlBtn">Copy SQL</button></div>
+    </div>`;
+    const btn = document.getElementById('arcCopySqlBtn');
+    btn.addEventListener('click', () => {
+      (navigator.clipboard ? navigator.clipboard.writeText(ARCHIVE_SQL) : Promise.reject())
+        .then(() => { btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = 'Copy SQL'; }, 1800); })
+        .catch(() => { btn.textContent = 'Select the text above to copy'; });
+    });
+  }
+
+  function arcProgress(id){
+    const list = arcTaskCache[id];
+    if(!list) return {loaded:false};
+    const total = list.length;
+    const done = list.filter(t => t.status === 'done').length;
+    return {loaded:true, total, done};
+  }
+
+  function renderArchive(){
+    const setupEl = document.getElementById('arcSetup');
+    const mainEl = document.getElementById('arcMain');
+    if(!archiveChecked){
+      setupEl.hidden = true; mainEl.hidden = false;
+      document.getElementById('arcSummary').innerHTML = '';
+      document.getElementById('arcList').innerHTML = '<div class="report-empty">Loading the archive…</div>';
+      return;
+    }
+    if(!archiveReady){
+      setupEl.hidden = false; mainEl.hidden = true;
+      renderArchiveSetup();
+      return;
+    }
+    setupEl.hidden = true; mainEl.hidden = false;
+    document.getElementById('arcBulkBtn').style.display = canEdit ? '' : 'none';
+    refreshArchiveSeasons();
+
+    const rows = filteredArchive();
+    const listEl = document.getElementById('arcList');
+    const summaryEl = document.getElementById('arcSummary');
+
+    let tasksTotal = 0, tasksDone = 0, allLoaded = true;
+    rows.forEach(s => { const p = arcProgress(s.id); if(!p.loaded){ allLoaded = false; return; } tasksTotal += p.total; tasksDone += p.done; });
+    const debriefs = rows.filter(s => s.postmortem && (s.postmortem.worked || s.postmortem.change)).length;
+    summaryEl.innerHTML = `
+      <div class="report-stat"><div class="num">${rows.length}</div><div class="lbl">Shows</div></div>
+      <div class="report-stat"><div class="num">${allLoaded ? tasksDone + '/' + tasksTotal : '…'}</div><div class="lbl">Deliverables done</div></div>
+      <div class="report-stat"><div class="num">${debriefs}</div><div class="lbl">Debriefs written</div></div>`;
+
+    if(!archivedShows.length){
+      listEl.innerHTML = `<div class="report-empty">Nothing archived yet. Use “Archive past shows” above to file away finished shows in one go, or the Archive button on any past show on the board or calendar.</div>`;
+      return;
+    }
+    if(!rows.length){
+      listEl.innerHTML = `<div class="report-empty">No archived shows match these filters. Try “All” or clear the search.</div>`;
+      return;
+    }
+
+    const bySeason = new Map();
+    rows.forEach(s => { const y = seasonOf(s); if(!bySeason.has(y)) bySeason.set(y, []); bySeason.get(y).push(s); });
+
+    listEl.innerHTML = [...bySeason.entries()].map(([season, shows]) => {
+      const clientCount = shows.filter(s => (s.clients||[]).length).length;
+      return `<div class="arc-season-head"><h3>${escapeHtml(season)}</h3><span>${shows.length} show${shows.length===1?'':'s'}, ${clientCount} for clients</span></div>
+      <div class="report-group">${shows.map(arcItemHtml).join('')}</div>`;
+    }).join('');
+
+    listEl.querySelectorAll('.arc-row').forEach(row => {
+      const toggle = () => {
+        const id = row.getAttribute('data-arc');
+        if(arcExpanded.has(id)) arcExpanded.delete(id); else { arcExpanded.add(id); fetchArchiveTasks([id]); }
+        renderArchive();
+        const again = document.querySelector(`.arc-row[data-arc="${CSS.escape(id)}"]`);
+        if(again) again.focus();
+      };
+      row.addEventListener('click', (e) => { if(e.target.closest('[data-restore]')) return; toggle(); });
+      row.addEventListener('keydown', (e) => { if(e.target !== row) return; if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); } });
+    });
+    listEl.querySelectorAll('[data-restore]').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); restoreShow(btn.getAttribute('data-restore')); });
+    });
+  }
+
+  function arcItemHtml(s){
+    const open = arcExpanded.has(s.id);
+    const p = arcProgress(s.id);
+    const dk = discKey(s);
+    const clients = (s.clients||[]).join(', ');
+    let progressHtml;
+    if(!p.loaded) progressHtml = '<span>Loading…</span>';
+    else if(!p.total) progressHtml = '<span>No tasks</span>';
+    else progressHtml = `<span>${p.done} of ${p.total} done</span><span class="arc-bar"><i style="width:${Math.round(100*p.done/p.total)}%"></i></span>`;
+    return `<div class="arc-item ${open?'open':''}">
+      <div class="arc-row" data-arc="${escapeAttr(s.id)}" tabindex="0" role="button" aria-expanded="${open}">
+        <span class="arc-date">${escapeHtml(s.weekId ? fmtWeekRange(s.weekId) : '—')}</span>
+        <span class="arc-name">${escapeHtml(s.eventName||'Untitled show')}
+          ${s.discipline?`<span class="arc-disc ${dk}">${escapeHtml(s.discipline)}</span>`:''}
+          ${clients?`<span class="arc-clients">${escapeHtml(clients)}</span>`:''}</span>
+        <span class="arc-progress">${progressHtml}</span>
+        <span class="arc-actions">${canEdit?`<button class="arc-restore" data-restore="${escapeAttr(s.id)}">Restore</button>`:''}</span>
+      </div>
+      ${open ? arcDetailHtml(s) : ''}
+    </div>`;
+  }
+
+  function arcDetailHtml(s){
+    const list = arcTaskCache[s.id];
+    let tasksHtml;
+    if(!list) tasksHtml = '<div class="arc-muted">Loading tasks…</div>';
+    else if(!list.length) tasksHtml = '<div class="arc-muted">No tasks were linked to this show.</div>';
+    else tasksHtml = list.slice().sort((a,b) => (a.dateISO||'').localeCompare(b.dateISO||'') || (a.client||'').localeCompare(b.client||'') || (a.title||'').localeCompare(b.title||'')).map(t => {
+      const st = STATUS_META[t.status] ? t.status : 'notstarted';
+      const owners = (t.owners||[]).join(', ');
+      return `<div class="arc-task">
+        <span class="arc-date">${escapeHtml(t.dateISO ? fmtDayLabel(t.dateISO) : '—')}</span>
+        <span>${escapeHtml(t.title||'')}${(s.clients||[]).length > 1 && t.client ? ` <span class="arc-clients">${escapeHtml(t.client)}</span>` : ''}${owners?` <span class="arc-clients">${escapeHtml(owners)}</span>`:''}</span>
+        <span class="pill ${st}"><span class="dot"></span>${escapeHtml(STATUS_META[st].label)}</span>
+      </div>`;
+    }).join('');
+    const pm = s.postmortem || {};
+    const debrief = (pm.worked || pm.change)
+      ? `${pm.worked?`<h4>What worked</h4><p class="arc-note">${escapeHtml(pm.worked)}</p>`:''}${pm.change?`<h4>What to change</h4><p class="arc-note">${escapeHtml(pm.change)}</p>`:''}`
+      : '<h4>Debrief</h4><div class="arc-muted">No debrief was written for this show.</div>';
+    const when = s.archivedAt ? new Date(s.archivedAt).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : '';
+    const who = s.archivedBy ? (nameFromEmail(s.archivedBy) || s.archivedBy) : '';
+    return `<div class="arc-detail">
+      <div><h4>Deliverables</h4>${tasksHtml}</div>
+      <div>${debrief}<div class="arc-meta">Archived${when?` on ${escapeHtml(when)}`:''}${who?` by ${escapeHtml(who)}`:''}</div></div>
+    </div>`;
+  }
+
+  function setArchived(ids, archived){
+    const stamp = archived ? {archivedAt: new Date().toISOString(), archivedBy: currentUserEmail || ''} : {archivedAt: null, archivedBy: null};
+    return Promise.all(ids.map(id => showsCol().doc(id).update(stamp).then(() => true).catch(() => false)))
+      .then(results => {
+        const failed = results.filter(ok => !ok).length;
+        if(failed) alert(`${failed} show${failed===1?'':'s'} couldn't be ${archived?'archived':'restored'}. Check you're signed in and try again.`);
+      });
+  }
+
+  // Archive one or more shows after a confirm that says exactly what happens, including any
+  // client ops that are still open (those stay on Client Ops until they're marked done).
+  function confirmArchiveShows(ids, opts){
+    opts = opts || {};
+    if(!canEdit || !db || !ids.length) return;
+    opsCol().get().then(snap => {
+      const idSet = new Set(ids);
+      const openOps = snap.docs.map(d => d.data()).filter(r => idSet.has(r.showId) && r.status !== 'done').length;
+      const name = ids.length === 1 ? (opts.name || showNameById(ids[0])) : '';
+      const what = ids.length === 1 ? quoted(name, 'this show') : (opts.label || `${ids.length} shows`);
+      let msg = `Archive ${what}? ${ids.length===1?'It moves':'They move'} off the board and calendar into the Archive. Nothing is deleted, and you can restore ${ids.length===1?'it':'any of them'} at any time.`;
+      if(openOps) msg += ` ${openOps} client op${openOps===1?' is':'s are'} still open and will stay on Client Ops until marked done.`;
+      confirmDelete(msg, () => setArchived(ids, true), {title: ids.length===1 ? 'Archive show' : 'Archive shows', confirmLabel: 'Archive', safe: true});
+    }).catch(() => {
+      confirmDelete(`Archive ${ids.length===1?'this show':ids.length+' shows'}? Nothing is deleted, and you can restore at any time.`, () => setArchived(ids, true), {title:'Archive', confirmLabel:'Archive', safe: true});
+    });
+  }
+
+  function restoreShow(id){
+    const s = archivedShows.find(x => x.id === id);
+    confirmDelete(`Restore ${quoted(s && s.eventName, 'this show')}? It goes back onto the board and calendar for its week.`, () => {
+      arcExpanded.delete(id);
+      setArchived([id], false);
+    }, {title:'Restore show', confirmLabel:'Restore', safe: true});
+  }
+
+  function bulkArchivePast(){
+    if(!canEdit || !db) return;
+    const btn = document.getElementById('arcBulkBtn');
+    btn.disabled = true;
+    const clientOnly = document.getElementById('arcClientOnly').checked;
+    showsCol().where('weekId','<',CURRENT_WEEK).get().then(snap => {
+      const past = snap.docs.map(d => Object.assign({id:d.id}, d.data()))
+        .filter(s => !s.archivedAt)
+        .filter(s => arcDisc === 'all' || discKey(s) === arcDisc)
+        .filter(s => !clientOnly || (s.clients||[]).length);
+      btn.disabled = false;
+      const discLabel = arcDisc === 'all' ? '' : (arcDisc === 'other' ? 'other-discipline ' : arcDisc.charAt(0).toUpperCase() + arcDisc.slice(1) + ' ');
+      if(!past.length){
+        confirmDelete(`There are no past ${discLabel}${clientOnly?'client ':''}shows left to archive.`, () => {}, {title:'Nothing to archive', confirmLabel:'OK', safe: true});
+        return;
+      }
+      const label = `${past.length} past ${discLabel}${clientOnly?'client ':''}show${past.length===1?'':'s'} (everything before this week)`;
+      confirmArchiveShows(past.map(s => s.id), {label, name: past.length === 1 ? past[0].eventName : ''});
+    }).catch(() => { btn.disabled = false; alert("Couldn't load past shows. Check your connection and try again."); });
+  }
+
+  function exportArchiveCSV(){
+    const rows = filteredArchive();
+    if(!rows.length) return;
+    const btn = document.getElementById('arcExportBtn');
+    const original = btn.textContent;
+    btn.textContent = 'Preparing…'; btn.disabled = true;
+    fetchArchiveTasks(rows.map(s => s.id)).then(() => {
+      const header = ['Season','Week of','Event','Discipline','Clients','Task','Task client','Date','Owners','Status','What worked','What to change','Archived on'];
+      const lines = [header.join(',')];
+      const cell = c => '"' + String(c==null?'':c).replace(/"/g,'""') + '"';
+      rows.forEach(s => {
+        const pm = s.postmortem || {};
+        const base = [seasonOf(s), s.weekId||'', s.eventName||'', s.discipline||'', (s.clients||[]).join(' / ')];
+        const tail = [pm.worked||'', pm.change||'', (s.archivedAt||'').slice(0,10)];
+        const list = arcTaskCache[s.id] || [];
+        if(!list.length) lines.push(base.concat(['','','','','']).concat(tail).map(cell).join(','));
+        list.forEach(t => lines.push(base.concat([t.title||'', t.client||'', t.dateISO||'', (t.owners||[]).join(' / '), (STATUS_META[t.status]||{}).label || t.status || '']).concat(tail).map(cell).join(',')));
+      });
+      const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `scarlett-archive${arcDisc!=='all'?'-'+arcDisc:''}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }).finally(() => { btn.textContent = original; btn.disabled = false; });
+  }
+
+  document.querySelectorAll('#arcDiscTabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      arcDisc = btn.getAttribute('data-disc');
+      document.querySelectorAll('#arcDiscTabs button').forEach(b => b.classList.toggle('active', b === btn));
+      enterArchive();
+    });
+  });
+  document.getElementById('arcSeason').addEventListener('change', enterArchive);
+  document.getElementById('arcClientOnly').addEventListener('change', enterArchive);
+  document.getElementById('arcSearch').addEventListener('input', renderArchive);
+  document.getElementById('arcBulkBtn').addEventListener('click', bulkArchivePast);
+  document.getElementById('arcExportBtn').addEventListener('click', exportArchiveCSV);
 
   // ---------------- client ops page ----------------
   const OPS_KIND_LABEL = {kickoff:'Kickoff', reporting:'Reporting', invoicing:'Invoicing'};
@@ -4238,13 +4663,15 @@
     const clientFilter = document.getElementById('opsClientFilter').value;
     const showDone = document.getElementById('opsShowDone').checked;
 
-    let rows = opsRows.slice();
+    // Finished ops for an archived show live in the Archive now; anything still open stays here.
+    const liveOps = opsRows.filter(r => !(r.status === 'done' && r.showId && archivedShowIds.has(r.showId)));
+    let rows = liveOps.slice();
     if(clientFilter) rows = rows.filter(r => r.client === clientFilter);
     if(!showDone) rows = rows.filter(r => r.status !== 'done');
 
-    const pendingCount = opsRows.filter(r=>r.status==='pending').length;
-    const blockedCount = opsRows.filter(r=>r.status==='blocked').length;
-    const doneCount = opsRows.filter(r=>r.status==='done').length;
+    const pendingCount = liveOps.filter(r=>r.status==='pending').length;
+    const blockedCount = liveOps.filter(r=>r.status==='blocked').length;
+    const doneCount = liveOps.filter(r=>r.status==='done').length;
     summaryEl.innerHTML = `
       <div class="report-stat"><div class="num">${pendingCount}</div><div class="lbl">Pending</div></div>
       <div class="report-stat"><div class="num">${blockedCount}</div><div class="lbl">Waiting</div></div>
@@ -5427,6 +5854,8 @@
     // Global (not page-scoped) so a podcast or task save from any page can check which clients
     // have contract categories set up, for the delivery tracker auto-sync above.
     subscribeContractClients();
+    // Global so the board, calendar and Client Ops all know which shows are archived.
+    subscribeArchivedShows();
   }
 
   supabaseClient.auth.onAuthStateChange((event, session) => {
@@ -5435,6 +5864,7 @@
       startAppOnce();
       currentUserName = nameFromEmail(session.user && session.user.email);
       const email = session.user && session.user.email;
+      currentUserEmail = email || null;
       if(email && !notifSessionStarted){
         notifSessionStarted = true;
         // First sign-in of this browser session: read this person's lastActive BEFORE
