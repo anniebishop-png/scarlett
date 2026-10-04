@@ -1,16 +1,16 @@
-// Scheduled hourly (see netlify.toml). Sends each person a weekday morning digest at 8am in the time zone their
+// Scheduled every 30 minutes (see netlify.toml). Sends each person a weekday morning digest at 9:30am in the time zone their
 // device reported: how many of their tasks, delivery items and hustle deals are overdue or due today.
 const { sb, sendToSubs, inList } = require('../lib/push-common');
 
 const HUSTLE_CLOSED = ['5. Won', '6. Lost', '7. Parked'];
-const DIGEST_HOUR = 8;
+const DIGEST_HOUR = 9, DIGEST_MINUTE = 30;   // 9:30am local; the scheduler runs on the hour and half hour
 
 function localParts(tz, now){
   try{
-    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false, weekday: 'short' });
+    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'short' });
     const p = {};
     fmt.formatToParts(now).forEach(x => { p[x.type] = x.value; });
-    return { date: p.year + '-' + p.month + '-' + p.day, hour: Number(p.hour) % 24, weekday: p.weekday };
+    return { date: p.year + '-' + p.month + '-' + p.day, hour: Number(p.hour) % 24, minute: Number(p.minute), weekday: p.weekday };
   }catch(_){ return null; }
 }
 
@@ -50,7 +50,7 @@ exports.handler = async (event) => {
   const subs = (await sb('pushSubscriptions?select=*')) || [];
   const due = subs.filter(s => {
     const lp = s.tz ? localParts(s.tz, now) : null;
-    return lp && lp.hour === DIGEST_HOUR && !['Sat', 'Sun'].includes(lp.weekday) && s.userName;
+    return lp && lp.hour === DIGEST_HOUR && lp.minute >= DIGEST_MINUTE && !['Sat', 'Sun'].includes(lp.weekday) && s.userName;
   });
   const cache = {};
   const results = { devices: due.length, sent: 0, skipped: 0 };

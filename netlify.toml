@@ -5,6 +5,6 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
-# Weekday morning digest. Runs every hour; it only sends to devices where it is 8am local time right now.
+# Weekday morning digest. Runs on the hour and half hour; it only sends to devices where it is 9:30am local time.
 [functions."push-digest"]
-  schedule = "0 * * * *"
+  schedule = "0,30 * * * *"

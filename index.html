@@ -4490,7 +4490,7 @@
     else if(st === 'unsupported') body = "This browser can't show notifications.";
     else if(st === 'denied') body = 'Notifications are blocked for Scarlett in this browser. Allow them in your browser or phone settings, then come back.';
     else if(st === 'noname') body = "Your sign-in isn't matched to a team name yet, so notifications can't be switched on.";
-    else if(st === 'off') body = `Get a buzz when something is assigned to you, plus a weekday 8am summary.<button type="button" class="primary" data-push="on"${pushBusy ? ' disabled' : ''}>${pushBusy ? 'Turning on...' : 'Turn on notifications'}</button>`;
+    else if(st === 'off') body = `Get a buzz when something is assigned to you, plus a weekday 9:30am summary.<button type="button" class="primary" data-push="on"${pushBusy ? ' disabled' : ''}>${pushBusy ? 'Turning on...' : 'Turn on notifications'}</button>`;
     else body = `Notifications are on for this device.<div class="push-links"><button type="button" data-push="test">Send me a test</button><button type="button" data-push="off">Turn off</button></div>`;
     return `<div class="notif-push" id="notifPush">${body}${note}</div>`;
   }
