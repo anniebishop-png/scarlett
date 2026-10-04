@@ -742,6 +742,12 @@
     .pcw-day.weekend.empty{display:none;}
   }
 
+    .pcw-bar{border:none; background:none; font:inherit; color:inherit; width:100%; cursor:pointer; text-align:left; padding:3px 6px; border-radius:8px;}
+  .pcw-bar:hover{background:var(--surface-2);}
+  .pcw-bar.on{background:var(--surface-2); box-shadow:inset 0 0 0 1px var(--gold);}
+  .pcw-note{font-size:12px; color:var(--ink-2); margin:0 0 12px;}
+  .pcw-clear{border:none; background:none; color:var(--ink-2); font:inherit; font-size:12px; font-weight:700; text-decoration:underline; cursor:pointer; padding:0;}
+
   /* ---------- Due-item notifications (bell + panel, login banner) ---------- */
   .notif-wrap{position:relative;}
   .notif-bell{position:relative; display:flex; align-items:center; justify-content:center; width:34px; height:34px;
@@ -1149,6 +1155,7 @@
     </div>
     <button class="btn-primary" id="addEpisodeBtn" style="margin-left:auto;">+ Add episode</button>
   </div>
+  <div class="hr-filters" id="podcastFilters"></div>
   <div id="podcastCalendar"></div>
   <div id="podcastResults"></div>
   <footer class="note">Pulled in from the EquiRatings Podcast Schedule sheet — edits here are live and shared with the team, but don't sync back to the Google Sheet.</footer>
@@ -5215,8 +5222,9 @@
     document.getElementById('podcastMonthTabs').style.display = cal ? 'none' : '';
     document.getElementById('podcastSortTabs').style.display = cal ? 'none' : '';
     document.querySelectorAll('#podcastViewTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-pview') === podcastView));
+    renderPodcastFilters();
     if(cal){ renderPodcastCalendar(); return; }
-    let rows = podcastEpisodes.slice();
+    let rows = pcFilter(podcastEpisodes);
     if(podcastMonthFilter) rows = rows.filter(e => (e.date||'').slice(0,7) === podcastMonthFilter);
     if(!rows.length){
       resultsEl.innerHTML = '<div class="report-empty">No episodes here yet — add one to get started.</div>';
@@ -5245,9 +5253,45 @@
   }
 
   // ---- Podcast calendar: week-by-week grid, so release days and gaps in the schedule jump out ----
-  const PC_WEEKS_SHOWN = 4;
+  let pcShow = '', pcHost = '', pcSponsor = '', pcWeeks = 4;
+  const PC_NONE = '__none__';
   const PC_SHORT = {'Eventing Podcast':'Eventing', 'Jumping Podcast':'Jumping'};
   function pcShortDate(d){ return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short'}); }
+  // a sponsor is whatever is in an episode's Brand or Ads field (counted once per episode)
+  function pcSponsorsOf(ep){
+    const out = [];
+    [ep.brand, ep.ads].forEach(v => { v = (v || '').trim(); if(v && !out.includes(v)) out.push(v); });
+    return out;
+  }
+  // skip = leave one filter out, so a panel can show every host (or sponsor) while that filter is set
+  function pcFilter(list, skip){
+    return list.filter(ep =>
+      (skip === 'show' || !pcShow || ep.platform === pcShow) &&
+      (skip === 'host' || !pcHost || (pcHost === PC_NONE ? !ep.lead : ep.lead === pcHost)) &&
+      (skip === 'sponsor' || !pcSponsor || pcSponsorsOf(ep).includes(pcSponsor)));
+  }
+  function renderPodcastFilters(){
+    const el = document.getElementById('podcastFilters');
+    if(!el) return;
+    const shows = [...new Set(PODCAST_PLATFORMS.concat(podcastEpisodes.map(e => e.platform).filter(Boolean)))];
+    const hosts = [...new Set(PODCAST_LEADS.concat(podcastEpisodes.map(e => e.lead).filter(Boolean)))].sort((a,b) => a.localeCompare(b));
+    const sponsors = [...new Set([].concat(...podcastEpisodes.map(pcSponsorsOf)))].sort((a,b) => a.localeCompare(b));
+    const opt = (v, t, cur) => `<option value="${escapeAttr(v)}" ${v === cur ? 'selected' : ''}>${escapeHtml(t)}</option>`;
+    const active = !!(pcShow || pcHost || pcSponsor);
+    el.innerHTML = `
+      <label>Show <select id="pcShowSel">${opt('', 'All shows', pcShow)}${shows.map(x => opt(x, x, pcShow)).join('')}</select></label>
+      <label>Host <select id="pcHostSel">${opt('', 'Everyone', pcHost)}${opt(PC_NONE, 'No host yet', pcHost)}${hosts.map(x => opt(x, x, pcHost)).join('')}</select></label>
+      <label>Sponsor <select id="pcSponsorSel">${opt('', 'All sponsors', pcSponsor)}${sponsors.map(x => opt(x, x, pcSponsor)).join('')}</select></label>
+      ${podcastView === 'calendar' ? `<label>Weeks <select id="pcWeeksSel">${[4, 8, 12].map(n => `<option value="${n}" ${n === pcWeeks ? 'selected' : ''}>${n} weeks</option>`).join('')}</select></label>` : ''}
+      ${active ? '<button type="button" class="pcw-clear" id="pcClear">Clear filters</button>' : ''}`;
+    const on = (id, fn) => { const x = document.getElementById(id); if(x) x.addEventListener('change', e => { fn(e.target.value); renderPodcast(); }); };
+    on('pcShowSel', v => { pcShow = v; });
+    on('pcHostSel', v => { pcHost = v; });
+    on('pcSponsorSel', v => { pcSponsor = v; });
+    on('pcWeeksSel', v => { pcWeeks = Number(v) || 4; });
+    const c = document.getElementById('pcClear');
+    if(c) c.addEventListener('click', () => { pcShow = pcHost = pcSponsor = ''; renderPodcast(); });
+  }
   function pcCardHtml(ep){
     const st = PODCAST_STATUS_META[ep.status] || PODCAST_STATUS_META.planned;
     const meta = [ep.brand, ep.guest ? 'with ' + ep.guest : ''].filter(Boolean).join(' · ');
@@ -5258,49 +5302,70 @@
       ${meta ? `<div class="pcw-sub" style="margin-top:2px;">${escapeHtml(meta)}</div>` : ''}
     </button>`;
   }
+  function pcBarsHtml(rows, selected, attr){
+    if(!rows.length) return '<div class="hr-note">Nothing in these weeks.</div>';
+    const mx = Math.max(1, ...rows.map(r => r.n));
+    return rows.map(r => `<button type="button" class="hr-bar-row pcw-bar ${selected === r.key ? 'on' : ''}" ${attr}="${escapeAttr(r.key)}"><span class="lbl" title="${escapeAttr(r.label)}">${escapeHtml(r.label)}</span><span class="hr-bar"><i style="width:${Math.round(100 * r.n / mx)}%"></i></span><span class="num">${r.n}</span></button>`).join('');
+  }
   function renderPodcastCalendar(){
     const el = document.getElementById('podcastCalendar');
     const today = toDateStr(new Date());
     if(!pcWeekStart) pcWeekStart = mondayOf(today);
-    const lastDay = addDays(pcWeekStart, PC_WEEKS_SHOWN * 7 - 1);
+    const lastDay = addDays(pcWeekStart, pcWeeks * 7 - 1);
     document.getElementById('podcastWeekLabel').textContent = pcShortDate(pcWeekStart) + ' to ' + pcShortDate(lastDay);
 
+    const eps = pcFilter(podcastEpisodes);
     const byDate = new Map();
-    podcastEpisodes.forEach(ep => { if(!ep.date) return; if(!byDate.has(ep.date)) byDate.set(ep.date, []); byDate.get(ep.date).push(ep); });
+    eps.forEach(ep => { if(!ep.date) return; if(!byDate.has(ep.date)) byDate.set(ep.date, []); byDate.get(ep.date).push(ep); });
     const order = p => { const i = PODCAST_PLATFORMS.indexOf(p); return i < 0 ? 99 : i; };
     byDate.forEach(list => list.sort((a,b) => order(a.platform) - order(b.platform) || (a.title||'').localeCompare(b.title||'')));
-    const undated = podcastEpisodes.filter(e => !e.date);
+    const undated = eps.filter(e => !e.date);
 
     // summary numbers
     const thisMon = mondayOf(today), thisSun = addDays(thisMon, 6);
     const inRange = (d, a, b) => d >= a && d <= b;
-    const thisWeek = podcastEpisodes.filter(e => e.date && inRange(e.date, thisMon, thisSun)).length;
+    const thisWeek = eps.filter(e => e.date && inRange(e.date, thisMon, thisSun)).length;
     let openDays = 0, nextOpen = '';
-    for(let i = 0; i < PC_WEEKS_SHOWN * 7; i++){
+    for(let i = 0; i < pcWeeks * 7; i++){
       const d = addDays(pcWeekStart, i), dow = i % 7;
       if(dow < 5 && d >= today && !byDate.has(d)){ openDays++; if(!nextOpen) nextOpen = d; }
     }
-    const needTitle = podcastEpisodes.filter(e => e.date && e.date >= today && !(e.title||'').trim()).length;
+    const upcoming = eps.filter(e => e.date && e.date >= today);
+    const needTitle = upcoming.filter(e => !(e.title||'').trim()).length;
+    const toRecord = upcoming.filter(e => (e.status || 'planned') === 'planned').length;
+    const toEdit = upcoming.filter(e => e.status === 'recorded').length;
+
+    // who is hosting what, and which sponsors are getting airtime, across the weeks shown
+    const inView = list => list.filter(e => e.date && inRange(e.date, pcWeekStart, lastDay));
+    const hostCounts = new Map();
+    inView(pcFilter(podcastEpisodes, 'host')).forEach(e => { const k = e.lead || PC_NONE; hostCounts.set(k, (hostCounts.get(k) || 0) + 1); });
+    const hostRows = [...hostCounts.entries()].map(([k, n]) => ({key: k, label: k === PC_NONE ? 'No host yet' : k, n}))
+      .sort((a,b) => (a.key === PC_NONE) - (b.key === PC_NONE) || b.n - a.n || a.label.localeCompare(b.label));
+    const spCounts = new Map(); let noSponsor = 0;
+    inView(pcFilter(podcastEpisodes, 'sponsor')).forEach(e => { const sp = pcSponsorsOf(e); if(!sp.length) noSponsor++; sp.forEach(k => spCounts.set(k, (spCounts.get(k) || 0) + 1)); });
+    const spRows = [...spCounts.entries()].map(([k, n]) => ({key: k, label: k, n})).sort((a,b) => b.n - a.n || a.label.localeCompare(b.label));
 
     const platformsInUse = PODCAST_PLATFORMS.filter(p => podcastEpisodes.some(e => e.platform === p));
     const legend = `<div class="pcw-legend">${platformsInUse.map(p => `<span><i class="pcw-sw ${platformSlug(p)}"></i>${escapeHtml(p)}</span>`).join('')}<span><i style="border:1.5px dashed var(--hs-warn);"></i>Open weekday</span></div>`;
+    const active = [pcShow, pcHost === PC_NONE ? 'No host yet' : pcHost, pcSponsor].filter(Boolean);
+    const filterNote = active.length ? `<p class="pcw-note">Showing ${escapeHtml(active.join(' · '))}. An open day means nothing is scheduled for this selection.</p>` : '';
 
     const weeks = [];
-    for(let w = 0; w < PC_WEEKS_SHOWN; w++){
+    for(let w = 0; w < pcWeeks; w++){
       const start = addDays(pcWeekStart, w * 7), end = addDays(start, 6);
       let n = 0, gaps = 0, cells = '';
       for(let d = 0; d < 7; d++){
         const date = addDays(start, d);
-        const eps = byDate.get(date) || [];
-        n += eps.length;
+        const dayEps = byDate.get(date) || [];
+        n += dayEps.length;
         const weekday = d < 5, past = date < today, isToday = date === today;
-        const isGap = weekday && !past && !eps.length;
+        const isGap = weekday && !past && !dayEps.length;
         if(isGap) gaps++;
         const dayName = new Date(date + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short'});
         const num = new Date(date + 'T12:00:00').getDate();
-        cells += `<div class="pcw-day ${weekday ? '' : 'weekend'} ${past ? 'past' : ''} ${isToday ? 'today' : ''} ${isGap ? 'gap' : ''} ${eps.length ? '' : 'empty'}">
-          <div class="pcw-dlabel"><span>${dayName} ${num}${num === 1 || d === 0 && w === 0 ? ' ' + new Date(date + 'T12:00:00').toLocaleDateString('en-GB', {month:'short'}) : ''}</span>${isToday ? '<span>Today</span>' : ''}</div>
-          ${eps.map(pcCardHtml).join('')}
+        cells += `<div class="pcw-day ${weekday ? '' : 'weekend'} ${past ? 'past' : ''} ${isToday ? 'today' : ''} ${isGap ? 'gap' : ''} ${dayEps.length ? '' : 'empty'}">
+          <div class="pcw-dlabel"><span>${dayName} ${num}${num === 1 || (d === 0 && w === 0) ? ' ' + new Date(date + 'T12:00:00').toLocaleDateString('en-GB', {month:'short'}) : ''}</span>${isToday ? '<span>Today</span>' : ''}</div>
+          ${dayEps.map(pcCardHtml).join('')}
           ${isGap && canEdit ? `<button type="button" class="pcw-gapbtn" data-pc-add="${date}">Open &middot; add episode</button>` : (isGap ? '<span class="hs-muted">Nothing scheduled</span>' : '')}
         </div>`;
       }
@@ -5319,13 +5384,26 @@
         <div class="hs-tile"><b>${thisWeek}</b><span>Releasing this week</span></div>
         <div class="hs-tile ${openDays ? 'due' : ''}"><b>${openDays}</b><span>Open weekdays in view${nextOpen ? ' · next ' + escapeHtml(fmtDayLabel(nextOpen)) : ''}</span></div>
         <div class="hs-tile ${needTitle ? 'over' : ''}"><b>${needTitle}</b><span>Upcoming with no title yet</span></div>
+        <div class="hs-tile"><b>${toRecord}</b><span>Still to record</span></div>
+        <div class="hs-tile"><b>${toEdit}</b><span>Recorded, awaiting edit</span></div>
+      </div>
+      <div class="hr-grid" style="margin-bottom:18px;">
+        <div class="hr-panel dr-bars"><h3>Who is hosting</h3><p class="hr-sub">Episodes in the weeks shown. Click a name to filter.</p>${pcBarsHtml(hostRows, pcHost, 'data-pc-host')}</div>
+        <div class="hr-panel dr-bars"><h3>Sponsors</h3><p class="hr-sub">Episodes with that brand or ad in the weeks shown. Click one to filter.${noSponsor ? ' ' + noSponsor + ' with no sponsor.' : ''}</p>${pcBarsHtml(spRows, pcSponsor, 'data-pc-sponsor')}</div>
       </div>
       ${legend}
+      ${filterNote}
       ${weeks.join('')}
       ${undated.length ? `<div class="report-group"><div class="report-group-head"><span>No release date yet</span><span>${undated.length}</span></div>${undated.map(podcastRowHtml).join('')}</div>` : ''}`;
 
     bindPodcastRowEvents(el, podcastEpisodes);
-    el.querySelectorAll('[data-pc-add]').forEach(b => b.addEventListener('click', () => openEpisodeModal(null, b.getAttribute('data-pc-add'))));
+    el.querySelectorAll('[data-pc-add]').forEach(b => b.addEventListener('click', () => {
+      openEpisodeModal(null, b.getAttribute('data-pc-add'));
+      if(pcShow) document.getElementById('e_platform').value = pcShow;
+      if(pcHost && pcHost !== PC_NONE) document.getElementById('e_lead').value = pcHost;
+    }));
+    el.querySelectorAll('[data-pc-host]').forEach(b => b.addEventListener('click', () => { const k = b.getAttribute('data-pc-host'); pcHost = pcHost === k ? '' : k; renderPodcast(); }));
+    el.querySelectorAll('[data-pc-sponsor]').forEach(b => b.addEventListener('click', () => { const k = b.getAttribute('data-pc-sponsor'); pcSponsor = pcSponsor === k ? '' : k; renderPodcast(); }));
   }
   document.querySelectorAll('#podcastViewTabs button').forEach(btn => {
     btn.addEventListener('click', () => {
