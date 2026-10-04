@@ -299,6 +299,8 @@
 
   .btn-primary{background:var(--gold); border:1px solid var(--gold-deep); color:#3A2A06; padding:9px 16px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer;}
   .btn-primary:hover{background:var(--gold-deep); color:#fff;}
+  .btn-danger{background:var(--overdue,#D03B3B); border:1px solid var(--overdue,#D03B3B); color:#fff; padding:9px 16px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer;}
+  .btn-danger:hover{filter:brightness(.92);}
   .btn-ghost{background:none;border:1px solid var(--hairline-strong); color:var(--ink); padding:9px 14px;border-radius:10px;font-weight:600;font-size:13px;cursor:pointer;}
   .btn-ghost:hover{border-color:var(--navy);}
 
@@ -1109,6 +1111,20 @@
       <div class="right">
         <button type="button" class="btn-ghost" id="cancelDebriefBtn">Cancel</button>
         <button type="button" class="btn-primary" id="saveDebriefBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="confirmDeleteOverlay" style="z-index:300;" hidden>
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmDeleteTitle" aria-describedby="confirmDeleteBody">
+    <h3 id="confirmDeleteTitle">Are you sure?</h3>
+    <p style="font-size:13px;color:var(--ink-2);line-height:1.55;margin:0 0 18px;" id="confirmDeleteBody"></p>
+    <div class="modal-actions">
+      <div class="left"></div>
+      <div class="right">
+        <button type="button" class="btn-ghost" id="confirmDeleteNoBtn">Cancel</button>
+        <button type="button" class="btn-danger" id="confirmDeleteYesBtn">Delete</button>
       </div>
     </div>
   </div>
@@ -2303,11 +2319,14 @@
       btn.addEventListener('click', () => {
         const kind = btn.getAttribute('data-kind');
         const i = parseInt(btn.getAttribute('data-i'),10);
-        const arr = (weekMeta[kind]||[]).slice();
-        arr.splice(i,1);
-        weekMeta[kind] = arr;
-        saveWeekMeta();
-        renderChips();
+        const entry = (weekMeta[kind]||[])[i];
+        confirmDelete(`Remove ${quoted(entry && entry.name, 'this entry')} from this week's "Out" list?`, () => {
+          const arr = (weekMeta[kind]||[]).slice();
+          arr.splice(i,1);
+          weekMeta[kind] = arr;
+          saveWeekMeta();
+          renderChips();
+        }, {confirmLabel:'Remove'});
       });
     });
 
@@ -2328,9 +2347,7 @@
     document.querySelectorAll('[data-remove-show]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const showId = btn.getAttribute('data-remove-show');
-        showsCol().doc(showId).delete().catch(()=>{});
-        removeShowWork(showId);
+        confirmDeleteShow(btn.getAttribute('data-remove-show'), true);
       });
     });
   }
@@ -2380,10 +2397,15 @@
   document.getElementById('cancelFlagShowBtn').addEventListener('click', closeFlagShowModal);
   document.getElementById('unflagShowBtn').addEventListener('click', () => {
     if(!flaggingShowId) return;
+    const showId = flaggingShowId;
     const oldClients = (flaggingShow && flaggingShow.clients) || [];
-    showsCol().doc(flaggingShowId).update({clients: []}).catch(()=>{});
-    oldClients.forEach(c => removeClientWork(flaggingShowId, c));
-    closeFlagShowModal();
+    const doUnflag = () => {
+      showsCol().doc(showId).update({clients: []}).catch(()=>{});
+      oldClients.forEach(c => removeClientWork(showId, c));
+      closeFlagShowModal();
+    };
+    if(oldClients.length) confirmDelete(`Un-flag this show as a client show? The tasks and client ops created for ${oldClients.join(', ')} will be deleted.`, doUnflag, {confirmLabel:'Un-flag and delete'});
+    else doUnflag();
   });
   document.getElementById('saveFlagShowBtn').addEventListener('click', () => {
     if(!flaggingShowId) return;
@@ -2395,10 +2417,15 @@
     const removedClients = oldClients.filter(c => !clients.includes(c));
     const showForSpawn = Object.assign({}, flaggingShow, {id: flaggingShowId, clients});
     const wantOps = document.getElementById('flagShowWantOps').checked;
-    showsCol().doc(flaggingShowId).update({clients}).catch(()=>{});
-    removedClients.forEach(c => removeClientWork(flaggingShowId, c));
-    onShowClientsAdded(showForSpawn, addedClients, wantOps);
-    closeFlagShowModal();
+    const showId = flaggingShowId;
+    const applySave = () => {
+      showsCol().doc(showId).update({clients}).catch(()=>{});
+      removedClients.forEach(c => removeClientWork(showId, c));
+      onShowClientsAdded(showForSpawn, addedClients, wantOps);
+      closeFlagShowModal();
+    };
+    if(removedClients.length) confirmDelete(`Removing ${removedClients.join(', ')} from this show will delete the tasks and client ops created for ${removedClients.length === 1 ? 'them' : 'those clients'}.`, applySave, {confirmLabel:'Remove and delete'});
+    else applySave();
   });
 
   // ---------------- show debrief / postmortem ----------------
@@ -2637,7 +2664,7 @@
     menu.innerHTML = `<button data-act="edit">Edit</button><button data-act="delete" class="danger">Delete</button>`;
     positionFloatingPop(menu, btn);
     menu.querySelector('[data-act="edit"]').addEventListener('click', (e)=>{ e.stopPropagation(); openTaskModal(taskId); closePops(); });
-    menu.querySelector('[data-act="delete"]').addEventListener('click', (e)=>{ e.stopPropagation(); deleteTask(taskId); closePops(); });
+    menu.querySelector('[data-act="delete"]').addEventListener('click', (e)=>{ e.stopPropagation(); closePops(); confirmDeleteTask(taskId); });
     openMenuId = taskId;
   }
   function closePops(){
@@ -2675,6 +2702,51 @@
     el.hidden = false;
     clearTimeout(showSaveError._t);
     showSaveError._t = setTimeout(() => { el.hidden = true; }, 6000);
+  }
+
+  // ---------------- "are you sure?" before anything is deleted ----------------
+  // One shared confirmation popup for every delete in the app. Cancel is focused by default (so a
+  // stray Enter keypress cancels rather than deletes), and Escape or a click outside also cancels.
+  let confirmDeleteAction = null;
+  function confirmDelete(message, onConfirm, opts){
+    opts = opts || {};
+    document.getElementById('confirmDeleteTitle').textContent = opts.title || 'Are you sure?';
+    document.getElementById('confirmDeleteBody').textContent = message;
+    document.getElementById('confirmDeleteYesBtn').textContent = opts.confirmLabel || 'Delete';
+    confirmDeleteAction = onConfirm;
+    document.getElementById('confirmDeleteOverlay').hidden = false;
+    document.getElementById('confirmDeleteNoBtn').focus();
+  }
+  function closeConfirmDelete(){
+    document.getElementById('confirmDeleteOverlay').hidden = true;
+    confirmDeleteAction = null;
+  }
+  document.getElementById('confirmDeleteNoBtn').addEventListener('click', closeConfirmDelete);
+  document.getElementById('confirmDeleteOverlay').addEventListener('click', (e) => { if(e.target.id === 'confirmDeleteOverlay') closeConfirmDelete(); });
+  document.getElementById('confirmDeleteYesBtn').addEventListener('click', () => {
+    const run = confirmDeleteAction;
+    closeConfirmDelete();
+    if(run) run();
+  });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && !document.getElementById('confirmDeleteOverlay').hidden) closeConfirmDelete();
+  });
+  function quoted(name, fallback){ return name ? '"' + name + '"' : fallback; }
+  function showNameById(showId){
+    const all = [].concat(showsWeek, upcomingShows, typeof calendarShows !== 'undefined' ? calendarShows : []);
+    const sh = all.find(s => s.id === showId);
+    return sh ? (sh.eventName || sh.name || '') : '';
+  }
+  function confirmDeleteTask(taskId, after){
+    const t = tasks.find(x => x.id === taskId);
+    confirmDelete(`Delete the task ${quoted(t && t.title, 'this task')}? This can't be undone.`, () => { deleteTask(taskId); if(after) after(); });
+  }
+  function confirmDeleteShow(showId, alsoRemoveWork){
+    const nm = showNameById(showId);
+    confirmDelete(`Delete ${quoted(nm, 'this show')}?` + (alsoRemoveWork ? ' Any tasks and client ops created for it will be deleted too.' : '') + ` This can't be undone.`, () => {
+      showsCol().doc(showId).delete().catch(()=>{});
+      if(alsoRemoveWork) removeShowWork(showId);
+    });
   }
 
   function deleteTask(taskId){
@@ -2815,7 +2887,7 @@
 
   document.getElementById('cancelTaskBtn').addEventListener('click', closeTaskModal);
   document.getElementById('taskOverlay').addEventListener('click', (e) => { if(e.target.id === 'taskOverlay') closeTaskModal(); });
-  document.getElementById('deleteTaskBtn').addEventListener('click', () => { if(editingTaskId){ deleteTask(editingTaskId); closeTaskModal(); } });
+  document.getElementById('deleteTaskBtn').addEventListener('click', () => { if(editingTaskId) confirmDeleteTask(editingTaskId, closeTaskModal); });
   document.getElementById('stopRecurBtn').addEventListener('click', () => {
     if(editingTaskId){
       const t = tasks.find(x=>x.id===editingTaskId);
@@ -3931,8 +4003,7 @@
     document.querySelectorAll('#calList [data-remove-show]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const showId = btn.getAttribute('data-remove-show');
-        showsCol().doc(showId).delete().catch(()=>{});
+        confirmDeleteShow(btn.getAttribute('data-remove-show'), false);
       });
     });
   }
@@ -4190,7 +4261,11 @@
       btn.addEventListener('click', (e) => { e.stopPropagation(); toggleOpsStatusPop(btn); });
     });
     resultsEl.querySelectorAll('[data-delete-op]').forEach(btn => {
-      btn.addEventListener('click', () => deleteOp(btn.getAttribute('data-delete-op')));
+      btn.addEventListener('click', () => {
+        const opId = btn.getAttribute('data-delete-op');
+        const op = opsRows.find(r => r.id === opId);
+        confirmDelete(`Delete this ${op && op.kind ? op.kind + ' ' : ''}ops item${op && op.client ? ' for ' + op.client : ''}? This can't be undone.`, () => deleteOp(opId));
+      });
     });
   }
 
@@ -4318,8 +4393,11 @@
         e.stopPropagation();
         if(!canEdit) return;
         const epId = btn.getAttribute('data-delete-episode');
-        podcastCol().doc(epId).delete().catch(()=>{});
-        removeDeliverySync('sync_ep_' + epId);
+        const ep = podcastEpisodes.find(x => x.id === epId);
+        confirmDelete(`Delete the episode ${quoted(ep && ep.title, 'this episode')}? This can't be undone.`, () => {
+          podcastCol().doc(epId).delete().catch(()=>{});
+          removeDeliverySync('sync_ep_' + epId);
+        });
       });
     });
   }
@@ -4468,8 +4546,14 @@
   document.getElementById('cancelEpisodeBtn').addEventListener('click', closeEpisodeModal);
   document.getElementById('deleteEpisodeBtn').addEventListener('click', () => {
     if(editingEpisodeId && canEdit){
-      podcastCol().doc(editingEpisodeId).delete().catch(()=>{});
-      removeDeliverySync('sync_ep_' + editingEpisodeId);
+      const epId = editingEpisodeId;
+      const ep = podcastEpisodes.find(x => x.id === epId);
+      confirmDelete(`Delete the episode ${quoted(ep && ep.title, 'this episode')}? This can't be undone.`, () => {
+        podcastCol().doc(epId).delete().catch(()=>{});
+        removeDeliverySync('sync_ep_' + epId);
+        closeEpisodeModal();
+      });
+      return;
     }
     closeEpisodeModal();
   });
@@ -4553,7 +4637,11 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         if(!canEdit) return;
-        hustleCol().doc(btn.getAttribute('data-delete-hustle')).delete().catch(()=>{});
+        const hId = btn.getAttribute('data-delete-hustle');
+        const h = hustleOpportunities.find(x => x.id === hId);
+        confirmDelete(`Delete the opportunity ${quoted(h && h.opportunity, 'this opportunity')}? This can't be undone.`, () => {
+          hustleCol().doc(hId).delete().catch(()=>{});
+        });
       });
     });
   }
@@ -4674,7 +4762,13 @@
   document.getElementById('cancelHustleBtn').addEventListener('click', closeHustleModal);
   document.getElementById('deleteHustleBtn').addEventListener('click', () => {
     if(editingHustleId && canEdit){
-      hustleCol().doc(editingHustleId).delete().catch(()=>{});
+      const hId = editingHustleId;
+      const h = hustleOpportunities.find(x => x.id === hId);
+      confirmDelete(`Delete the opportunity ${quoted(h && h.opportunity, 'this opportunity')}? This can't be undone.`, () => {
+        hustleCol().doc(hId).delete().catch(()=>{});
+        closeHustleModal();
+      });
+      return;
     }
     closeHustleModal();
   });
@@ -5032,8 +5126,11 @@
         e.stopPropagation();
         if(!canEdit) return;
         const delId = btn.getAttribute('data-delete-delivery');
-        deliveryCol().doc(delId).delete().catch(()=>{});
-        removeSpawnedTask(delId);
+        const di = deliveryItems.find(x => x.id === delId);
+        confirmDelete(`Delete ${quoted(di && (di.title || di.item || di.category), 'this delivery item')}${di && di.client ? ' for ' + di.client : ''}? The matching task on the board will be deleted too. This can't be undone.`, () => {
+          deliveryCol().doc(delId).delete().catch(()=>{});
+          removeSpawnedTask(delId);
+        });
       });
     });
   }
@@ -5204,7 +5301,16 @@
   });
   document.getElementById('cancelDeliveryBtn').addEventListener('click', closeDeliveryModal);
   document.getElementById('deleteDeliveryBtn').addEventListener('click', () => {
-    if(editingDeliveryId && canEdit){ deliveryCol().doc(editingDeliveryId).delete().catch(()=>{}); removeSpawnedTask(editingDeliveryId); }
+    if(editingDeliveryId && canEdit){
+      const delId = editingDeliveryId;
+      const di = deliveryItems.find(x => x.id === delId);
+      confirmDelete(`Delete ${quoted(di && (di.title || di.item || di.category), 'this delivery item')}${di && di.client ? ' for ' + di.client : ''}? The matching task on the board will be deleted too. This can't be undone.`, () => {
+        deliveryCol().doc(delId).delete().catch(()=>{});
+        removeSpawnedTask(delId);
+        closeDeliveryModal();
+      });
+      return;
+    }
     closeDeliveryModal();
   });
   document.getElementById('addDeliveryBtn').addEventListener('click', () => openDeliveryModal(null));
