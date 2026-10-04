@@ -1177,6 +1177,7 @@
     <select id="deliveryOwnerFilter" aria-label="Filter by owner" style="display:none;"><option value="">Everyone</option></select>
     <label class="checkbox-row" id="deliveryHideDoneLabel" style="margin:0;"><input type="checkbox" id="deliveryHideDone"> <span style="font-size:12.5px;font-weight:600;color:var(--ink);">Hide delivered</span></label>
     <button class="btn-ghost" id="contractSetupToolbarBtn" style="display:none;">Set up contract</button>
+    <button class="btn-ghost" id="removeClientBtn" style="display:none;color:var(--st-blocked-text);border-color:var(--st-blocked-text);">Remove client</button>
     <button class="btn-primary" id="addDeliveryBtn" style="margin-left:auto;">+ Add item</button>
   </div>
   <div class="hs-notice" id="deliveryNotice" hidden></div>
@@ -6260,6 +6261,7 @@
   function updateContractSetupToolbarBtn(){
     const btn = document.getElementById('contractSetupToolbarBtn');
     const client = document.getElementById('deliveryClientFilter').value;
+    document.getElementById('removeClientBtn').style.display = (canEdit && client) ? 'inline-block' : 'none';
     if(!canEdit || !client || LEGACY_CONTRACT_CLIENTS[client]){ btn.style.display = 'none'; return; }
     btn.style.display = 'inline-block';
     btn.textContent = (contractClients[client] && contractClients[client].length) ? 'Edit contract' : 'Set up contract';
@@ -6708,7 +6710,7 @@
     document.getElementById('deliveryReportsView').hidden = deliveryView !== 'reports';
     if(deliveryView !== 'tracker'){
       // these controls only belong to the Tracker view
-      ['deliveryClientFilter','deliveryOwnerFilter','contractSetupToolbarBtn','deliveryHideDoneLabel'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+      ['deliveryClientFilter','deliveryOwnerFilter','contractSetupToolbarBtn','removeClientBtn','deliveryHideDoneLabel'].forEach(id => { document.getElementById(id).style.display = 'none'; });
       if(!db){ document.getElementById(deliveryView === 'mine' ? 'deliveryMineView' : 'deliveryReportsView').innerHTML = '<div class="report-empty">Delivery Tracker needs the shared board connection.</div>'; return; }
       if(deliveryView === 'mine') renderDeliveryMine(); else renderDeliveryReports();
       return;
@@ -7029,6 +7031,31 @@
     }
     closeDeliveryModal();
   });
+  // Take a client off the Delivery Tracker: deletes all of its delivery items (and their mirrored board
+  // tasks) plus its saved contract. Always asks first, spelling out exactly what will go.
+  function removeDeliveryClient(client){
+    if(!canEdit || !client) return;
+    const items = deliveryItems.filter(r => r.client === client);
+    const hasContract = !!(contractClients[client] && contractClients[client].length);
+    const delivered = items.filter(r => r.status === 'delivered').length;
+    const synced = items.filter(r => r.sourceType).length;
+    const parts = [items.length + ' item' + (items.length === 1 ? '' : 's') + (delivered ? ' (' + delivered + ' delivered)' : '')];
+    if(hasContract) parts.push('its contract setup');
+    let msg = `Remove ${client} from the Delivery Tracker? This permanently deletes ${parts.join(' and ')}. Matching tasks on the board that were created from these items are deleted too. This can't be undone.`;
+    if(synced) msg += ` ${synced} of the items are synced from the Podcast tab or Task board; the originals stay there.`;
+    if(LEGACY_CONTRACT_CLIENTS[client]) msg += ` ${client}'s built-in contract lines stay in the app and will come back if an item is added for them again.`;
+    confirmDelete(msg, () => {
+      items.forEach(r => { deliveryCol().doc(r.id).delete().catch(dSaveError); removeSpawnedTask(r.id); });
+      if(hasContract){ contractClientsCol().doc(client).delete().catch(dSaveError); delete contractClients[client]; }
+      const sel = document.getElementById('deliveryClientFilter');
+      if(sel.value === client) sel.value = '';
+      renderDelivery();
+    }, {title: 'Remove ' + client + '?', confirmLabel: 'Remove client'});
+  }
+  document.getElementById('removeClientBtn').addEventListener('click', () => {
+    removeDeliveryClient(document.getElementById('deliveryClientFilter').value);
+  });
+
   document.getElementById('addDeliveryBtn').addEventListener('click', () => openDeliveryModal(null));
 
   document.getElementById('deliveryClientFilter').addEventListener('change', renderDelivery);
