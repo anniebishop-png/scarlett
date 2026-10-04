@@ -24,6 +24,12 @@
 function createFirestoreShim(supabaseClient) {
   let channelCounter = 0;
 
+  // Almost every table is keyed by an "id" column. contractClients is the exception: its key is the
+  // client's name, stored in a "client" column. Without this, saving a contract failed silently
+  // (no "id" column to write to) and nothing was ever kept.
+  const KEY_COLUMN = { contractClients: 'client' };
+  function keyOf(table) { return KEY_COLUMN[table] || 'id'; }
+
   function applyCondition(query, field, op, value) {
     switch (op) {
       case '==': return query.eq(field, value);
@@ -39,8 +45,9 @@ function createFirestoreShim(supabaseClient) {
     }
   }
 
-  function makeDocSnapshotList(rows) {
-    return (rows || []).map(row => ({ id: row.id, data: () => row }));
+  function makeDocSnapshotList(rows, table) {
+    const key = keyOf(table);
+    return (rows || []).map(row => ({ id: row[key], data: () => row }));
   }
 
   // ---- query (collection, optionally filtered by one or more .where() calls) ----
@@ -59,7 +66,7 @@ function createFirestoreShim(supabaseClient) {
       async get() {
         const { data, error } = await runSelect();
         if (error) throw error;
-        return { docs: makeDocSnapshotList(data) };
+        return { docs: makeDocSnapshotList(data, table) };
       },
 
       onSnapshot(onNext, onError) {
@@ -68,7 +75,7 @@ function createFirestoreShim(supabaseClient) {
           runSelect().then(({ data, error }) => {
             if (cancelled) return;
             if (error) { if (onError) onError(error); return; }
-            onNext({ docs: makeDocSnapshotList(data) });
+            onNext({ docs: makeDocSnapshotList(data, table) });
           });
         };
         const channel = supabaseClient
@@ -89,7 +96,7 @@ function createFirestoreShim(supabaseClient) {
       id,
 
       async set(data) {
-        const { error } = await supabaseClient.from(table).upsert(Object.assign({ id }, data), { onConflict: 'id' });
+        const { error } = await supabaseClient.from(table).upsert(Object.assign({ [keyOf(table)]: id }, data), { onConflict: keyOf(table) });
         if (error) throw error;
       },
 
@@ -98,7 +105,7 @@ function createFirestoreShim(supabaseClient) {
       // whether a row already exists (e.g. upsertDeliverySync's create-vs-merge check in
       // index.html) without opening a realtime channel for it.
       async get() {
-        const { data, error } = await supabaseClient.from(table).select('*').eq('id', id).maybeSingle();
+        const { data, error } = await supabaseClient.from(table).select('*').eq(keyOf(table), id).maybeSingle();
         if (error) throw error;
         return { exists: !!data, id, data: () => data || {} };
       },
@@ -108,7 +115,7 @@ function createFirestoreShim(supabaseClient) {
         // row-level security silently filters out (or one aimed at a row that no longer exists)
         // comes back as a "success" with nothing saved -- which is exactly how a task could look
         // done on screen and then revert on refresh with no error anywhere.
-        const { data: rows, error } = await supabaseClient.from(table).update(data).eq('id', id).select('id');
+        const { data: rows, error } = await supabaseClient.from(table).update(data).eq(keyOf(table), id).select(keyOf(table));
         if (error) throw error;
         if (!rows || rows.length === 0) {
           throw new Error('Nothing was saved to "' + table + '" (row ' + id + ') -- the row is missing or an UPDATE policy is blocking it.');
@@ -119,19 +126,19 @@ function createFirestoreShim(supabaseClient) {
       // auto-spawn routines (recurring tasks, show delivery tasks, client ops) so re-running them
       // can't reset a task someone has already marked done back to "not started".
       async create(data) {
-        const { error } = await supabaseClient.from(table).upsert(Object.assign({ id }, data), { onConflict: 'id', ignoreDuplicates: true });
+        const { error } = await supabaseClient.from(table).upsert(Object.assign({ [keyOf(table)]: id }, data), { onConflict: keyOf(table), ignoreDuplicates: true });
         if (error) throw error;
       },
 
       async delete() {
-        const { error } = await supabaseClient.from(table).delete().eq('id', id);
+        const { error } = await supabaseClient.from(table).delete().eq(keyOf(table), id);
         if (error) throw error;
       },
 
       onSnapshot(onNext, onError) {
         let cancelled = false;
         const deliver = () => {
-          supabaseClient.from(table).select('*').eq('id', id).maybeSingle().then(({ data, error }) => {
+          supabaseClient.from(table).select('*').eq(keyOf(table), id).maybeSingle().then(({ data, error }) => {
             if (cancelled) return;
             if (error) { if (onError) onError(error); return; }
             onNext({ exists: !!data, id, data: () => data || {} });
@@ -139,7 +146,7 @@ function createFirestoreShim(supabaseClient) {
         };
         const channel = supabaseClient
           .channel('shim_doc_' + table + '_' + id + '_' + (++channelCounter))
-          .on('postgres_changes', { event: '*', schema: 'public', table, filter: 'id=eq.' + id }, deliver)
+          .on('postgres_changes', { event: '*', schema: 'public', table, filter: keyOf(table) + '=eq.' + id }, deliver)
           .subscribe(status => {
             if (status === 'SUBSCRIBED') deliver();
             else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') { if (onError) onError(new Error('Realtime subscription failed: ' + status)); }
