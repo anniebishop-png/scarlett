@@ -1837,7 +1837,7 @@
       taskSnap.docs.forEach(d => {
         const t = d.data();
         const reason = classifyDueItem(t.dateISO, today, soonCutoff, t.updated_at);
-        if(reason) items.push({kind:'task', id:d.id, client:t.client||'', title:t.title||'(untitled task)', date:t.dateISO||'', reason});
+        if(reason) items.push({kind:'task', id:d.id, client:t.client||'', title:t.title||'(untitled task)', date:t.dateISO||'', week:t.weekId||'', reason});
       });
       delSnap.docs.forEach(d => {
         const it = d.data();
@@ -1857,15 +1857,38 @@
     if(item.date) bits.push(fmtShortDate(item.date));
     return bits.join(' · ') || (item.kind === 'task' ? 'Task' : 'Delivery item');
   }
+  // Polls until the page's live data has caught up (the board/delivery subscriptions load async
+  // after a page or week switch), then runs fn. Gives up quietly after ~5s so a deleted/moved item
+  // just leaves you on the right page rather than hanging.
+  function whenDueDataReady(isReady, fn){
+    let tries = 0;
+    const tick = () => {
+      if(isReady()){ fn(); return; }
+      if(++tries < 34) setTimeout(tick, 150);
+    };
+    tick();
+  }
+  // Takes you to the actual item: switches to its page/week, then opens that task or delivery item
+  // for editing so you land on exactly the thing that's due, not just a list it lives in.
   function openDueItem(item){
+    if(!item) return;
     document.getElementById('notifPanel').hidden = true;
     if(item.kind === 'task'){
-      goToWeek(mondayOf(item.date || toDateStr(new Date())));
+      const wk = item.week || mondayOf(item.date || toDateStr(new Date()));
       switchApp('board');
+      goToWeek(wk);
+      whenDueDataReady(
+        () => currentWeekId === wk && tasks.some(x => x.id === item.id),
+        () => openTaskModal(item.id)
+      );
     } else {
       switchApp('delivery');
       const sel = document.getElementById('deliveryClientFilter');
       if(sel && item.client){ sel.value = item.client; renderDelivery(); }
+      whenDueDataReady(
+        () => deliveryItems.some(x => x.id === item.id),
+        () => openDeliveryModal(deliveryItems.find(x => x.id === item.id))
+      );
     }
   }
   function renderNotifBadge(){
@@ -1909,7 +1932,9 @@
     dueNotifications.forEach(it => { counts[it.reason] = (counts[it.reason]||0) + 1; });
     const parts = ['overdue','today','soon','new'].filter(k => counts[k]).map(k => `${counts[k]} ${DUE_REASON_LABEL[k].toLowerCase()}`);
     document.getElementById('dueBannerText').textContent =
-      `You have ${dueNotifications.length} item${dueNotifications.length===1?'':'s'} that need attention — ${parts.join(', ')}.`;
+      (dueNotifications.length===1
+        ? `You have 1 item that needs attention: "${dueNotifications[0].title}" (${parts[0]}).`
+        : `You have ${dueNotifications.length} items that need attention — ${parts.join(', ')}.`);
     banner.hidden = false;
   }
   // The panel lives outside the header element (see its markup comment) so overflow:hidden there can't clip
@@ -1947,7 +1972,9 @@
   document.getElementById('dueBannerViewBtn').addEventListener('click', () => {
     bannerDismissed = true;
     document.getElementById('dueBanner').hidden = true;
-    openNotifPanel();
+    // One item: go straight to it. Several: show the list so you can pick.
+    if(dueNotifications.length === 1) openDueItem(dueNotifications[0]);
+    else openNotifPanel();
   });
 
   // ---------------- client work automation (delivery tasks + client ops) ----------------
