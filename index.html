@@ -1676,8 +1676,6 @@
         <div class="owners-pop-static" id="hustleDisciplineList"></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Size band <span class="hs-req">(optional)</span></label>
-          <div class="hs-seg" id="h_sizeSeg"><button type="button" data-v="S">S</button><button type="button" data-v="M">M</button><button type="button" data-v="L">L</button></div></div>
         <div class="field"><label>Client <span class="hs-req">(optional)</span></label>
           <div class="hs-seg" id="h_clientSeg"><button type="button" data-v="New">New</button><button type="button" data-v="Existing">Existing</button></div></div>
       </div>
@@ -5630,7 +5628,7 @@
   let myWeekOwner = null;          // whose follow-ups the My week view is showing
   let hsNextCtx = null;            // {id, mode:'done'|'set'} for the next-step prompt
   let hsSnoozeId = null;
-  let hSize = '', hClientType = '', hLog = [];   // working copies for the open edit form
+  let hClientType = '', hLog = [];   // working copies for the open edit form
   let hrPeriod = 'ytd', hrOwner = '', hrShowAllStale = false;   // Reports filters
 
   function hOpen(op){ return HUSTLE_OPEN.includes(op.stage); }
@@ -5818,7 +5816,7 @@
       <div class="hs-row-top">
         <span class="hs-stage ${stageMeta.cls}">${escapeHtml(stageMeta.short)}</span>
         ${op.owner ? `<span class="hs-owner" style="color:${ownerColor(op.owner)}">${escapeHtml(initials(op.owner))}</span>` : ''}
-        ${(op.clientType || op.sizeBand) ? `<span class="hs-muted">${escapeHtml([op.clientType ? (op.clientType === 'Existing' ? 'Existing client' : 'New') : '', op.sizeBand ? 'Size ' + op.sizeBand : ''].filter(Boolean).join(' · '))}</span>` : ''}
+        ${op.clientType ? `<span class="hs-muted">${escapeHtml(op.clientType === 'Existing' ? 'Existing client' : 'New')}</span>` : ''}
         <button class="hs-del-btn" data-delete-hustle="${op.id}" title="Delete this opportunity">×</button>
       </div>
       <div class="hs-title">${escapeHtml(op.opportunity||'(untitled)')}</div>
@@ -6004,7 +6002,7 @@
     el.querySelectorAll('[data-mw-set]').forEach(b => b.addEventListener('click', () => openHsNext(b.getAttribute('data-mw-set'), 'set')));
   }
 
-  // ---- optional fields (size band, client type, contact, proposal link, expected close) + activity log ----
+  // ---- optional fields (client type, contact, proposal link, expected close) + activity log ----
   function hSafeUrl(u){
     try { const x = new URL(String(u||'').trim()); return (x.protocol === 'http:' || x.protocol === 'https:') ? x.href : ''; }
     catch(e){ return ''; }
@@ -6030,9 +6028,6 @@
   function hPaintSeg(id, value){
     document.querySelectorAll('#' + id + ' button').forEach(b => b.classList.toggle('active', b.getAttribute('data-v') === value));
   }
-  document.querySelectorAll('#h_sizeSeg button').forEach(b => b.addEventListener('click', () => {
-    const v = b.getAttribute('data-v'); hSize = hSize === v ? '' : v; hPaintSeg('h_sizeSeg', hSize);
-  }));
   document.querySelectorAll('#h_clientSeg button').forEach(b => b.addEventListener('click', () => {
     const v = b.getAttribute('data-v'); hClientType = hClientType === v ? '' : v; hPaintSeg('h_clientSeg', hClientType);
   }));
@@ -6095,7 +6090,6 @@
     const stale = live.filter(hIsStale);
     const attn = new Set(overdue.concat(stale).map(o => o.id)).size;
     const quarter = list.filter(hrExpectedThisQuarter);
-    const sizes = ['L','M','S'].map(s => [s, quarter.filter(o => o.sizeBand === s).length]).filter(x => x[1]);
     const periodLabel = {ytd: new Date().getFullYear() + ' year to date', quarter: 'This quarter', '12m': 'Last 12 months', all: 'All time'}[hrPeriod];
 
     const stageCounts = {
@@ -6148,7 +6142,7 @@
       <div class="hs-tiles">
         <div class="hs-tile"><b>${live.length}</b><span>Live pipeline (Qualify to Close)</span></div>
         <div class="hs-tile"><b>${winRate === null ? '—' : winRate + '%'}</b><span>Win rate · ${won.length} won · ${lost.length} lost · parked excluded</span></div>
-        <div class="hs-tile due"><b>${quarter.length}</b><span>Expected to close this quarter${sizes.length ? ' · ' + sizes.map(s => s[1] + ' ' + s[0]).join(' · ') : ''}</span></div>
+        <div class="hs-tile due"><b>${quarter.length}</b><span>Expected to close this quarter</span></div>
         <div class="hs-tile over"><b>${attn}</b><span>Needs attention · ${overdue.length} overdue · ${stale.length} stale 30d+</span></div>
       </div>
       <div class="hr-grid">
@@ -6265,7 +6259,6 @@
     document.getElementById('h_nextActionDate').value = op ? (op.nextActionDate||'') : '';
     document.getElementById('h_closedReason').value = op ? (op.closedReason||'') : '';
     hFillExpectedClose(op ? (op.expectedClose||'') : '');
-    hSize = op ? (op.sizeBand||'') : ''; hPaintSeg('h_sizeSeg', hSize);
     hClientType = op ? (op.clientType||'') : ''; hPaintSeg('h_clientSeg', hClientType);
     document.getElementById('h_contact').value = op ? (op.contact||'') : '';
     document.getElementById('h_proposalLink').value = op ? (op.proposalLink||'') : '';
@@ -6306,7 +6299,6 @@
       nextActionDate: document.getElementById('h_nextActionDate').value || null,
       closedReason: closed ? (document.getElementById('h_closedReason').value || null) : null,
       expectedClose: document.getElementById('h_expectedClose').value || null,
-      sizeBand: hSize || null,
       clientType: hClientType || null,
       contact: document.getElementById('h_contact').value.trim() || null,
       proposalLink: document.getElementById('h_proposalLink').value.trim() || null,
