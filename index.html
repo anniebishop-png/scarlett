@@ -2640,6 +2640,22 @@
       }).catch(()=>{});
       syncTaskToDelivery(id, {client, dateISO, title, division, status: 'notstarted'});
     });
+    // US Open qualifier legs (a US Open show whose deliverables include "US Open Leg") also always get a Fan
+    // Guide and a Social Post for the event week, and a Winner Post on the Monday after the competition.
+    if(client === 'US Open' && items.some(d => d.toLowerCase() === 'us open leg')){
+      [['Fan Guide', 0], ['Social Post', 0], ['Winner Post', 7]].forEach(([title, dayOffset], j) => {
+        if(items.some(d => d.toLowerCase() === title.toLowerCase())) return;   // already listed above
+        const dateISO = addDays(show.weekId, dayOffset);
+        const weekId = mondayOf(dateISO);
+        const id = 'dt_' + show.id + '_' + slugify(client) + '_' + slugify(title);
+        tasksCol().doc(id).create({
+          client, dateISO, title, tag: '', division, owners: [],
+          status: 'notstarted', notes: '', weekId, showId: show.id,
+          order: 120 + j, calendarSynced: false,
+        }).catch(()=>{});
+        syncTaskToDelivery(id, {client, dateISO, title, division, status: 'notstarted'});
+      });
+    }
   }
 
   function spawnClientOps(show, client){
