@@ -2868,6 +2868,27 @@
     </span>`;
   }
 
+  // "Mon 2, Tue 3, Wed 4, Fri 6" -> "Mon 2 - Wed 4, Fri 6": runs of consecutive days collapse into a range.
+  function outDaysLabel(days){
+    const sorted = Array.from(new Set(days || [])).sort();
+    const parts = [];
+    let i = 0;
+    while(i < sorted.length){
+      let j = i;
+      while(j + 1 < sorted.length && addDays(sorted[j], 1) === sorted[j + 1]) j++;
+      parts.push(j > i ? fmtDayLabel(sorted[i]) + ' - ' + fmtDayLabel(sorted[j]) : fmtDayLabel(sorted[i]));
+      i = j + 1;
+    }
+    return parts.join(', ');
+  }
+  // Older entries stored the long "Mon 2, Tue 3, ..." text; rebuild just that day part as ranges, keep any note after it.
+  function outNoteDisplay(o){
+    const note = o.note || '';
+    if(!(o.days && o.days.length)) return note;
+    const oldLabel = o.days.slice().sort().map(fmtDayLabel).join(', ');
+    return note.startsWith(oldLabel) ? outDaysLabel(o.days) + note.slice(oldLabel.length) : note;
+  }
+
   function renderChips(){
     const showsEl = document.getElementById('showsChips');
     const otherToggle = document.getElementById('otherShowsToggle');
@@ -2895,7 +2916,7 @@
 
     const outEl = document.getElementById('outChips');
     outEl.innerHTML = (weekMeta.out||[]).length
-      ? (weekMeta.out||[]).map((o,i) => `<span class="out-chip">${escapeHtml(o.name)}${o.note?` <span class="date">${escapeHtml(o.note)}</span>`:''}${canEdit?`<button class="chip-x" data-i="${i}" data-kind="out">×</button>`:''}</span>`).join('')
+      ? (weekMeta.out||[]).map((o,i) => `<span class="out-chip">${escapeHtml(o.name)}${outNoteDisplay(o)?` <span class="date">${escapeHtml(outNoteDisplay(o))}</span>`:''}${canEdit?`<button class="chip-x" data-i="${i}" data-kind="out">×</button>`:''}</span>`).join('')
       : `<div class="empty-state"><span class="check">✓</span>Full team this week.</div>`;
 
     document.querySelectorAll('#outChips .chip-x').forEach(btn => {
@@ -4244,7 +4265,7 @@
     const note = document.getElementById('out_note').value.trim();
     if(!name) return;
     const days = Array.from(document.querySelectorAll('#addOutDaysList input:checked')).map(cb => cb.value).sort();
-    const dayLabel = days.length ? days.map(fmtDayLabel).join(', ') : '';
+    const dayLabel = days.length ? outDaysLabel(days) : '';
     const combinedNote = dayLabel && note ? `${dayLabel} — ${note}` : (dayLabel || note);
     weekMeta.out = (weekMeta.out||[]).concat([{name, note:combinedNote, days}]);
     saveWeekMeta(); renderChips();
