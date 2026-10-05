@@ -6139,7 +6139,7 @@
   function setupPickList(inputId, listId){
     const input = document.getElementById(inputId), dl = document.getElementById(listId);
     if(!input || !dl) return;
-    const options = Array.from(dl.querySelectorAll('option')).map(o => o.value).filter(Boolean);
+    const options = Array.from(dl.querySelectorAll('option')).map(o => o.value).filter(Boolean).sort((a, b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
     const box = document.createElement('div');
     box.className = 'pick-chips'; box.hidden = true;
     input.insertAdjacentElement('afterend', box);
