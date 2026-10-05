@@ -1619,15 +1619,16 @@
     <h3 id="episodeModalTitle">Add episode</h3>
     <form id="episodeForm">
       <div class="field-row">
+        <div class="field" id="e_recordField"><label>Record date <span style="text-transform:none;font-weight:500;">(optional)</span></label><input type="date" id="e_recordDate"></div>
         <div class="field"><label>Release date</label><input type="date" id="e_date" required></div>
-        <div class="field"><label>Platform</label>
-          <select id="e_platform">
-            <option value="Eventing Podcast">Eventing Podcast</option>
-            <option value="Jumping Podcast">Jumping Podcast</option>
-            <option value="USEA">USEA</option>
-            <option value="US Open">US Open</option>
-          </select>
-        </div>
+      </div>
+      <div class="field"><label>Channel</label>
+        <select id="e_platform">
+          <option value="Eventing Podcast">Eventing Podcast</option>
+          <option value="Jumping Podcast">Jumping Podcast</option>
+          <option value="USEA">USEA</option>
+          <option value="US Open">US Open</option>
+        </select>
       </div>
       <div class="field"><label>Title <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="e_title" placeholder="Episode title"></div>
       <div class="field-row">
@@ -2328,6 +2329,14 @@
     Promise.all(['tasks','deliveryItems','hustleOpportunities'].map(t =>
       db.collection(t).where('assignedTo','array-contains','__probe__').get()
     )).then(() => { assignCols = true; }).catch(() => { assignCols = false; });
+  }
+  // Podcast record date needs one column (schema-v14-record-date.sql). Until it exists the Record date
+  // field stays hidden and saves leave it out, so nothing breaks.
+  let podcastRecCols = false;
+  function probePodcastRecCols(){
+    if(!db) return;
+    db.collection('podcastEpisodes').where('recordDate','==','__probe__').get()
+      .then(() => { podcastRecCols = true; }).catch(() => { podcastRecCols = false; });
   }
   function stampAssign(data, prevPeople, nextPeople, label){
     if(!assignCols) return;
@@ -5788,6 +5797,7 @@
   function podcastRowHtml(ep){
     const statusMeta = PODCAST_STATUS_META[ep.status] || PODCAST_STATUS_META.planned;
     const metaBits = [
+      ep.recordDate ? ('Recorded ' + fmtDayLabel(ep.recordDate)) : '',
       ep.brand,
       ep.ads ? ('Ads: ' + ep.ads) : '',
       ep.guest ? ('Guest: ' + ep.guest) : '',
@@ -5929,7 +5939,7 @@
     const opt = (v, t, cur) => `<option value="${escapeAttr(v)}" ${v === cur ? 'selected' : ''}>${escapeHtml(t)}</option>`;
     const active = !!(pcShow || pcHost || pcSponsor);
     el.innerHTML = `
-      <label>Show <select id="pcShowSel">${opt('', 'All shows', pcShow)}${shows.map(x => opt(x, x, pcShow)).join('')}</select></label>
+      <label>Channel <select id="pcShowSel">${opt('', 'All channels', pcShow)}${shows.map(x => opt(x, x, pcShow)).join('')}</select></label>
       <label>Host <select id="pcHostSel">${opt('', 'Everyone', pcHost)}${opt(PC_NONE, 'No host yet', pcHost)}${hosts.map(x => opt(x, x, pcHost)).join('')}</select></label>
       <label>Sponsor <select id="pcSponsorSel">${opt('', 'All sponsors', pcSponsor)}${sponsors.map(x => opt(x, x, pcSponsor)).join('')}</select></label>
       ${podcastView === 'calendar' ? `<label>Weeks <select id="pcWeeksSel">${[4, 8, 12].map(n => `<option value="${n}" ${n === pcWeeks ? 'selected' : ''}>${n} weeks</option>`).join('')}</select></label>` : ''}
@@ -6085,6 +6095,8 @@
     document.getElementById('episodeModalTitle').textContent = ep ? 'Edit episode' : 'Add episode';
     document.getElementById('e_date').value = ep ? (ep.date||'') : (presetDate || (podcastMonthFilter ? podcastMonthFilter + '-01' : toDateStr(new Date())));
     document.getElementById('e_platform').value = ep && ep.platform ? ep.platform : 'Eventing Podcast';
+    document.getElementById('e_recordField').style.display = podcastRecCols ? '' : 'none';
+    document.getElementById('e_recordDate').value = ep ? (ep.recordDate||'') : '';
     document.getElementById('e_title').value = ep ? (ep.title||'') : '';
     document.getElementById('e_brand').value = ep ? (ep.brand||'') : '';
     document.getElementById('e_ads').value = ep ? (ep.ads||'') : '';
@@ -6122,6 +6134,7 @@
       status: document.getElementById('e_status').value,
       notes: document.getElementById('e_notes').value.trim(),
     };
+    if(podcastRecCols) data.recordDate = document.getElementById('e_recordDate').value || '';
     if(!data.date){ closeEpisodeModal(); return; }
     if(editingEpisodeId){
       podcastCol().doc(editingEpisodeId).update(data).catch(()=>{});
@@ -6143,6 +6156,7 @@
       podcastCol().add(data).then(ref => syncEpisodeToDelivery(ref.id, data)).catch(()=>{});
       extraDates.forEach(d => {
         const epData = Object.assign({}, data, {date: d});
+        if(podcastRecCols) epData.recordDate = '';   // a repeat/extra episode has its own recording day
         podcastCol().add(epData).then(ref => syncEpisodeToDelivery(ref.id, epData)).catch(()=>{});
       });
     }
@@ -8126,6 +8140,7 @@
         // real cutoff to compare against. Kept fixed for the rest of the session (not re-read on
         // every background token refresh) so that cutoff doesn't quietly creep forward on its own.
         probeAssignCols();
+        probePodcastRecCols();
         pushRefresh();
         teamActivityCol().doc(email).get()
           .then(snap => { priorLastSeenAt = snap.exists ? (snap.data().lastActive || null) : null; })
