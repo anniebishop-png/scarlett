@@ -502,6 +502,13 @@
   .modal-actions{display:flex; justify-content:space-between; align-items:center; margin-top:6px; gap:10px;}
   .modal-actions .left{display:flex; gap:8px;}
   .modal-actions .right{display:flex; gap:8px;}
+  @media (max-width:560px){
+    .modal-actions{flex-wrap:wrap; row-gap:8px;}
+    .modal-actions .left, .modal-actions .right{flex:1 1 100%; flex-wrap:wrap; min-width:0;}
+    .modal-actions .left > button, .modal-actions .right > button{flex:1 1 0; min-width:0;}
+    .modal-actions .left > button#sendToEditBtn{flex:1 1 100%;}
+    .modal-actions .left:empty{display:none;}
+  }
 
   /* ---------- Bulk add ---------- */
   .modal-wide{max-width:660px;}
