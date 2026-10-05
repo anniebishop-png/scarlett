@@ -471,6 +471,17 @@
   .field select#f_division{cursor:pointer;}
   .owners-btn{width:100%; text-align:left; font:inherit; font-size:13.5px; padding:9px 11px; border-radius:9px; border:1px solid var(--hairline-strong); background:var(--bg); color:var(--ink); cursor:pointer;}
   .owners-btn:hover{border-color:var(--navy);}
+  .owners-btn{display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:38px;}
+  .owners-btn .ob-text{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .owners-btn .ob-text.empty{color:var(--ink-muted);}
+  .owners-btn::after{content:"\25BE"; flex:none; font-size:12px; color:var(--ink-muted);}
+  .pick-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; max-height:140px; overflow-y:auto; -webkit-overflow-scrolling:touch;}
+  .pick-chips[hidden]{display:none;}
+  .pick-chip{border:1px solid var(--hairline-strong); background:var(--surface-2); color:var(--ink); border-radius:999px; padding:7px 12px; font:inherit; font-size:13px; font-weight:600; cursor:pointer;}
+  .pick-chip:hover{border-color:var(--navy);}
+  .pick-chip.on{background:var(--navy); color:#fff; border-color:var(--navy);}
+  :root[data-theme="dark"] .pick-chip.on{background:var(--gold); color:var(--navy-deep); border-color:var(--gold);}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pick-chip.on{background:var(--gold); color:var(--navy-deep); border-color:var(--gold);}}
   .owners-pop{position:absolute; top:100%; left:0; right:0; margin-top:4px; background:var(--surface); border:1px solid var(--hairline-strong); border-radius:10px; box-shadow:var(--shadow); z-index:30; max-height:220px; overflow-y:auto; padding:6px;}
   .owners-pop[hidden]{display:none;}
   .owners-pop label{display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:7px; font-size:12.5px; font-weight:500; text-transform:none; letter-spacing:normal; cursor:pointer; color:var(--ink);}
@@ -1632,8 +1643,8 @@
       </div>
       <div class="field"><label>Title <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="e_title" placeholder="Episode title"></div>
       <div class="field-row">
-        <div class="field"><label>Brand <span style="text-transform:none;font-weight:500;">(optional)</span></label><input list="brandOptions" id="e_brand" placeholder="Pick one or type your own"></div>
-        <div class="field"><label>Ads <span style="text-transform:none;font-weight:500;">(optional)</span></label><input list="adsOptions" id="e_ads" placeholder="Pick one or type your own"></div>
+        <div class="field"><label>Brand <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="e_brand" autocomplete="off" placeholder="Pick one or type your own"></div>
+        <div class="field"><label>Ads <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="e_ads" autocomplete="off" placeholder="Pick one or type your own"></div>
       </div>
       <datalist id="brandOptions">
         <option value="Red Mills"><option value="Bedmax"><option value="Foran"><option value="British Eventing">
@@ -3407,7 +3418,8 @@
 
   function updateOwnersBtnLabel(){
     const btn = document.getElementById('ownersBtn');
-    btn.textContent = selectedOwners.length ? selectedOwners.map(o => ROSTER_INITIALS[o] || o).join(', ') : 'Select owners';
+    const names = selectedOwners.length > 2 ? selectedOwners.slice(0, 2).join(', ') + ' +' + (selectedOwners.length - 2) : selectedOwners.join(', ');
+    btn.innerHTML = '<span class="ob-text' + (selectedOwners.length ? '' : ' empty') + '">' + (selectedOwners.length ? escapeHtml(names) : 'Tap to choose owners') + '</span>';
   }
   function renderOwnersPop(){
     const pop = document.getElementById('ownersPop');
@@ -6113,12 +6125,49 @@
     document.getElementById('e_repeat_weeks').value = 8;
     document.getElementById('episodeExtraDatesField').style.display = ep ? 'none' : 'flex';
     document.getElementById('episodeRepeatRow').style.display = ep ? 'none' : 'flex';
+    document.querySelectorAll('#episodeForm .pick-chips').forEach(b => { b.hidden = true; });
     document.getElementById('episodeOverlay').hidden = false;
   }
   function closeEpisodeModal(){
     document.getElementById('episodeOverlay').hidden = true;
     editingEpisodeId = null;
   }
+
+
+  // Brand / Ads: the phone's built-in suggestion strip only shows three options, so these two fields show
+  // every option as tappable chips instead (still free-type for anything not on the list).
+  function setupPickList(inputId, listId){
+    const input = document.getElementById(inputId), dl = document.getElementById(listId);
+    if(!input || !dl) return;
+    const options = Array.from(dl.querySelectorAll('option')).map(o => o.value).filter(Boolean);
+    const box = document.createElement('div');
+    box.className = 'pick-chips'; box.hidden = true;
+    input.insertAdjacentElement('afterend', box);
+    function draw(){
+      const q = input.value.trim().toLowerCase();
+      const exact = options.some(o => o.toLowerCase() === q);
+      const shown = (!q || exact) ? options : options.filter(o => o.toLowerCase().includes(q));
+      if(!shown.length){ box.hidden = true; return; }
+      box.innerHTML = shown.map(o => '<button type="button" class="pick-chip' + (o.toLowerCase() === q ? ' on' : '') + '" data-v="' + escapeAttr(o) + '">' + escapeHtml(o) + '</button>').join('');
+      box.hidden = false;
+    }
+    input.addEventListener('focus', draw);
+    input.addEventListener('click', draw);
+    input.addEventListener('input', draw);
+    box.addEventListener('click', e => {
+      const b = e.target.closest('.pick-chip');
+      if(!b) return;
+      input.value = (input.value.trim().toLowerCase() === b.getAttribute('data-v').toLowerCase()) ? '' : b.getAttribute('data-v');
+      box.hidden = true;
+    });
+    document.addEventListener('pointerdown', e => {
+      if(box.hidden) return;
+      if(e.target === input || box.contains(e.target)) return;
+      box.hidden = true;
+    });
+  }
+  setupPickList('e_brand', 'brandOptions');
+  setupPickList('e_ads', 'adsOptions');
 
   document.getElementById('episodeForm').addEventListener('submit', e => {
     e.preventDefault();
