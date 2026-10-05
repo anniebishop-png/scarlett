@@ -958,6 +958,21 @@
   .cele-toast .ct-rosette{flex:none; width:34px; height:34px; color:#E0B04A;}
   .cele-toast .ct-title{font-weight:800; font-size:14px; letter-spacing:.01em;}
   .cele-toast .ct-sub{font-size:12.5px; opacity:.85; margin-top:2px;}
+
+  /* ---------- Screenshots on task notes ---------- */
+  .attach-grid{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;}
+  .attach-grid:empty{display:none;}
+  .attach-thumb{position:relative; width:84px; height:84px; border-radius:10px; overflow:hidden; border:1px solid var(--hairline-strong); background:var(--surface-2); cursor:zoom-in; padding:0;}
+  .attach-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .attach-thumb .att-x{position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%; border:0; background:rgba(0,0,0,.62); color:#fff; font-size:13px; line-height:22px; padding:0; cursor:pointer;}
+  .attach-thumb.loading{display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--ink-muted); cursor:default;}
+  .attach-hint{font-size:12px; color:var(--ink-muted); margin-left:8px;}
+  .attach-hint.err{color:var(--st-blocked-text);}
+  .row-clip{display:inline-flex; align-items:center; gap:3px; margin-left:8px; font-size:11.5px; font-weight:700; color:var(--ink-muted); vertical-align:middle;}
+  .row-clip svg{width:12px; height:12px;}
+  .img-lightbox{position:fixed; inset:0; z-index:100002; background:rgba(8,16,26,.88); display:flex; align-items:center; justify-content:center; padding:20px; cursor:zoom-out;}
+  .img-lightbox[hidden]{display:none;}
+  .img-lightbox img{max-width:96vw; max-height:92vh; border-radius:8px; box-shadow:0 20px 60px rgba(0,0,0,.6); background:#fff;}
 </style>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1051,6 +1066,7 @@
   <div class="notif-panel" id="notifPanel" hidden></div>
   <div class="wx-panel" id="wxPanel" hidden></div>
   <div class="qa-pop" id="qaPop" hidden></div>
+  <div class="img-lightbox" id="imgLightbox" hidden><img id="imgLightboxImg" alt="Screenshot"></div>
 
   <main>
 
@@ -1392,6 +1408,12 @@
         </div>
       </div>
       <div class="field"><label>Notes <span style="text-transform:none;font-weight:500;">(optional)</span></label><textarea id="f_notes"></textarea></div>
+      <div class="field" id="attachField" style="display:none;">
+        <label>Screenshots <span style="text-transform:none;font-weight:500;">(optional)</span></label>
+        <div class="attach-grid" id="attachGrid"></div>
+        <div><button type="button" class="add-row-btn" id="attachAddBtn" style="width:auto;padding:6px 2px;">+ Add screenshot</button><span class="attach-hint" id="attachHint">or paste one into the notes box</span></div>
+        <input type="file" id="attachInput" accept="image/*" multiple hidden>
+      </div>
       <div class="modal-actions">
         <div class="left">
           <button type="button" class="btn-ghost" id="deleteTaskBtn" style="display:none;color:var(--st-blocked-text);border-color:var(--st-blocked-text);">Delete</button>
@@ -3139,7 +3161,7 @@
         <div class="title-block" data-open="${t.id}">
           ${showClient ? `<span class="client-chip">${escapeHtml(t.client)}</span>` : ''}
           <div class="title">${escapeHtml(t.title)}</div>
-          ${metaBits ? `<div class="meta-line">${escapeHtml(metaBits)}</div>` : ''}
+          ${(metaBits || (t.attachments && t.attachments.length)) ? `<div class="meta-line">${escapeHtml(metaBits)}${(t.attachments && t.attachments.length) ? `<span class="row-clip" title="${t.attachments.length} screenshot${t.attachments.length === 1 ? '' : 's'} attached"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>${t.attachments.length}</span>` : ''}</div>` : ''}
         </div>
         ${pillHtml(t.status, t.id)}
         ${avatarsHtml(t.owners, t.id)}
@@ -3510,6 +3532,7 @@
     document.getElementById('ownersPop').hidden = true;
     document.getElementById('f_status').value = t ? t.status : 'notstarted';
     document.getElementById('f_notes').value = t ? (t.notes||'') : '';
+    attOpen(t);
 
     // "+ Add another task" only makes sense when adding fresh, never while editing one existing task.
     document.getElementById('extraTasksList').innerHTML = '';
@@ -3520,7 +3543,7 @@
     updateTaskModalHints();
     document.getElementById('taskOverlay').hidden = false;
   }
-  function closeTaskModal(){ document.getElementById('taskOverlay').hidden = true; editingTaskId = null; document.getElementById('ownersPop').hidden = true; document.getElementById('showPop').hidden = true; }
+  function closeTaskModal(){ attCleanup(); document.getElementById('taskOverlay').hidden = true; editingTaskId = null; document.getElementById('ownersPop').hidden = true; document.getElementById('showPop').hidden = true; }
 
   document.getElementById('cancelTaskBtn').addEventListener('click', closeTaskModal);
   document.getElementById('taskOverlay').addEventListener('click', (e) => { if(e.target.id === 'taskOverlay') closeTaskModal(); });
@@ -3650,7 +3673,10 @@
       notes: document.getElementById('f_notes').value.trim(),
       weekId: mondayOf(dateISO),
     };
+    if(attach.busy > 0){ attHint('Hold on, a screenshot is still uploading.', true); return; }
+    if(taskFilesReady) data.attachments = attach.cur.slice();
     if(!data.client || !data.title || !data.dateISO){ closeTaskModal(); return; }
+    attach.added = [];   // everything uploaded this time is now kept (saved with the task)
     {
       const prevTask = editingTaskId ? tasks.find(x => x.id === editingTaskId) : null;
       stampAssign(data, prevTask ? prevTask.owners : [], data.owners, data.title);
@@ -3714,6 +3740,133 @@
 
     closeTaskModal();
   });
+
+
+  // ---------------- screenshots on task notes ----------------
+  // Files live in a private Supabase Storage bucket ("task-files"); the task only keeps their paths in an
+  // `attachments` list. Needs schema-v15-task-files.sql; until it has been run taskFilesReady stays false
+  // and the Screenshots area simply doesn't appear.
+  const ATT_BUCKET = 'task-files';
+  const ATT_MAX = 10;
+  let taskFilesReady = false;
+  const attach = {cur: [], added: [], busy: 0};
+  const attUrlCache = new Map();
+  function probeTaskFiles(){
+    if(!db || typeof supabaseClient === 'undefined') return;
+    Promise.all([
+      db.collection('tasks').where('attachments', 'array-contains', '__probe__').get(),
+      supabaseClient.storage.from(ATT_BUCKET).list('', {limit: 1}).then(r => { if(r.error) throw r.error; })
+    ]).then(() => { taskFilesReady = true; }).catch(() => { taskFilesReady = false; });
+  }
+  function attHint(msg, isErr){
+    const h = document.getElementById('attachHint');
+    if(!h) return;
+    h.textContent = msg || 'or paste one into the notes box';
+    h.classList.toggle('err', !!isErr);
+  }
+  function attOpen(t){
+    attach.cur = (t && Array.isArray(t.attachments)) ? t.attachments.slice() : [];
+    attach.added = []; attach.busy = 0;
+    document.getElementById('attachField').style.display = taskFilesReady ? '' : 'none';
+    attHint('');
+    attRender();
+  }
+  // Closing the form without saving throws away anything uploaded in this sitting (saved files are never deleted).
+  function attCleanup(){
+    const orphans = attach.added.slice();
+    attach.added = []; attach.cur = []; attach.busy = 0;
+    if(orphans.length && typeof supabaseClient !== 'undefined') supabaseClient.storage.from(ATT_BUCKET).remove(orphans).catch(() => {});
+  }
+  async function attUrls(paths){
+    const now = Date.now();
+    const need = paths.filter(p => !(attUrlCache.get(p) && attUrlCache.get(p).exp > now));
+    if(need.length){
+      const r = await supabaseClient.storage.from(ATT_BUCKET).createSignedUrls(need, 3600);
+      (r.data || []).forEach(x => { if(x && x.signedUrl && x.path) attUrlCache.set(x.path, {url: x.signedUrl, exp: now + 3300000}); });
+    }
+    return paths.map(p => (attUrlCache.get(p) || {}).url || '');
+  }
+  function attRender(){
+    const grid = document.getElementById('attachGrid');
+    if(!grid) return;
+    grid.innerHTML = attach.cur.map((p, i) => '<div class="attach-thumb" data-i="' + i + '"><img alt="" hidden><button type="button" class="att-x" data-rm="' + i + '" aria-label="Remove screenshot">×</button></div>').join('')
+      + (attach.busy > 0 ? '<div class="attach-thumb loading">Uploading</div>' : '');
+    if(!attach.cur.length) return;
+    attUrls(attach.cur).then(urls => {
+      grid.querySelectorAll('.attach-thumb[data-i]').forEach(el => {
+        const img = el.querySelector('img'), u = urls[parseInt(el.getAttribute('data-i'), 10)];
+        if(u){ img.src = u; img.hidden = false; }
+      });
+    }).catch(() => {});
+  }
+  function attPrepare(file){
+    return new Promise(resolve => {
+      const plain = {blob: file, name: file.name || 'screenshot.png', type: file.type || 'image/png'};
+      if(file.type === 'image/gif' || file.size < 1500000) return resolve(plain);
+      const img = new Image(), u = URL.createObjectURL(file);
+      img.onload = () => {
+        const sc = Math.min(1, 2400 / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(b => { URL.revokeObjectURL(u); resolve(b ? {blob: b, name: (plain.name.replace(/\.\w+$/, '') || 'screenshot') + '.jpg', type: 'image/jpeg'} : plain); }, 'image/jpeg', .86);
+      };
+      img.onerror = () => { URL.revokeObjectURL(u); resolve(plain); };
+      img.src = u;
+    });
+  }
+  async function attAddFiles(files){
+    const imgs = Array.from(files || []).filter(f => /^image\//.test(f.type));
+    if(!imgs.length) return;
+    for(const f of imgs){
+      if(attach.cur.length >= ATT_MAX){ attHint('That is the limit: ' + ATT_MAX + ' screenshots per task.', true); break; }
+      attach.busy++; attRender(); attHint('Uploading...');
+      try{
+        const prep = await attPrepare(f);
+        const safe = String(prep.name).replace(/[^\w.\-]+/g, '_').slice(-60) || 'screenshot.png';
+        const path = Date.now().toString(36) + Math.random().toString(36).slice(2, 7) + '/' + safe;
+        const r = await supabaseClient.storage.from(ATT_BUCKET).upload(path, prep.blob, {contentType: prep.type, upsert: false});
+        if(r.error) throw r.error;
+        attach.cur.push(path); attach.added.push(path);
+        attHint('');
+      }catch(e){
+        attHint('That one did not upload. Try again, and tell Annie if it keeps happening.', true);
+      }
+      attach.busy--; attRender();
+    }
+  }
+  document.getElementById('attachAddBtn').addEventListener('click', () => document.getElementById('attachInput').click());
+  document.getElementById('attachInput').addEventListener('change', e => { attAddFiles(e.target.files); e.target.value = ''; });
+  // Paste a screenshot straight into the notes box (or anywhere in the Screenshots area).
+  document.getElementById('f_notes').addEventListener('paste', e => {
+    if(!taskFilesReady) return;
+    const files = Array.from((e.clipboardData && e.clipboardData.files) || []).filter(f => /^image\//.test(f.type));
+    if(!files.length) return;
+    e.preventDefault();
+    attAddFiles(files);
+  });
+  document.getElementById('attachGrid').addEventListener('click', e => {
+    const rm = e.target.closest('[data-rm]');
+    if(rm){
+      e.stopPropagation();
+      const i = parseInt(rm.getAttribute('data-rm'), 10), p = attach.cur[i];
+      if(p === undefined) return;
+      attach.cur.splice(i, 1);
+      const ai = attach.added.indexOf(p);
+      if(ai !== -1){ attach.added.splice(ai, 1); supabaseClient.storage.from(ATT_BUCKET).remove([p]).catch(() => {}); }
+      attRender();
+      return;
+    }
+    const th = e.target.closest('.attach-thumb[data-i]');
+    if(!th) return;
+    const img = th.querySelector('img');
+    if(img && img.src){ document.getElementById('imgLightboxImg').src = img.src; document.getElementById('imgLightbox').hidden = false; }
+  });
+  document.getElementById('imgLightbox').addEventListener('click', () => { document.getElementById('imgLightbox').hidden = true; });
+  document.addEventListener('keydown', e => {
+    const lb = document.getElementById('imgLightbox');
+    if(e.key === 'Escape' && lb && !lb.hidden){ lb.hidden = true; e.stopPropagation(); }
+  }, true);
 
   document.getElementById('addTaskBtn').addEventListener('click', () => openTaskModal(null));
 
@@ -8195,6 +8348,7 @@
         // every background token refresh) so that cutoff doesn't quietly creep forward on its own.
         probeAssignCols();
         probePodcastRecCols();
+        probeTaskFiles();
         pushRefresh();
         teamActivityCol().doc(email).get()
           .then(snap => { priorLastSeenAt = snap.exists ? (snap.data().lastActive || null) : null; })
