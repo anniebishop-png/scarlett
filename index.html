@@ -2187,7 +2187,7 @@
 
   const CLIENT_ORDER = ['Blenheim','EquiRatings','Rising Lions'];
   const CLIENT_ROSTER = [
-    'US Open','USEF','FEI','FEI - Nations Cup','Highlands Cup','Red Mills','New Zealand Eventing','Canada Eventing',
+    'US Open','USEF','FEI','FEI - Nations Cup','Eventing Ireland','Highlands Cup','Red Mills','New Zealand Eventing','Canada Eventing',
     'US Eventing','Netherlands Eventing','BEF','Belgium Eventing','Austria Jumping HP','Australia Eventing',
     'Ireland Eventing','Ireland Jumping HP','Netherlands Jumping HP','Mercedes','Cornbury','MLSJ','Geneva',
     'HSI','Aloga','Scone','Eventing Manager','Pod Diaries','Horseware','USEA',
@@ -2195,7 +2195,7 @@
   ];
   const DIVISION_ROSTER = [
     'Business Development','Content - Eventing','Content - Jumping','Content - US Open','Eventing Manager','HP - Eventing',
-    'HP - Jumping','Horse Sourcing','Management',
+    'HP - Jumping','Horse Sourcing','Management','Risk',
   ];
   // Generic internal-ops task titles -- always offered as Task title suggestions (see
   // updateTaskModalHints), alongside whatever content-deliverable items that client/division's
@@ -2385,6 +2385,14 @@
   // Podcast record date needs one column (schema-v14-record-date.sql). Until it exists the Record date
   // field stays hidden and saves leave it out, so nothing breaks.
   let podcastRecCols = false;
+  // Weekly repeats remember the week they start in (recurringTasks.startWeek) so a task set to start next
+  // Monday no longer also appears on this week's Monday. Needs schema-v16; until it is run this stays false.
+  let recurStartCol = false;
+  function probeRecurStart(){
+    if(!db) return;
+    recurCol().where('startWeek','==','__probe__').get()
+      .then(() => { recurStartCol = true; }).catch(() => { recurStartCol = false; });
+  }
   function probePodcastRecCols(){
     if(!db) return;
     db.collection('podcastEpisodes').where('recordDate','==','__probe__').get()
@@ -3775,6 +3783,7 @@
         owners:data.owners, status:data.status, notes:data.notes,
         dayOfWeek: dayOfWeekIndex(dateISO), active:true,
       };
+      if(recurStartCol) template.startWeek = data.weekId;
       recurCol().add(template).then(ref => {
         const occId = 'rt_' + ref.id + '_' + data.weekId;
         const occData = Object.assign({}, data, {recurringId: ref.id, order: tasks.length, calendarSynced:false});
@@ -4601,6 +4610,7 @@
   function ensureRecurringOccurrences(){
     if(!canEdit || !db) return;
     recurring.filter(r => r.active !== false).forEach(r => {
+      if(r.startWeek && currentWeekId < r.startWeek) return;   // repeat hasn't started yet
       const occId = 'rt_' + r.id + '_' + currentWeekId;
       if(tasks.some(t => t.id === occId)) return;
       const occData = {
@@ -8451,6 +8461,7 @@
         // every background token refresh) so that cutoff doesn't quietly creep forward on its own.
         probeAssignCols();
         probePodcastRecCols();
+        probeRecurStart();
         probeTaskFiles();
         pushRefresh();
         teamActivityCol().doc(email).get()
