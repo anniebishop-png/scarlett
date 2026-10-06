@@ -3339,9 +3339,10 @@
     const taskId = btn.getAttribute('data-menu');
     const menu = document.createElement('div');
     menu.className = 'row-menu';
-    menu.innerHTML = `<button data-act="edit">Edit</button><button data-act="delete" class="danger">Delete</button>`;
+    menu.innerHTML = `<button data-act="edit">Edit</button><button data-act="dup">Duplicate</button><button data-act="delete" class="danger">Delete</button>`;
     positionFloatingPop(menu, btn);
     menu.querySelector('[data-act="edit"]').addEventListener('click', (e)=>{ e.stopPropagation(); openTaskModal(taskId); closePops(); });
+    menu.querySelector('[data-act="dup"]').addEventListener('click', (e)=>{ e.stopPropagation(); closePops(); duplicateTask(taskId); });
     menu.querySelector('[data-act="delete"]').addEventListener('click', (e)=>{ e.stopPropagation(); closePops(); confirmDeleteTask(taskId); });
     openMenuId = taskId;
   }
@@ -3536,7 +3537,31 @@
     if(!pop.hidden && e.target.id !== 'showBtn' && !pop.contains(e.target)) pop.hidden = true;
   });
 
+  // Duplicate: opens the Add task form pre-filled from an existing task (status reset, no screenshots),
+  // dated the next day. "+ Add another task" rows then default to the same title on the following days,
+  // so one task can be copied across several days of the week in one go. Never explodes Clip / Graphics - Full.
+  let dupMode = false, dupTitle = '';
+  function duplicateTask(taskId){
+    const t = tasks.find(x=>x.id===taskId);
+    if(!t || !canEdit) return;
+    openTaskModal(null);
+    dupMode = true; dupTitle = t.title;
+    document.getElementById('modalTitle').textContent = 'Duplicate task';
+    document.getElementById('f_client').value = t.client;
+    document.getElementById('f_date').value = addDays(t.dateISO, 1);
+    document.getElementById('f_title').value = t.title;
+    document.getElementById('f_tag').value = t.tag || '';
+    document.getElementById('f_division').value = t.division || '';
+    selectedShowId = t.showId || '';
+    updateShowBtnLabel();
+    selectedOwners = (t.owners||[]).slice();
+    updateOwnersBtnLabel();
+    document.getElementById('f_status').value = 'notstarted';
+    document.getElementById('f_notes').value = t.notes || '';
+    updateTaskModalHints();
+  }
   function openTaskModal(taskId){
+    dupMode = false; dupTitle = '';
     editingTaskId = taskId || null;
     const t = taskId ? tasks.find(x=>x.id===taskId) : null;
     document.getElementById('modalTitle').textContent = t ? 'Edit task' : 'Add task';
@@ -3566,7 +3591,7 @@
     updateTaskModalHints();
     document.getElementById('taskOverlay').hidden = false;
   }
-  function closeTaskModal(){ attCleanup(); document.getElementById('taskOverlay').hidden = true; editingTaskId = null; document.getElementById('ownersPop').hidden = true; document.getElementById('showPop').hidden = true; }
+  function closeTaskModal(){ dupMode = false; attCleanup(); document.getElementById('taskOverlay').hidden = true; editingTaskId = null; document.getElementById('ownersPop').hidden = true; document.getElementById('showPop').hidden = true; }
 
   document.getElementById('cancelTaskBtn').addEventListener('click', closeTaskModal);
   document.getElementById('taskOverlay').addEventListener('click', (e) => { if(e.target.id === 'taskOverlay') closeTaskModal(); });
@@ -3655,7 +3680,10 @@
     updateRecurRowVisibility();
   }
   document.getElementById('addExtraTaskBtn').addEventListener('click', () => {
-    addExtraTaskRow('', document.getElementById('f_date').value || currentWeekId);
+    const dates = document.querySelectorAll('#extraTasksList .extra-task-date');
+    const last = dates.length ? dates[dates.length-1].value : document.getElementById('f_date').value;
+    if(dupMode && last) addExtraTaskRow(dupTitle, addDays(last, 1));
+    else addExtraTaskRow('', document.getElementById('f_date').value || currentWeekId);
   });
 
   // Shows/hides the "Repeats weekly on this day" option: hidden while editing a task that's already
@@ -3713,9 +3741,9 @@
     })).filter(r => r.title && r.dateISO) : [];
     const makeRecurring = !editingTaskId && !extraTasks.length && document.getElementById('f_recurring').checked;
 
-    if(!editingTaskId && data.title === 'Graphics - Full'){
+    if(!editingTaskId && !dupMode && data.title === 'Graphics - Full'){
       spawnFullGraphicsPackage(data);
-    } else if(!editingTaskId && data.client === 'Clip'){
+    } else if(!editingTaskId && !dupMode && data.client === 'Clip'){
       spawnClipWeekTask(data);
     } else if(editingTaskId){
       const t = tasks.find(x=>x.id===editingTaskId);
@@ -3756,8 +3784,8 @@
     // just never recurring (ambiguous which of several tasks would repeat weekly).
     extraTasks.forEach(r => {
       const extraData = Object.assign({}, data, {title: r.title, dateISO: r.dateISO, weekId: mondayOf(r.dateISO)});
-      if(extraData.title === 'Graphics - Full') spawnFullGraphicsPackage(extraData);
-      else if(extraData.client === 'Clip') spawnClipWeekTask(extraData);
+      if(!dupMode && extraData.title === 'Graphics - Full') spawnFullGraphicsPackage(extraData);
+      else if(!dupMode && extraData.client === 'Clip') spawnClipWeekTask(extraData);
       else addOneTask(extraData);
     });
 
