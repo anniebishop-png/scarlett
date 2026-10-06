@@ -3360,7 +3360,7 @@
     if(t) t.status = status; // optimistic
     renderGroups();
     if(canEdit) tasksCol().doc(taskId).update({status})
-      .then(() => { if(t) syncTaskToDelivery(taskId, t); if(status === 'done' && prev !== 'done') maybeClearRound(t); })
+      .then(() => { if(t) syncTaskToDelivery(taskId, t); if(status === 'done' && prev !== 'done') maybeShowWrapped(t).then(did => { if(!did) maybeClearRound(t); }); })
       .catch(err => {
         // Don't let the board pretend it saved: put the old status back and say so.
         console.error('Status save failed', taskId, err);
@@ -5036,6 +5036,22 @@
         if(k < dur) requestAnimationFrame(frame); else c.remove();
       })(start);
     }catch(e){}
+  }
+  // "Show wrapped": the task just marked done was the last open task linked to its show (across all weeks).
+  // Needs at least two tasks on the show, and fires once per show per device. Resolves true if it celebrated.
+  function maybeShowWrapped(t){
+    if(!t || !t.showId || !canEdit) return Promise.resolve(false);
+    return tasksCol().where('showId','==',t.showId).get().then(snap => {
+      const rows = snap.docs.map(d => d.data());
+      if(rows.length < 2 || rows.some(r => r.status !== 'done')) return false;
+      const key = 'scarlett.showWrapped';
+      let seen = []; try{ seen = JSON.parse(localStorage.getItem(key) || '[]'); }catch(e){}
+      if(seen.includes(t.showId)) return false;
+      try{ seen.push(t.showId); localStorage.setItem(key, JSON.stringify(seen.slice(-200))); }catch(e){}
+      const nm = showNameById(t.showId);
+      celebrate(nm ? nm + ' is wrapped' : 'Show wrapped', 'Every deliverable is done. Great work.', true);
+      return true;
+    }).catch(() => false);
   }
   // "Clear round": the signed-in person just finished their last open task that was due today or earlier.
   // Once per person per day, and only on this week's board, so it stays a treat rather than a nag.
