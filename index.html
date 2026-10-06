@@ -1097,7 +1097,7 @@
 
   <main>
 
-    <div class="friday-line" id="fridayLine" hidden><span class="fl-horse gh" id="flHorse" aria-hidden="true"></span><span class="fl-text"></span><button type="button" class="fl-x" id="flClose" aria-label="Hide for today">✕</button></div>
+    <div class="friday-line" id="fridayLine" hidden><span class="fl-text"></span><button type="button" class="fl-x" id="flClose" aria-label="Hide for today">✕</button></div>
     <div class="next-show" id="nextShow" hidden></div>
 
     <div class="due-banner" id="dueBanner" hidden>
@@ -5031,8 +5031,9 @@
       + '<circle cx="68.5" cy="8.8" r="1" fill="#fff" stroke="none"/></svg>';
   }
   let horseRunning = false;
+  const HORSE_ON = false;   // switched off until there is a better horse picture
   function horseGallop(){
-    if(horseRunning || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    if(!HORSE_ON || horseRunning || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
     try{
       horseRunning = true;
       const el = document.createElement('div');
@@ -5068,7 +5069,6 @@
   let fridayTimer = null;
   function fridayInit(){
     if(fridayTimer) return;
-    const h = document.getElementById('flHorse'); if(h) h.innerHTML = horseSvg(false);
     const x = document.getElementById('flClose');
     if(x) x.addEventListener('click', () => {
       try{ localStorage.setItem('scarlett.fridayDismissed', toDateStr(new Date())); }catch(e){}
