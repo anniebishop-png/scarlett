@@ -191,6 +191,31 @@
   :root[data-theme="dark"] .arc-season-head h3{color:var(--gold);}
   @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .arc-season-head h3{color:var(--gold);}}
   .arc-season-head span{color:var(--ink-muted); font-size:12.5px; font-weight:600;}
+  /* ---- My tasks page ---- */
+  .mt-card{background:var(--surface); border:1px solid var(--hairline); border-radius:14px; margin-bottom:14px; overflow:hidden;}
+  .mt-head{display:flex; align-items:baseline; gap:10px; padding:12px 16px; border-bottom:1px solid var(--hairline); font-weight:800; color:var(--navy); font-size:14px; width:100%; background:none; border-top:none; border-left:none; border-right:none; text-align:left;}
+  :root[data-theme="dark"] .mt-head{color:var(--gold);}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .mt-head{color:var(--gold);}}
+  .mt-head .mt-count{color:var(--ink-muted); font-size:12px; font-weight:600;}
+  button.mt-head{cursor:pointer;}
+  .mt-head.collapsed{border-bottom:none;}
+  .mt-row{display:grid; grid-template-columns:96px 1fr 132px; gap:12px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--hairline);}
+  .mt-row:last-child{border-bottom:none;}
+  .mt-row.is-overdue .mt-day{color:var(--st-blocked-text); font-weight:700;}
+  .mt-day{font-size:12px; color:var(--ink-muted); font-variant-numeric:tabular-nums; font-weight:600;}
+  .mt-main{cursor:pointer; min-width:0;}
+  .mt-main:hover .mt-title{text-decoration:underline;}
+  .mt-title{font-weight:700; color:var(--ink); font-size:13.5px; overflow-wrap:anywhere;}
+  .mt-meta{font-size:11.5px; color:var(--ink-muted); margin-top:2px;}
+  .mt-row.is-done .mt-title{text-decoration:line-through; color:var(--ink-muted);}
+  .mt-status{font:inherit; font-size:12px; font-weight:700; padding:6px 8px; border-radius:8px; border:1px solid var(--hairline-strong); background:var(--surface); color:var(--ink); width:100%;}
+  .mt-empty{padding:22px 16px; color:var(--ink-muted); font-size:13px;}
+  .mt-more{display:block; margin:0 16px 12px; background:none; border:none; color:var(--navy); font-weight:700; font-size:12.5px; cursor:pointer; padding:6px 0;}
+  :root[data-theme="dark"] .mt-more{color:var(--gold);}
+  @media (max-width:560px){
+    .mt-row{grid-template-columns:1fr; row-gap:6px;}
+    .mt-day{order:-1;}
+  }
   .arc-row{display:grid; grid-template-columns:96px 1fr 150px auto; gap:12px; align-items:center; padding:11px 16px; border-bottom:1px solid var(--hairline); font-size:12.5px; cursor:pointer;}
   .arc-row:hover{background:var(--surface-2);}
   .arc-item:last-child .arc-row, .arc-item.open .arc-row{border-bottom:none;}
@@ -1047,6 +1072,7 @@
       <button class="today-btn" id="todayBtn">This week</button>
     </div>
     <div class="header-nav-btns">
+      <button class="header-btn" id="myTasksBtn" data-nav="mytasks">My tasks</button>
       <button class="header-btn" id="archiveBtn" data-nav="archive">Archive</button>
       <button class="header-btn" id="calendarBtn" data-nav="calendar">Calendar</button>
       <button class="header-btn" id="clientOpsBtn" data-nav="ops">Client Ops</button>
@@ -1142,6 +1168,7 @@
   <div class="report-header">
     <div class="global-nav">
       <button class="global-nav-btn" data-nav="board">Home</button>
+      <button class="global-nav-btn" data-nav="mytasks">My tasks</button>
       <button class="global-nav-btn" data-nav="archive">Archive</button>
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
@@ -1171,6 +1198,7 @@
   <div class="report-header">
     <div class="global-nav">
       <button class="global-nav-btn" data-nav="board">Home</button>
+      <button class="global-nav-btn" data-nav="mytasks">My tasks</button>
       <button class="global-nav-btn" data-nav="archive">Archive</button>
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
@@ -1194,6 +1222,7 @@
   <div class="report-header">
     <div class="global-nav">
       <button class="global-nav-btn" data-nav="board">Home</button>
+      <button class="global-nav-btn" data-nav="mytasks">My tasks</button>
       <button class="global-nav-btn" data-nav="archive">Archive</button>
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
@@ -1217,10 +1246,34 @@
   <footer class="note">Shows are grouped by their event week. Click a show to flag it as a client, add a debrief, or remove it — same as the weekly board.</footer>
 </div>
 
+<div class="app" id="myTasksApp" style="display:none;">
+  <div class="report-header">
+    <div class="global-nav">
+      <button class="global-nav-btn" data-nav="board">Home</button>
+      <button class="global-nav-btn" data-nav="mytasks">My tasks</button>
+      <button class="global-nav-btn" data-nav="archive">Archive</button>
+      <button class="global-nav-btn" data-nav="calendar">Calendar</button>
+      <button class="global-nav-btn" data-nav="ops">Client Ops</button>
+      <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="hustle">Hustle</button>
+      <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="reports">Reports</button>
+    </div>
+    <h2>My tasks</h2>
+  </div>
+  <div class="report-controls">
+    <input type="search" class="arc-search" id="mtSearch" placeholder="Search my tasks" aria-label="Search my tasks">
+  </div>
+  <div class="report-summary" id="mtSummary"></div>
+  <div id="mtBody"></div>
+  <footer class="note">Every task you are assigned to, from any week. Click a task to open it in its week.</footer>
+</div>
+
 <div class="app" id="archiveApp" style="display:none;">
   <div class="report-header">
     <div class="global-nav">
       <button class="global-nav-btn" data-nav="board">Home</button>
+      <button class="global-nav-btn" data-nav="mytasks">My tasks</button>
       <button class="global-nav-btn" data-nav="archive">Archive</button>
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
@@ -1258,6 +1311,7 @@
   <div class="report-header">
     <div class="global-nav">
       <button class="global-nav-btn" data-nav="board">Home</button>
+      <button class="global-nav-btn" data-nav="mytasks">My tasks</button>
       <button class="global-nav-btn" data-nav="archive">Archive</button>
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
@@ -1297,6 +1351,7 @@
   <div class="report-header">
     <div class="global-nav">
       <button class="global-nav-btn" data-nav="board">Home</button>
+      <button class="global-nav-btn" data-nav="mytasks">My tasks</button>
       <button class="global-nav-btn" data-nav="archive">Archive</button>
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
@@ -1340,6 +1395,7 @@
   <div class="report-header">
     <div class="global-nav">
       <button class="global-nav-btn" data-nav="board">Home</button>
+      <button class="global-nav-btn" data-nav="mytasks">My tasks</button>
       <button class="global-nav-btn" data-nav="archive">Archive</button>
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
@@ -4533,6 +4589,7 @@
     unsubTasks = tasksCol().where('weekId','==', currentWeekId).onSnapshot(snap => {
       tasks = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
       renderGroups();
+      if(pendingOpenTask && pendingOpenTask.weekId === currentWeekId && tasks.some(x => x.id === pendingOpenTask.id)){ const pid = pendingOpenTask.id; pendingOpenTask = null; openTaskModal(pid); }
       ensureRecurringOccurrences();
       fixFixedDayTaskDates();
       document.getElementById('footNote').textContent = 'This board is shared and live — changes anyone on the team makes here show up for everyone instantly.';
@@ -5510,6 +5567,112 @@
     }
   }
 
+  // ---------------- my tasks (every task assigned to me, any week) ----------------
+  // The board only ever holds the week being viewed, so a task dated in another week can look like
+  // it vanished. This page asks for every task I own across all weeks, open ones first (oldest
+  // first, so anything overdue sits at the top), finished ones tucked underneath.
+  let unsubMyTasks = null, myTasksRows = [], myTasksState = 'idle';
+  let mtShowDone = false, mtDoneAll = false, mtQuery = '';
+  let pendingOpenTask = null; // {id, weekId}: open this task's modal once its week has loaded
+  function enterMyTasks(){
+    leaveMyTasks();
+    myTasksState = 'loading';
+    renderMyTasks();
+    if(!db || !currentUserName){ myTasksState = 'noname'; renderMyTasks(); return; }
+    unsubMyTasks = tasksCol().where('owners','array-contains', currentUserName).onSnapshot(snap => {
+      myTasksRows = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+      myTasksState = 'ready';
+      renderMyTasks();
+    }, () => { myTasksState = 'error'; renderMyTasks(); });
+  }
+  function leaveMyTasks(){ if(unsubMyTasks){ unsubMyTasks(); unsubMyTasks = null; } }
+  function mtDateLabel(dateStr){
+    if(!dateStr) return 'No date';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric'});
+  }
+  function mtRowHtml(t, today){
+    const done = t.status === 'done';
+    const overdue = !done && t.dateISO && t.dateISO < today;
+    const wk = t.weekId || (t.dateISO ? mondayOf(t.dateISO) : '');
+    const bits = [t.client, t.tag, wk ? 'Week of ' + mtDateLabel(wk).replace(/^\w+,\s*/, '') : ''].filter(Boolean).join(' · ');
+    const opts = Object.keys(STATUS_META).map(k => `<option value="${k}"${t.status === k ? ' selected' : ''}>${STATUS_META[k].label}</option>`).join('');
+    return `<div class="mt-row ${done ? 'is-done' : ''} ${overdue ? 'is-overdue' : ''}" data-mt-id="${escapeAttr(t.id)}">
+      <div class="mt-day">${escapeHtml(mtDateLabel(t.dateISO))}${overdue ? '<br><span class="flag-overdue">Overdue</span>' : ''}</div>
+      <div class="mt-main" data-mt-open="${escapeAttr(t.id)}" role="button" tabindex="0">
+        <div class="mt-title">${escapeHtml(t.title || '(untitled)')}</div>
+        ${bits ? `<div class="mt-meta">${escapeHtml(bits)}</div>` : ''}
+      </div>
+      ${canEdit ? `<select class="mt-status" data-mt-status="${escapeAttr(t.id)}" aria-label="Status">${opts}</select>` : `<span>${STATUS_META[t.status] ? STATUS_META[t.status].label : ''}</span>`}
+    </div>`;
+  }
+  function renderMyTasks(){
+    const body = document.getElementById('mtBody');
+    const sum = document.getElementById('mtSummary');
+    if(!body) return;
+    if(myTasksState === 'noname'){ sum.innerHTML = ''; body.innerHTML = '<div class="mt-card"><div class="mt-empty">Your sign-in is not matched to a team member, so there is no personal list to show.</div></div>'; return; }
+    if(myTasksState === 'error'){ sum.innerHTML = ''; body.innerHTML = '<div class="mt-card"><div class="mt-empty">Could not load your tasks. Try again in a moment.</div></div>'; return; }
+    if(myTasksState !== 'ready'){ sum.innerHTML = ''; body.innerHTML = '<div class="mt-card"><div class="mt-empty">Loading your tasks...</div></div>'; return; }
+    const today = toDateStr(new Date());
+    const q = mtQuery.trim().toLowerCase();
+    const rows = myTasksRows.filter(t => !q || [t.title, t.client, t.tag, t.notes].join(' ').toLowerCase().includes(q));
+    const open = rows.filter(t => t.status !== 'done').sort((a,b) => (a.dateISO||'9999').localeCompare(b.dateISO||'9999') || (a.title||'').localeCompare(b.title||''));
+    const done = rows.filter(t => t.status === 'done').sort((a,b) => (b.dateISO||'').localeCompare(a.dateISO||''));
+    const overdueN = open.filter(t => t.dateISO && t.dateISO < today).length;
+    const tile = (n, l) => `<div class="report-stat"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
+    sum.innerHTML = tile(open.length, 'Open') + (overdueN ? tile(overdueN, 'Overdue') : '') + tile(done.length, 'Done');
+    let html = `<div class="mt-card"><div class="mt-head">Open <span class="mt-count">${open.length}</span></div>` +
+      (open.length ? open.map(t => mtRowHtml(t, today)).join('') : `<div class="mt-empty">${q ? 'No open tasks match that search.' : 'Nothing open. You are all caught up.'}</div>`) + '</div>';
+    const shown = mtDoneAll ? done : done.slice(0, 50);
+    html += `<div class="mt-card"><button type="button" class="mt-head ${mtShowDone ? '' : 'collapsed'}" id="mtDoneToggle" aria-expanded="${mtShowDone}">${mtShowDone ? '▾' : '▸'} Done <span class="mt-count">${done.length}</span></button>` +
+      (mtShowDone ? (shown.length ? shown.map(t => mtRowHtml(t, today)).join('') : '<div class="mt-empty">No finished tasks yet.</div>') +
+        (done.length > shown.length ? `<button type="button" class="mt-more" id="mtDoneMore">Show all ${done.length}</button>` : '') : '') + '</div>';
+    body.innerHTML = html;
+  }
+  function openMyTask(id){
+    const t = myTasksRows.find(x => x.id === id);
+    if(!t) return;
+    const wk = t.weekId || (t.dateISO ? mondayOf(t.dateISO) : currentWeekId);
+    switchApp('board');
+    if(wk === currentWeekId && tasks.some(x => x.id === id)){ openTaskModal(id); return; }
+    pendingOpenTask = {id, weekId: wk};
+    setTimeout(() => { if(pendingOpenTask && pendingOpenTask.id === id) pendingOpenTask = null; }, 10000);
+    if(wk !== currentWeekId) goToWeek(wk);
+  }
+  function myTaskSetStatus(id, status){
+    const t = myTasksRows.find(x => x.id === id);
+    if(!t || !canEdit) return;
+    const prev = t.status;
+    t.status = status;
+    renderMyTasks();
+    tasksCol().doc(id).update({status})
+      .then(() => { syncTaskToDelivery(id, t); })
+      .catch(err => {
+        console.error('Status save failed', id, err);
+        t.status = prev; renderMyTasks();
+        showSaveError('Couldn\'t save that status change. Try again, and tell Annie if it keeps happening.');
+      });
+  }
+  (function(){
+    const body = document.getElementById('mtBody');
+    body.addEventListener('click', (e) => {
+      if(e.target.closest('#mtDoneToggle')){ mtShowDone = !mtShowDone; renderMyTasks(); return; }
+      if(e.target.closest('#mtDoneMore')){ mtDoneAll = true; renderMyTasks(); return; }
+      const o = e.target.closest('[data-mt-open]');
+      if(o) openMyTask(o.getAttribute('data-mt-open'));
+    });
+    body.addEventListener('keydown', (e) => {
+      if(e.key !== 'Enter' && e.key !== ' ') return;
+      const o = e.target.closest('[data-mt-open]');
+      if(o){ e.preventDefault(); openMyTask(o.getAttribute('data-mt-open')); }
+    });
+    body.addEventListener('change', (e) => {
+      const sel = e.target.closest('[data-mt-status]');
+      if(sel) myTaskSetStatus(sel.getAttribute('data-mt-status'), sel.value);
+    });
+    document.getElementById('mtSearch').addEventListener('input', (e) => { mtQuery = e.target.value; renderMyTasks(); });
+  })();
+
   // ---------------- cross-page nav ----------------
   // One shared router for every "Board / Calendar / Client Ops / Delivery Tracker / Podcast /
   // Reports" button, wherever it appears (the board header, or any of the other five pages'
@@ -5528,6 +5691,7 @@
     // happen from any page) need it to know which clients are set up, not only visits to this page.
     delivery: { el: 'deliveryApp', onEnter: subscribeDelivery, onLeave: unsubscribeDelivery },
     archive:  { el: 'archiveApp',  onEnter: enterArchive },
+    mytasks:  { el: 'myTasksApp',  onEnter: enterMyTasks, onLeave: leaveMyTasks },
   };
   let currentAppPage = 'board';
   function switchApp(target){
