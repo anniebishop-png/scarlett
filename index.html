@@ -9250,7 +9250,11 @@
 
     // on time vs late: only items with a recorded delivery time and a due date
     const hasCol = deliveryItems.some(r => 'deliveredAt' in r);
-    const measured = items.filter(r => r.status === 'delivered' && r.deliveredAt && r.date).map(r => {
+    // Items marked Delivered in one go (5 or more in the same minute, e.g. a bulk load of old work) say nothing about
+    // when the work really went out, so they are left out rather than shown as hugely late.
+    const stampCount = {};
+    deliveryItems.forEach(r => { if(r.deliveredAt){ const m = String(r.deliveredAt).slice(0, 16); stampCount[m] = (stampCount[m] || 0) + 1; } });
+    const measured = items.filter(r => r.status === 'delivered' && r.deliveredAt && r.date && stampCount[String(r.deliveredAt).slice(0, 16)] < 5).map(r => {
       const d = toDateStr(new Date(r.deliveredAt));
       const lateBy = Math.round((new Date(d + 'T12:00:00') - new Date(r.date + 'T12:00:00')) / 86400000);
       return {r, lateBy};
@@ -9267,7 +9271,7 @@
       otHtml = `<div class="hr-bar-row"><span class="lbl">On time</span><span class="hr-bar won"><i style="width:${Math.round(100*onTime.length/mx)}%"></i></span><span class="num">${onTime.length}</span></div>
         <div class="hr-bar-row"><span class="lbl">Late</span><span class="hr-bar lost"><i style="width:${Math.round(100*late.length/mx)}%"></i></span><span class="num">${late.length}</span></div>`
         + (late.length ? late.slice().sort((a,b) => b.lateBy - a.lateBy).slice(0, 5).map(m => `<div class="hr-stale-row" data-dr-open="${m.r.id}"><span>${escapeHtml(dItemName(m.r))} <span class="hs-muted" style="font-weight:500;">· ${escapeHtml(m.r.client || '')}</span></span><span class="dr-late">${m.lateBy} day${m.lateBy === 1 ? '' : 's'} late</span></div>`).join('') : '')
-        + '<div class="hr-note">On time means delivered on or before the due date. Only items delivered since recording started are counted.</div>';
+        + '<div class="hr-note">On time means delivered on or before the due date. Only items delivered since recording started are counted, and items marked delivered in bulk (5 or more at once) are left out.</div>';
     }
 
     // stalled: open items not edited for 30+ days
