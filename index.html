@@ -633,6 +633,23 @@
   .pulse-legend .k i{width:8px; height:8px; border-radius:50%; display:inline-block;}
   .pulse-legend .k.done i{background:#2FBE33;} .pulse-legend .k.inprogress i{background:#4C93E5;} .pulse-legend .k.notstarted i{background:rgba(255,255,255,.45);}
   .pulse-legend .k.overdue{color:#F7B5B4;} .pulse-legend .k.overdue i{background:#E5605F; box-shadow:0 0 0 3px rgba(229,96,95,.25);}
+  .pulse-click{cursor:pointer;}
+  .pulse-figure.pulse-click:hover .pulse-pct, .pulse-figure.pulse-click:focus-visible .pulse-pct{text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:6px; text-decoration-color:var(--gold);}
+  .pulse-line.pulse-click:hover, .pulse-line.pulse-click:focus-visible{text-decoration:underline; text-underline-offset:3px;}
+  .pulse-hint{color:var(--gold); font-weight:700; margin-left:6px; font-size:12.5px; white-space:nowrap;}
+  .pulse-carry{font-size:12.5px; font-weight:600; color:rgba(255,255,255,.78); display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center;}
+  .pulse-carry button{background:none; border:none; padding:0; font:inherit; color:#F7B5B4; cursor:pointer; text-decoration:underline; text-underline-offset:3px;}
+  .pulse-carry button:hover{color:#fff;}
+  .ot-group{margin:0 0 12px;}
+  .ot-head{display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:var(--ink-2); padding:6px 2px; border-bottom:1px solid var(--hairline);}
+  .ot-row{display:grid; grid-template-columns:64px 1fr auto; gap:10px; align-items:center; padding:8px 2px; border-bottom:1px solid var(--hairline); font-size:13px;}
+  .ot-row .ot-day{color:var(--ink-muted); font-size:12px;}
+  .ot-row .ot-day.late{color:#b3261e; font-weight:700;}
+  .ot-title{cursor:pointer; overflow-wrap:anywhere;}
+  .ot-title:hover{text-decoration:underline;}
+  .ot-meta{display:block; color:var(--ink-muted); font-size:11.5px;}
+  .ot-row select{font-size:12px; padding:4px 6px; border:1px solid var(--hairline); border-radius:8px; background:var(--surface-2); color:var(--ink);}
+  #otBody{max-height:60vh; overflow-y:auto;}
   .pulse-empty{color:rgba(255,255,255,.7); font-size:13.5px; font-weight:600;}
   @media (max-width:560px){ .pulse{grid-template-columns:1fr; gap:10px;} .pulse-figure .pulse-pct{font-size:44px;} }
 
@@ -1696,6 +1713,17 @@
         <button type="button" class="btn-ghost" id="confirmDeleteNoBtn">Cancel</button>
         <button type="button" class="btn-danger" id="confirmDeleteYesBtn">Delete</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="openTasksOverlay" style="z-index:200;" hidden>
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="otTitle">
+    <h3 id="otTitle">Still to finish</h3>
+    <div id="otBody"></div>
+    <div class="modal-actions">
+      <div class="left"></div>
+      <div class="right"><button type="button" class="btn-ghost" id="otCloseBtn">Close</button></div>
     </div>
   </div>
 </div>
@@ -4911,9 +4939,12 @@
     if(!el) return;
     const total = tasks.length;
     el.hidden = false;
+    const carry = carryRows.filter(t => t.dateISO && t.dateISO < currentWeekId && t.status !== 'done');
+    const carryMine = currentUserName ? carry.filter(t => (t.owners || []).includes(currentUserName)).length : 0;
+    const carryHtml = carry.length ? `<div class="pulse-carry"><button type="button" data-carry="all">${carry.length} still open from earlier weeks</button>${carryMine ? `<span>·</span><button type="button" data-carry="mine">${carryMine} ${carryMine === 1 ? 'is' : 'are'} yours</button>` : ''}</div>` : '';
     if(!total){
       el.classList.remove('grow');
-      el.innerHTML = `<div class="pulse-empty">Nothing on the board for this week yet.</div>`;
+      el.innerHTML = `<div style="grid-column:1/-1;"><div class="pulse-empty">Nothing on the board for this week yet.</div>${carryHtml ? `<div style="margin-top:8px;">${carryHtml}</div>` : ''}</div>`;
       pulseLastWeek = currentWeekId;
       return;
     }
@@ -4930,14 +4961,15 @@
     const segs = ['done','inprogress','notstarted'].filter(k => c[k])
       .map(k => `<span class="pulse-seg ${k}" style="--w:${w(k)}"></span>`).join('');
     const left = total - c.done;
-    const line = left === 0 ? `Everything on this week's board is done.`
-      : `<strong>${left}</strong> of ${total} task${total===1?'':'s'} still to finish this week`;
+    const line = left === 0 ? (carry.length ? `Everything on this week's board is done, but ${carry.length} from earlier weeks ${carry.length === 1 ? 'is' : 'are'} still open.` : `Everything on this week's board is done.`)
+      : `<strong>${left}</strong> of ${total} task${total===1?'':'s'} still to finish this week<span class="pulse-hint">View list ›</span>`;
+    const openAttr = left > 0 ? ' pulse-click" data-pulse-open="1" role="button" tabindex="0" title="See the tasks still to finish' : '';
     const prev = el.querySelector('.pulse-pct');
     const prevPct = prev ? prev.getAttribute('data-count-from') : null;
     el.innerHTML = `
-      <div class="pulse-figure"><span class="pulse-pct" ${prevPct!=null?`data-count-from="${prevPct}"`:''}>${prevPct!=null?prevPct:0}</span><span class="pulse-sign">%</span></div>
+      <div class="pulse-figure${openAttr}"><span class="pulse-pct" ${prevPct!=null?`data-count-from="${prevPct}"`:''}>${prevPct!=null?prevPct:0}</span><span class="pulse-sign">%</span></div>
       <div class="pulse-body">
-        <div class="pulse-line">${line}</div>
+        <div class="pulse-line${openAttr}">${line}</div>
         <div class="pulse-rail" role="img" aria-label="${c.done} done, ${c.inprogress} in progress, ${c.notstarted} not started">${segs}</div>
         <div class="pulse-legend">
           <span class="k done"><i></i>${c.done} done</span>
@@ -4945,12 +4977,76 @@
           <span class="k notstarted"><i></i>${c.notstarted} not started</span>
           ${overdue ? `<span class="k overdue"><i></i>${overdue} overdue</span>` : ''}
         </div>
+        ${carryHtml}
       </div>`;
     // Grow the rail only when a week is first shown, not on every live update
     el.classList.toggle('grow', pulseLastWeek !== currentWeekId);
     pulseLastWeek = currentWeekId;
     animateCount(el.querySelector('.pulse-pct'), pct);
+    if(!document.getElementById('openTasksOverlay').hidden) renderOpenTasks();
   }
+
+  // Overdue tasks from before the week on screen, team-wide. The board only holds one week, so
+  // this separate live query is what lets the pulse say "100% done, 6 still open from earlier weeks".
+  let carryRows = [], unsubCarry = null;
+  function subscribeCarry(){
+    if(unsubCarry){ unsubCarry(); unsubCarry = null; }
+    if(!db) return;
+    unsubCarry = tasksCol().where('status','!=','done').where('dateISO','<', toDateStr(new Date())).onSnapshot(snap => {
+      carryRows = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+      renderPulse();
+    }, () => {});
+  }
+  function renderOpenTasks(){
+    const body = document.getElementById('otBody');
+    const open = tasks.filter(t => t.status !== 'done');
+    document.getElementById('otTitle').textContent = open.length ? `${open.length} of ${tasks.length} still to finish this week` : 'Everything this week is done';
+    if(!open.length){ body.innerHTML = '<div class="report-empty">All done. Nice.</div>'; return; }
+    const today = toDateStr(new Date());
+    const by = new Map();
+    open.forEach(t => { const k = t.client || 'No client'; if(!by.has(k)) by.set(k, []); by.get(k).push(t); });
+    body.innerHTML = [...by.keys()].sort((a,b) => a.localeCompare(b)).map(k => {
+      const rows = by.get(k).sort((a,b) => (a.dateISO||'').localeCompare(b.dateISO||'') || (a.title||'').localeCompare(b.title||''));
+      return `<div class="ot-group"><div class="ot-head"><span>${escapeHtml(k)}</span><span>${rows.length}</span></div>` + rows.map(t => {
+        const late = t.dateISO && t.dateISO < today;
+        const who = (t.owners || []).join(', ') || 'Unassigned';
+        const opts = Object.keys(STATUS_META).map(m => `<option value="${m}"${t.status === m ? ' selected' : ''}>${STATUS_META[m].label}</option>`).join('');
+        return `<div class="ot-row"><span class="ot-day${late ? ' late' : ''}">${escapeHtml(t.dateISO ? fmtDayLabel(t.dateISO) : 'No date')}</span>
+          <div><span class="ot-title" data-ot-open="${escapeAttr(t.id)}" role="button" tabindex="0">${escapeHtml(t.title || '(untitled)')}</span><span class="ot-meta">${escapeHtml(who)}${t.tag ? ' · ' + escapeHtml(t.tag) : ''}</span></div>
+          ${canEdit ? `<select data-ot-status="${escapeAttr(t.id)}" aria-label="Status">${opts}</select>` : ''}</div>`;
+      }).join('') + '</div>';
+    }).join('');
+  }
+  function openOpenTasks(){
+    renderOpenTasks();
+    document.getElementById('openTasksOverlay').hidden = false;
+  }
+  function closeOpenTasks(){ document.getElementById('openTasksOverlay').hidden = true; }
+  (function(){
+    const pulse = document.getElementById('weekPulse');
+    pulse.addEventListener('click', e => {
+      const c = e.target.closest('[data-carry]');
+      if(c){ openOverdueList(c.getAttribute('data-carry') === 'mine' ? currentUserName : ''); return; }
+      if(e.target.closest('[data-pulse-open]')) openOpenTasks();
+    });
+    pulse.addEventListener('keydown', e => {
+      if((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-pulse-open]')){ e.preventDefault(); openOpenTasks(); }
+    });
+    const ov = document.getElementById('openTasksOverlay');
+    ov.addEventListener('click', e => {
+      if(e.target === ov || e.target.closest('#otCloseBtn')){ closeOpenTasks(); return; }
+      const o = e.target.closest('[data-ot-open]');
+      if(o){ const id = o.getAttribute('data-ot-open'); closeOpenTasks(); openTaskModal(id); }
+    });
+    ov.addEventListener('keydown', e => {
+      if(e.key === 'Escape'){ closeOpenTasks(); return; }
+      if((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-ot-open]')){ e.preventDefault(); e.target.click(); }
+    });
+    ov.addEventListener('change', e => {
+      const sel = e.target.closest('[data-ot-status]');
+      if(sel){ setTaskStatus(sel.getAttribute('data-ot-status'), sel.value); renderOpenTasks(); }
+    });
+  })();
 
   function ringHtml(done, target){
     const r = 32, circ = 2 * Math.PI * r;
@@ -6020,7 +6116,7 @@
   }
   function enterMyTasks(){
     unsubscribeMtData();
-    mtPerson = '';
+    mtPerson = mtPendingPerson; mtPendingPerson = '';
     mtSyncUI();
     if(mtOverdue) subscribeOverdue(); else subscribeMine();
   }
@@ -6153,7 +6249,9 @@
       });
   }
   // From the Home board: jump straight to the team-wide overdue list.
-  function openOverdueList(){
+  let mtPendingPerson = '';
+  function openOverdueList(person){
+    mtPendingPerson = (typeof person === 'string') ? person : '';
     mtOverdue = true;
     if(currentAppPage === 'mytasks'){ enterMyTasks(); return; }
     switchApp('mytasks');
@@ -9106,6 +9204,7 @@
     canEdit = true;
     subscribeWeek();
     subscribeTasks();
+    subscribeCarry();
     subscribeShows();
     subscribeUpcomingShows();
     fridayInit();
