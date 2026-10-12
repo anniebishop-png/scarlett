@@ -8998,6 +8998,8 @@
   function deliveryClientList(){
     const all = new Set(CLIENT_ORDER.concat(CLIENT_ROSTER));
     deliveryItems.forEach(r => r.client && all.add(r.client));
+    // a client with a contract is in the tracker as soon as the contract is saved, even before anything is logged
+    Object.keys(contractClients).forEach(c => { if(contractClients[c] && contractClients[c].length) all.add(c); });
     return [...all].sort((a,b)=>a.localeCompare(b));
   }
   // Adds `client` as a selectable option on a delivery client <select> if it isn't already one —
@@ -9151,6 +9153,7 @@
       const map = {};
       snap.docs.forEach(d => { map[d.id] = (d.data().categories || []); });
       contractClients = map;
+      refreshDeliveryClientOptions();
       renderDelivery();
     }, () => {});
   }
@@ -9230,6 +9233,7 @@
     let done = 0, target = 0, delivered = 0;
     const byCat = new Map();
     items.forEach(r => { const k = r.category || 'Uncategorized'; if(!byCat.has(k)) byCat.set(k, []); byCat.get(k).push(r); });
+    if(useTargets){ const cc = contractCategoriesFor(client); if(cc) cc.forEach(c => { if(!byCat.has(c.name)) byCat.set(c.name, []); }); }
     byCat.forEach((its, cat) => {
       const tgt = useTargets ? deliveryCategoryTarget(client, cat) : 0;
       const dc = its.filter(r => r.status === 'delivered').length;
@@ -9242,12 +9246,14 @@
   function renderDeliveryCards(){
     const el = document.getElementById('deliveryCards');
     if(!el) return;
-    if(!db || !deliveryItems.length){ el.innerHTML = ''; return; }
+    const hasContract = Object.keys(contractClients).some(c => contractClients[c] && contractClients[c].length);
+    if(!db || (!deliveryItems.length && !hasContract)){ el.innerHTML = ''; return; }
     const ownerSel = document.getElementById('deliveryOwnerFilter').value;
     const sel = document.getElementById('deliveryClientFilter').value;
     const today = hToday(), wk = hWeekEnd();
     const by = new Map();
     dScopedItems().forEach(r => { if(!r.client) return; if(!by.has(r.client)) by.set(r.client, []); by.get(r.client).push(r); });
+    if(!ownerSel) Object.keys(contractClients).forEach(c => { if(contractClients[c] && contractClients[c].length && !by.has(c)) by.set(c, []); });
     const cards = [...by.entries()].map(([client, items]) => {
       const prog = dClientProgress(client, items, !ownerSel);
       return {client, prog,
@@ -9660,13 +9666,16 @@
     const hideDone = document.getElementById('deliveryHideDone').checked;
     const ownerSel = document.getElementById('deliveryOwnerFilter').value;
     let rows = deliveryItems.slice().filter(r => r.client === clientFilter && (!ownerSel || (r.owners || []).includes(ownerSel)));
-    if(!rows.length){
+    const contractCats = ownerSel ? null : contractCategoriesFor(clientFilter);
+    if(!rows.length && !(contractCats && contractCats.length)){
       resultsEl.innerHTML = '<div class="report-empty">Nothing here yet — add an item to get started.</div>';
       return;
     }
 
     const byCategory = new Map();
     rows.forEach(r => { const k = r.category || 'Uncategorized'; if(!byCategory.has(k)) byCategory.set(k, []); byCategory.get(k).push(r); });
+    // every contract line is listed, even one with nothing logged yet (it shows its empty tick-box rows)
+    if(contractCats) contractCats.forEach(c => { if(!byCategory.has(c.name)) byCategory.set(c.name, []); });
     const catKeys = [...byCategory.keys()].sort((a,b) => deliveryCategoryOrder(clientFilter,a) - deliveryCategoryOrder(clientFilter,b) || a.localeCompare(b));
 
     // Contract-level overview: delivered vs. target across every category that has one
@@ -9691,7 +9700,7 @@
     </div>`;
 
     if(renderDelivery.autoExpanded !== clientFilter){
-      catKeys.forEach(cat => { if(byCategory.get(cat).some(r => dOverdue(r, dToday) || dDueWeek(r, dToday, dWk))) deliveryExpandedCategories.add(cat); });
+      catKeys.forEach(cat => { if(!byCategory.get(cat).length || byCategory.get(cat).some(r => dOverdue(r, dToday) || dDueWeek(r, dToday, dWk))) deliveryExpandedCategories.add(cat); });
       renderDelivery.autoExpanded = clientFilter;
     }
     resultsEl.innerHTML = overviewHtml + catKeys.map(cat => {
@@ -9709,7 +9718,7 @@
       const target = ownerSel ? 0 : deliveryCategoryTarget(clientFilter, cat);
       const deliveredCount = items.filter(r => r.status === 'delivered').length;
       const barOf = target || items.length;
-      const countLabel = `<span class="del-cat-progress"><span class="del-bar ${deliveredCount>=barOf?'complete':''}"><span style="--w:${Math.min(100, Math.round(deliveredCount/barOf*100))}%"></span></span>${deliveredCount}/${barOf} delivered</span>`;
+      const countLabel = `<span class="del-cat-progress"><span class="del-bar ${(barOf && deliveredCount>=barOf)?'complete':''}"><span style="--w:${barOf ? Math.min(100, Math.round(deliveredCount/barOf*100)) : 0}%"></span></span>${deliveredCount}/${barOf} delivered</span>`;
       const isOpen = deliveryExpandedCategories.has(cat);
       // A contract line with a count (e.g. 3 website updates, 5 carousels) shows one empty tick-box row for each deliverable
       // not yet logged, so the list always has as many rows as the contract says. Ticking one logs it as delivered.
@@ -10255,7 +10264,12 @@
     document.getElementById('clEditBtn').addEventListener('click', () => openClientModal(name));
     const cbtn = document.getElementById('clContractBtn');
     if(cbtn) cbtn.addEventListener('click', () => openContractSetupModal(name, () => { if(clSelected === name) renderClientProfile(); }));
-    document.getElementById('clDeliveryBtn').addEventListener('click', () => switchApp('delivery'));
+    document.getElementById('clDeliveryBtn').addEventListener('click', () => {
+      switchApp('delivery'); deliveryView = 'tracker';
+      refreshDeliveryClientOptions();
+      document.getElementById('deliveryClientFilter').value = name;
+      renderDelivery();
+    });
     // delivered so far against each contract line
     if(lines.length) deliveryCol().where('client', '==', name).get().then(snap => {
       if(clSelected !== name) return;
@@ -10393,14 +10407,18 @@
       if(cats.length && canEdit && JSON.stringify(cats) !== JSON.stringify(contractClients[name] || null)){
         contractClientsCol().doc(name).set({categories: cats}).catch(() => clNotice("The deliverables didn't save. Try Set up contract on the client page."));
         contractClients[name] = cats;
+        refreshDeliveryClientOptions(); renderDelivery();
+        data.__cats = cats.length;
       }
     }
+    const catsSaved = data.__cats || 0; delete data.__cats;
+    const trackerNote = catsSaved ? ' ' + catsSaved + ' deliverable' + (catsSaved === 1 ? ' is' : 's are') + ' now in the Delivery Tracker.' : '';
     closeClientModal();
     if(editing){
-      clientsCol().doc(editing).update(data).then(() => clNotice('Saved ' + editing + '.', true)).catch(err => clNotice("That didn't save: " + ((err && err.message) || err)));
+      clientsCol().doc(editing).update(data).then(() => clNotice('Saved ' + editing + '.' + trackerNote, true)).catch(err => clNotice("That didn't save: " + ((err && err.message) || err)));
     } else {
       data.createdBy = auditWho();
-      clientsCol().doc(name).set(data).then(() => { if(!clByName(name)) clients.push(Object.assign({}, data, {name})); clSelected = name; clNotice('Added ' + name + '.', true); if(currentAppPage === 'clients') renderClients(); }).catch(err => clNotice("That didn't save: " + ((err && err.message) || err)));
+      clientsCol().doc(name).set(data).then(() => { if(!clByName(name)) clients.push(Object.assign({}, data, {name})); clSelected = name; clNotice('Added ' + name + '.' + trackerNote, true); if(currentAppPage === 'clients') renderClients(); }).catch(err => clNotice("That didn't save: " + ((err && err.message) || err)));
     }
   });
   document.getElementById('c_delete').addEventListener('click', () => {
