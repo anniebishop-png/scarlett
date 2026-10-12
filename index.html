@@ -1576,6 +1576,11 @@
         <div class="field"><label>Date</label><input type="date" id="f_date" required></div>
       </div>
       <div class="field"><label>Tag <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="f_tag" placeholder="e.g. Storytelling Graphic"></div>
+      <div class="field" id="deliveryCatField" style="display:none;">
+        <label>Counts toward <span style="text-transform:none;font-weight:500;">(this client's contract)</span></label>
+        <select id="f_deliveryCat"></select>
+        <div class="shows-hint" id="deliveryCatHint" style="margin-top:4px;"></div>
+      </div>
       <div class="field" id="recurRow">
         <label for="f_repeat">Repeat</label>
         <select id="f_repeat">
@@ -2637,6 +2642,14 @@
     recurCol().where('startWeek','==','__probe__').get()
       .then(() => { recurStartCol = true; }).catch(() => { recurStartCol = false; });
   }
+  // Which contract line a board task counts toward (tasks.deliveryCategory, see sql/2026-10-task-delivery-category.sql).
+  // Until that column exists the "Counts toward" field stays hidden and saves leave it out.
+  let taskCatReady = false;
+  function probeTaskCat(){
+    if(!db) return;
+    tasksCol().where('deliveryCategory','==','__probe__').get()
+      .then(() => { taskCatReady = true; }).catch(() => { taskCatReady = false; });
+  }
   function probePodcastRecCols(){
     if(!db) return;
     db.collection('podcastEpisodes').where('recordDate','==','__probe__').get()
@@ -3147,9 +3160,22 @@
     return null;
   }
   function syncTaskToDelivery(id, t){
+    // A task that was created FROM a tracker item (spawn_del_<itemId>) just keeps that item's status in step.
+    // It must not also create a second tracker entry of its own.
+    if(String(id).indexOf('spawn_del_') === 0){
+      if(!canEdit) return;
+      if(t && t.status) deliveryCol().doc(String(id).slice(10)).update({status: taskStatusToDeliveryStatus(t.status)}).catch(()=>{});
+      removeDeliverySync('sync_task_' + id);
+      return;
+    }
     const docId = 'sync_task_' + id;
     const client = activeDeliveryClientFor(t.client);
-    const category = client ? taskCategoryForDelivery(t.division) : null;
+    // The contract line chosen on the task wins; otherwise fall back to the old team-based opportunistic buckets.
+    let category = null;
+    if(client){
+      const cats = contractCategoriesFor(client) || [];
+      category = (t.deliveryCategory && cats.some(c => c.name === t.deliveryCategory)) ? t.deliveryCategory : taskCategoryForDelivery(t.division);
+    }
     if(!client || !category){ removeDeliverySync(docId); return; }
     upsertDeliverySync(docId, {
       client, category, date: t.dateISO || '', title: t.title || '',
@@ -3727,6 +3753,51 @@
       DIVISION_ROSTER.map(c=>`<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('');
   }
 
+  // "Counts toward": for a client with a contract, which contract line this task delivers. Suggested from the
+  // title or tag, always visible and changeable. Finishing the task then delivers that line in the Delivery Tracker.
+  let dcatTouched = false, dcatPending = null;
+  function guessDeliveryCat(cats, title, tag){
+    const norm = x => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(\w+?)s\b/g, '$1').trim();
+    const hay = [norm(tag), norm(title)];
+    const hit = cats.find(c => { const n = norm(c.name); return n && hay.some(h => h && h.includes(n)); });
+    if(hit) return hit.name;
+    const text = hay.join(' ');
+    const only = re => { const m = cats.filter(c => re.test(norm(c.name))); return m.length === 1 ? m[0].name : ''; };
+    if(/carousel/.test(text)) return only(/carousel/);
+    if(/podcast|\bpod\b/.test(text)) return only(/podcast/);
+    return '';
+  }
+  function dcatCats(clientName){
+    if(!taskCatReady) return [];
+    const client = activeDeliveryClientFor(clientName);
+    return client ? (contractCategoriesFor(client) || []) : [];
+  }
+  function refreshDeliveryCatField(){
+    const wrap = document.getElementById('deliveryCatField');
+    const sel = document.getElementById('f_deliveryCat');
+    const hint = document.getElementById('deliveryCatHint');
+    const cats = dcatCats(document.getElementById('f_client').value);
+    if(!cats.length){ wrap.style.display = 'none'; sel.innerHTML = ''; hint.textContent = ''; dcatPending = null; return; }
+    const want = dcatPending !== null ? dcatPending : sel.value;
+    dcatPending = null;
+    sel.innerHTML = '<option value="">Nothing specific (counts as opportunistic graphics)</option>'
+      + cats.map(c => `<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}${c.target ? ' (' + c.target + ' in the contract)' : ''}</option>`).join('');
+    sel.value = cats.some(c => c.name === want) ? want : '';
+    wrap.style.display = '';
+    suggestDeliveryCat();
+  }
+  function suggestDeliveryCat(){
+    const wrap = document.getElementById('deliveryCatField');
+    if(wrap.style.display === 'none' || dcatTouched) return;
+    const cats = dcatCats(document.getElementById('f_client').value);
+    const g = guessDeliveryCat(cats, document.getElementById('f_title').value, document.getElementById('f_tag').value);
+    document.getElementById('f_deliveryCat').value = g;
+    document.getElementById('deliveryCatHint').textContent = g ? 'Suggested from the title. Change it if that is not right.' : '';
+  }
+  document.getElementById('f_deliveryCat').addEventListener('change', () => { dcatTouched = true; document.getElementById('deliveryCatHint').textContent = ''; });
+  document.getElementById('f_title').addEventListener('input', suggestDeliveryCat);
+  document.getElementById('f_tag').addEventListener('input', suggestDeliveryCat);
+
   function updateTaskModalHints(){
     const division = document.getElementById('f_division').value;
     const client = document.getElementById('f_client').value.trim();
@@ -3735,6 +3806,7 @@
     const text = clipHintText(client);
     hint.textContent = text;
     hint.style.display = text ? 'block' : 'none';
+    refreshDeliveryCatField();
   }
 
   document.getElementById('f_client').addEventListener('input', function(){
@@ -3866,6 +3938,8 @@
     document.getElementById('f_repeat').value = 'none';
     updateRepeatLabels();
     updateRecurRowVisibility();
+    dcatTouched = !!(t && t.deliveryCategory);
+    dcatPending = t ? (t.deliveryCategory || '') : '';
     updateTaskModalHints();
     document.getElementById('taskOverlay').hidden = false;
   }
@@ -4029,6 +4103,7 @@
     };
     if(attach.busy > 0){ attHint('Hold on, a screenshot is still uploading.', true); return; }
     if(taskFilesReady) data.attachments = attach.cur.slice();
+    if(taskCatReady) data.deliveryCategory = (document.getElementById('deliveryCatField').style.display !== 'none' && document.getElementById('f_deliveryCat').value) || null;
     if(!data.client || !data.title || !data.dateISO){ closeTaskModal(); return; }
     attach.added = [];   // everything uploaded this time is now kept (saved with the task)
     {
@@ -4095,6 +4170,8 @@
     // just never recurring (ambiguous which of several tasks would repeat weekly).
     extraTasks.forEach(r => {
       const extraData = Object.assign({}, data, {title: r.title, dateISO: r.dateISO, weekId: mondayOf(r.dateISO)});
+      // an untouched "Counts toward" is a suggestion, so each extra task gets its own suggestion from its own title
+      if(taskCatReady && !dcatTouched && data.deliveryCategory !== undefined) extraData.deliveryCategory = guessDeliveryCat(dcatCats(data.client), r.title, data.tag) || null;
       if(!dupMode && extraData.title === 'Graphics - Full') spawnFullGraphicsPackage(extraData);
       else if(!dupMode && extraData.client === 'Clip') spawnClipWeekTask(extraData);
       else addOneTask(extraData);
@@ -4882,7 +4959,7 @@
       const correctWeekId = mondayOf(correctDate);
       if(t.dateISO === correctDate && t.weekId === correctWeekId) return;
       tasksCol().doc(t.id).update({dateISO: correctDate, weekId: correctWeekId}).catch(()=>{});
-      syncTaskToDelivery(t.id, {client: t.client, dateISO: correctDate, title: t.title, division: t.division, status: t.status});
+      syncTaskToDelivery(t.id, {client: t.client, dateISO: correctDate, title: t.title, division: t.division, status: t.status, deliveryCategory: t.deliveryCategory});
     });
     // Clip used to land as a single task for the week (first on the Monday, briefly on the
     // Wednesday) -- replace any of those legacy single tasks (ids without the "_d<offset>" suffix
@@ -9729,6 +9806,7 @@
         probePodcastRecCols();
         probeRecurStart();
         probeTaskFiles();
+        probeTaskCat();
         pushRefresh();
         teamActivityCol().doc(email).get()
           .then(snap => { priorLastSeenAt = snap.exists ? (snap.data().lastActive || null) : null; })
