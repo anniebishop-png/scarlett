@@ -581,6 +581,12 @@
   .cl-row small{color:var(--ink-2);}
   .cl-bar{height:6px; border-radius:99px; background:var(--hairline); overflow:hidden; margin-top:5px;} .cl-bar i{display:block; height:100%; background:var(--gold-deep);}
   .cl-linkrow{display:flex; gap:6px; margin-bottom:6px;} .cl-linkrow input{flex:1; min-width:0;} .cl-linkrow .cl-lab{flex:0 0 36%;}
+  .cl-showrow{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:10px;}
+  .cl-showrow .cl-s-name{flex:1 1 calc(100% - 34px); min-width:0;}
+  .cl-showrow .cl-s-start, .cl-showrow .cl-s-end{flex:1 1 34%; min-width:0;}
+  .cl-showrow .cl-dl{font-size:11.5px; color:var(--ink-2); font-weight:700;}
+  .cl-linerow{display:flex; gap:6px; margin-bottom:6px; align-items:center;}
+  .cl-linerow .cl-l-name{flex:1; min-width:0;} .cl-linerow .cl-l-n{flex:0 0 92px; min-width:0;}
   .cl-x{border:0; background:none; color:var(--ink-2); font-size:20px; cursor:pointer; padding:0 6px;}
   @media (max-width:600px){ .cl-kv{grid-template-columns:1fr;} }
   .recur-note{display:flex; align-items:center; gap:8px; color:var(--ink-muted); font-size:12px; margin:-4px 0 13px;}
@@ -2078,7 +2084,15 @@
         <div class="field"><label>Contract starts <span style="text-transform:none;font-weight:500;">(optional)</span></label><input type="date" id="c_start"></div>
         <div class="field"><label>Contract ends <span style="text-transform:none;font-weight:500;">(optional)</span></label><input type="date" id="c_end"></div>
       </div>
-      <div class="field"><label>Shows and events <span style="text-transform:none;font-weight:500;">(optional, separated by commas)</span></label><input id="c_shows" autocomplete="off" placeholder="e.g. Burghley, Blenheim"></div>
+      <div class="field"><label>Contract deliverables <span style="text-transform:none;font-weight:500;">(optional: what we owe, and how many of each)</span></label>
+        <div id="c_lineRows"></div>
+        <button type="button" class="add-row-btn" id="c_addLine" style="width:auto;padding:6px 2px;">+ Add deliverable</button>
+        <div class="shows-hint" id="c_lineHint"></div>
+      </div>
+      <div class="field"><label>Shows and events <span style="text-transform:none;font-weight:500;">(optional, with dates)</span></label>
+        <div id="c_showRows"></div>
+        <button type="button" class="add-row-btn" id="c_addShow" style="width:auto;padding:6px 2px;">+ Add show</button>
+      </div>
       <div class="field"><label>Links <span style="text-transform:none;font-weight:500;">(optional)</span></label>
         <div id="c_links"></div>
         <button type="button" class="add-row-btn" id="c_addLink" style="width:auto;padding:6px 2px;">+ Add link</button>
@@ -10214,11 +10228,12 @@
       ['Account owner', c.owner || ''],
       ['Team', (c.team || []).join(', ')],
       ['Contract', [c.contractStart ? 'from ' + clDate(c.contractStart) : '', c.contractEnd ? 'to ' + clDate(c.contractEnd) : ''].filter(Boolean).join(' ')],
-      ['Shows and events', (c.shows || []).join(', ')],
+      ['Shows and events', (c.shows || []).map(clShowParse).sort((a, b) => (a.start || '9').localeCompare(b.start || '9')).map(clShowLabel).join('\n')],
       ['Notes', c.notes || ''],
     ].filter(r => r[1]);
     const links = Array.isArray(c.links) ? c.links.filter(l => l && hSafeUrl(l.url)) : [];
-    const lines = contractClients[name] || [];
+    const legacyContract = !!LEGACY_CONTRACT_CLIENTS[name];
+    const lines = (contractCategoriesFor(name) || []).map(l => (typeof l === 'string' ? {name: l, target: null} : l));
     prof.innerHTML = `
       <div class="report-controls">
         <button type="button" class="btn-ghost" id="clBackBtn">&lsaquo; All clients</button>
@@ -10231,14 +10246,15 @@
         </dl>
         ${(kv.length + links.length) <= 1 ? '<div class="cl-meta">Nothing else recorded yet. Use Edit client to add an owner, team, links and notes.</div>' : ''}
       </div>
-      <div class="cl-sec"><h3><span>Contract and deliverables</span><span><button type="button" class="btn-ghost" id="clContractBtn">${lines.length ? 'Edit contract' : 'Set up contract'}</button> <button type="button" class="btn-ghost" id="clDeliveryBtn">Delivery Tracker</button></span></h3>
+      <div class="cl-sec"><h3><span>Contract and deliverables</span><span>${legacyContract ? '' : `<button type="button" class="btn-ghost" id="clContractBtn">${lines.length ? 'Edit contract' : 'Set up contract'}</button> `}<button type="button" class="btn-ghost" id="clDeliveryBtn">Delivery Tracker</button></span></h3>
         <div id="clContractBody">${lines.length ? lines.map(l => `<div class="cl-row"><span>${escapeHtml(l.name)}</span><small>${l.target ? 'target ' + l.target : ''}</small></div>`).join('') : '<div class="cl-meta">No contract lines set up yet.</div>'}</div>
       </div>
       <div class="cl-sec"><h3>Open tasks</h3><div id="clTasksBody"><div class="cl-meta">Loading...</div></div></div>
       <div class="cl-sec"><h3>Shows</h3><div id="clShowsBody"><div class="cl-meta">Loading...</div></div></div>`;
     document.getElementById('clBackBtn').addEventListener('click', () => { clSelected = null; renderClients(); });
     document.getElementById('clEditBtn').addEventListener('click', () => openClientModal(name));
-    document.getElementById('clContractBtn').addEventListener('click', () => openContractSetupModal(name, () => { if(clSelected === name) renderClientProfile(); }));
+    const cbtn = document.getElementById('clContractBtn');
+    if(cbtn) cbtn.addEventListener('click', () => openContractSetupModal(name, () => { if(clSelected === name) renderClientProfile(); }));
     document.getElementById('clDeliveryBtn').addEventListener('click', () => switchApp('delivery'));
     // delivered so far against each contract line
     if(lines.length) deliveryCol().where('client', '==', name).get().then(snap => {
@@ -10274,6 +10290,31 @@
     };
   }
   // ---- add / edit ----
+  // A show is stored as a plain text entry in the record's shows list: "Name", or "Name|start" or "Name|start|end"
+  // (dates as YYYY-MM-DD), so dates need no extra column and older name-only entries still read fine.
+  function clShowParse(str){ const p = String(str || '').split('|'); return {name: (p[0] || '').trim(), start: (p[1] || '').trim(), end: (p[2] || '').trim()}; }
+  function clShowStr(o){
+    const n = String(o.name || '').replace(/\|/g, ' ').trim(); if(!n) return '';
+    return (o.start || o.end) ? [n, o.start || '', o.end || ''].join('|').replace(/\|+$/, '') : n;
+  }
+  function clShowLabel(o){
+    const d = (o.start && o.end && o.end !== o.start) ? pcShortDate(o.start) + ' to ' + pcShortDate(o.end) : (o.start ? pcShortDate(o.start) : (o.end ? 'to ' + pcShortDate(o.end) : ''));
+    return o.name + (d ? ', ' + d : '');
+  }
+  function clShowRow(o){
+    const row = document.createElement('div'); row.className = 'cl-showrow';
+    row.innerHTML = '<input class="cl-s-name" placeholder="Show or event" autocomplete="off"><button type="button" class="cl-x" aria-label="Remove show">&times;</button><span class="cl-dl">From</span><input type="date" class="cl-s-start" aria-label="Starts"><span class="cl-dl">to</span><input type="date" class="cl-s-end" aria-label="Ends">';
+    row.querySelector('.cl-s-name').value = (o && o.name) || ''; row.querySelector('.cl-s-start').value = (o && o.start) || ''; row.querySelector('.cl-s-end').value = (o && o.end) || '';
+    row.querySelector('.cl-x').addEventListener('click', () => row.remove());
+    document.getElementById('c_showRows').appendChild(row);
+  }
+  function clLineRow(l){
+    const row = document.createElement('div'); row.className = 'cl-linerow';
+    row.innerHTML = '<input class="cl-l-name" placeholder="e.g. Podcast Episode" autocomplete="off"><input type="number" min="0" class="cl-l-n" placeholder="How many" aria-label="How many"><button type="button" class="cl-x" aria-label="Remove deliverable">&times;</button>';
+    row.querySelector('.cl-l-name').value = (l && l.name) || ''; row.querySelector('.cl-l-n').value = (l && l.target) || '';
+    row.querySelector('.cl-x').addEventListener('click', () => row.remove());
+    document.getElementById('c_lineRows').appendChild(row);
+  }
   function clLinkRow(l){
     const row = document.createElement('div'); row.className = 'cl-linkrow';
     row.innerHTML = '<input class="cl-lab" placeholder="Label" autocomplete="off"><input class="cl-url" placeholder="https://..." autocomplete="off"><button type="button" class="cl-x" aria-label="Remove link">&times;</button>';
@@ -10295,7 +10336,13 @@
     document.getElementById('c_team').innerHTML = TEAM_ROSTER.map(m => `<button type="button" class="rd-chip${team.has(m.name) ? ' on' : ''}" data-n="${escapeAttr(m.name)}">${escapeHtml(m.name)}</button>`).join('');
     document.getElementById('c_start').value = c ? (c.contractStart || '') : '';
     document.getElementById('c_end').value = c ? (c.contractEnd || '') : '';
-    document.getElementById('c_shows').value = c ? (c.shows || []).join(', ') : '';
+    document.getElementById('c_showRows').innerHTML = '';
+    (c ? (c.shows || []).map(clShowParse) : []).forEach(clShowRow);
+    document.getElementById('c_lineRows').innerHTML = '';
+    const legacy = !!(name && LEGACY_CONTRACT_CLIENTS[name]);
+    document.getElementById('c_addLine').style.display = legacy ? 'none' : '';
+    document.getElementById('c_lineHint').textContent = legacy ? name + "'s deliverables are built into Scarlett, so they can't be edited here." : '';
+    if(!legacy) ((name && contractClients[name]) || []).forEach(clLineRow);
     document.getElementById('c_links').innerHTML = '';
     ((c && Array.isArray(c.links)) ? c.links : []).forEach(clLinkRow);
     document.getElementById('c_notes').value = c ? (c.notes || '') : '';
@@ -10306,6 +10353,8 @@
   function closeClientModal(){ document.getElementById('clientOverlay').hidden = true; clEditingName = null; }
   document.getElementById('c_team').addEventListener('click', e => { const b = e.target.closest('.rd-chip'); if(b) b.classList.toggle('on'); });
   document.getElementById('c_addLink').addEventListener('click', () => clLinkRow(null));
+  document.getElementById('c_addShow').addEventListener('click', () => clShowRow(null));
+  document.getElementById('c_addLine').addEventListener('click', () => clLineRow(null));
   document.getElementById('c_cancel').addEventListener('click', closeClientModal);
   document.getElementById('clientOverlay').addEventListener('click', e => { if(e.target.id === 'clientOverlay') closeClientModal(); });
   document.getElementById('clientForm').addEventListener('submit', e => {
@@ -10329,11 +10378,23 @@
       team: Array.from(document.querySelectorAll('#c_team .rd-chip.on')).map(b => b.getAttribute('data-n')),
       contractStart: document.getElementById('c_start').value || null,
       contractEnd: document.getElementById('c_end').value || null,
-      shows: document.getElementById('c_shows').value.split(',').map(x => x.trim()).filter(Boolean),
+      shows: Array.from(document.querySelectorAll('#c_showRows .cl-showrow')).map(r => clShowStr({name: r.querySelector('.cl-s-name').value, start: r.querySelector('.cl-s-start').value, end: r.querySelector('.cl-s-end').value})).filter(Boolean),
       links,
       notes: document.getElementById('c_notes').value.trim() || null,
       updated_at: new Date().toISOString(),
     };
+    // contract deliverables go to the same place the Delivery Tracker's "Set up contract" writes to
+    if(!LEGACY_CONTRACT_CLIENTS[name]){
+      const seen = new Set();
+      const cats = Array.from(document.querySelectorAll('#c_lineRows .cl-linerow')).map(r => {
+        const n = r.querySelector('.cl-l-name').value.trim(), t = parseInt(r.querySelector('.cl-l-n').value, 10);
+        return {name: n, target: t > 0 ? t : null};
+      }).filter(c => c.name && !seen.has(c.name) && seen.add(c.name));
+      if(cats.length && canEdit && JSON.stringify(cats) !== JSON.stringify(contractClients[name] || null)){
+        contractClientsCol().doc(name).set({categories: cats}).catch(() => clNotice("The deliverables didn't save. Try Set up contract on the client page."));
+        contractClients[name] = cats;
+      }
+    }
     closeClientModal();
     if(editing){
       clientsCol().doc(editing).update(data).then(() => clNotice('Saved ' + editing + '.', true)).catch(err => clNotice("That didn't save: " + ((err && err.message) || err)));
