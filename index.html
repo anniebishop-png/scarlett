@@ -147,6 +147,20 @@
   .report-row:last-child{border-bottom:none;}
   .report-row .rdate{color:var(--ink-muted); font-size:11px; font-variant-numeric:tabular-nums;}
   .report-row .rdiv{color:var(--ink-muted); font-size:11.5px;}
+  #rpDelCtl[hidden], #rpActCtl[hidden], #rpLogCtl[hidden], #reportSummary[hidden], #reportResults[hidden], #rpDelNote[hidden]{display:none;}
+  .lg-day{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); margin:16px 2px 6px;}
+  .lg-card{background:var(--surface); border:1px solid var(--hairline); border-radius:14px; overflow:hidden;}
+  .lg-row{display:grid; grid-template-columns:54px 1fr auto; gap:10px; align-items:start; padding:10px 16px; border-bottom:1px solid var(--hairline); font-size:12.5px;}
+  .lg-row:last-child{border-bottom:none;}
+  .lg-time{color:var(--ink-muted); font-variant-numeric:tabular-nums;}
+  .lg-what b{font-weight:700;}
+  .lg-sub{color:var(--ink-muted); font-size:11.5px; margin-top:2px; overflow-wrap:anywhere;}
+  .lg-tag{display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:99px; background:var(--surface-2); border:1px solid var(--hairline); margin-right:6px; color:var(--ink-2);}
+  .lg-tag.del{color:#b3261e;} .lg-tag.res{color:#1a7f4b;}
+  .lg-restore{border:1px solid var(--hairline); background:var(--surface-2); border-radius:8px; padding:5px 11px; font-size:12px; font-weight:600; cursor:pointer; color:var(--navy);}
+  :root[data-theme="dark"] .lg-restore{color:var(--gold);}
+  .lg-restore[disabled]{opacity:.55; cursor:default;}
+  @media (max-width:560px){ .lg-row{grid-template-columns:44px 1fr;} .lg-row > :last-child:not(.lg-what){grid-column:2;} }
   .report-empty{padding:26px; text-align:center; color:var(--ink-muted); font-size:13px; background:var(--surface); border:1px solid var(--hairline); border-radius:14px;}
   @media (max-width:560px){ .report-row{grid-template-columns:52px 1fr; grid-template-areas:"date title" ". meta"; row-gap:2px;} .report-row .rdate{grid-area:date;} .report-row > span:nth-child(2){grid-area:title;} .report-row .rdiv, .report-row > span:last-child{grid-area:meta; font-size:11px;} }
   .cal-week-head-range{display:flex; align-items:center; gap:8px;}
@@ -1186,9 +1200,16 @@
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
     </div>
-    <h2>Delivered report</h2>
+    <h2 id="rpTitle">Delivered report</h2>
   </div>
   <div class="report-controls">
+    <div class="segmented" id="rpTabs">
+      <button type="button" data-rptab="delivered" class="active">Delivered</button>
+      <button type="button" data-rptab="trash">Trash</button>
+      <button type="button" data-rptab="activity">Activity</button>
+    </div>
+  </div>
+  <div class="report-controls" id="rpDelCtl">
     <div class="quarter-nav">
       <button id="prevQuarter" title="Previous quarter">‹</button>
       <span id="quarterLabel">—</span>
@@ -1198,9 +1219,18 @@
     <select id="reportDivision"><option value="">All teams</option></select>
     <button class="btn-ghost" id="exportReportBtn">Export CSV</button>
   </div>
+  <div id="rpLogCtl" hidden>
+    <div class="report-controls" id="rpActCtl">
+      <select id="rpColl" aria-label="Section"><option value="">All sections</option></select>
+      <select id="rpWho" aria-label="Person"><option value="">Everyone</option></select>
+      <select id="rpDays" aria-label="Period"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last year</option></select>
+      <input type="search" class="arc-search" id="rpSearch" placeholder="Search" aria-label="Search the log">
+    </div>
+    <div id="rpLogBody"></div>
+  </div>
   <div class="report-summary" id="reportSummary"></div>
   <div id="reportResults"></div>
-  <footer class="note">Showing tasks marked <strong>Done</strong> within the selected quarter — this is a "what shipped" view, not a to-do list.</footer>
+  <footer class="note" id="rpDelNote">Showing tasks marked <strong>Done</strong> within the selected quarter — this is a "what shipped" view, not a to-do list.</footer>
 </div>
 
 <div class="app" id="opsApp" style="display:none;">
@@ -5670,6 +5700,308 @@
     }
   }
 
+  // ---------------- change log + trash ----------------
+  // Every create, edit, delete and restore on the shared data is written to the changeLog table
+  // (append-only: nobody can edit or remove a log row, and the database stamps the signed-in email
+  // on it, so the "who" can't be forged). A delete also keeps a full copy of the row, which is what
+  // the Trash tab restores from. Until the one-off SQL has been run, nothing is logged and the
+  // Trash and Activity tabs show the setup steps instead.
+  const AUDIT_COLLS = {tasks:'Task', shows:'Show', clientOps:'Client Ops', podcastEpisodes:'Podcast', hustleOpportunities:'Hustle', deliveryItems:'Delivery', contractClients:'Delivery client', recurringTasks:'Repeating task'};
+  const AUDIT_NOISE = new Set(['order','calendarSynced','updated_at','created_at','assignedAt','stageChangedAt','deliveredAt','activityLog','archivedBy']);
+  const AUDIT_SKIP_ID = /^(sync_|spawn_del_)/;
+  const FIELD_LABELS = {dateISO:'date', weekId:'week', owners:'owners', status:'status', title:'title', notes:'notes', client:'client', division:'team', tag:'tag', eventName:'event', clients:'clients', archivedAt:'archived', opportunity:'name', nextAction:'next action', nextActionDate:'next action date', expectedClose:'expected close', recordDate:'record date'};
+  const CHANGELOG_SQL = [
+    'create table if not exists public."changeLog" (',
+    '  id text primary key,',
+    '  "at" text not null,',
+    '  actor text,',
+    '  email text,',
+    '  action text not null,',
+    '  coll text not null,',
+    '  "docId" text not null,',
+    '  title text,',
+    '  client text,',
+    '  "weekId" text,',
+    '  changes jsonb,',
+    '  snapshot jsonb,',
+    '  created_at timestamptz default now()',
+    ');',
+    'create index if not exists changelog_at_idx on public."changeLog" ("at");',
+    'create index if not exists changelog_action_idx on public."changeLog" (action);',
+    'alter table public."changeLog" enable row level security;',
+    'drop policy if exists changelog_select on public."changeLog";',
+    'drop policy if exists changelog_insert on public."changeLog";',
+    'drop policy if exists equiratings_only on public."changeLog";',
+    'create policy changelog_select on public."changeLog" for select to authenticated using (true);',
+    'create policy changelog_insert on public."changeLog" for insert to authenticated with check (true);',
+    'create policy equiratings_only on public."changeLog" as restrictive for all to authenticated',
+    "  using (lower(coalesce(auth.jwt()->>'email','')) like '%@equiratings.com')",
+    "  with check (lower(coalesce(auth.jwt()->>'email','')) like '%@equiratings.com');",
+    'revoke update, delete on public."changeLog" from authenticated, anon;',
+    'create or replace function public.changelog_stamp() returns trigger',
+    "language plpgsql security definer set search_path = public as $$",
+    "begin new.email := lower(coalesce(auth.jwt()->>'email','')); return new; end $$;",
+    'drop trigger if exists changelog_stamp on public."changeLog";',
+    'create trigger changelog_stamp before insert on public."changeLog"',
+    '  for each row execute function public.changelog_stamp();',
+  ].join('\n');
+  let activityReady = false, activityChecked = false;
+  let rawDb = null; // the plain database, used by Restore so it doesn't log a second "created" row
+  function probeChangeLog(){
+    if(!rawDb) return Promise.resolve(false);
+    return rawDb.collection('changeLog').where('at','==','__probe__').get()
+      .then(() => { activityReady = true; activityChecked = true; return true; })
+      .catch(() => { activityReady = false; activityChecked = true; return false; });
+  }
+  function auditTitle(row){
+    row = row || {};
+    return String(row.title || row.opportunity || row.eventName || row.item || row.client || '').slice(0, 140);
+  }
+  function auditClip(v){
+    if(v === undefined) return null;
+    if(v !== null && typeof v === 'object'){ const j = JSON.stringify(v); return j.length > 300 ? j.slice(0, 300) + '…' : v; }
+    if(typeof v === 'string' && v.length > 300) return v.slice(0, 300) + '…';
+    return v;
+  }
+  function auditDiff(before, data){
+    const ch = {};
+    Object.keys(data || {}).forEach(k => {
+      if(AUDIT_NOISE.has(k)) return;
+      if(JSON.stringify(before[k] === undefined ? null : before[k]) === JSON.stringify(data[k] === undefined ? null : data[k])) return;
+      ch[k] = [auditClip(before[k]), auditClip(data[k])];
+    });
+    return Object.keys(ch).length ? ch : null;
+  }
+  function auditWho(){
+    return currentUserName || (currentUserEmail ? currentUserEmail.split('@')[0] : '') || 'Someone';
+  }
+  function auditWrite(raw, action, coll, docId, row, changes, snapshot){
+    if(!activityReady) return Promise.resolve();
+    return raw.collection('changeLog').add({
+      at: new Date().toISOString(), actor: auditWho(), email: (currentUserEmail || '').toLowerCase(),
+      action, coll, docId, title: auditTitle(row), client: (row && row.client && coll !== 'contractClients') ? String(row.client) : '',
+      weekId: (row && row.weekId) ? String(row.weekId) : '', changes: changes || null, snapshot: snapshot || null,
+    }).catch(() => {});
+  }
+  function withAuditLog(raw){
+    function wrapDoc(name, ref, id){
+      if(AUDIT_SKIP_ID.test(id)) return ref;
+      const readBefore = async () => { try{ const s = await ref.get(); return s.exists ? s.data() : null; }catch(e){ return null; } };
+      return Object.assign({}, ref, {
+        async set(data){
+          if(!activityReady) return ref.set(data);
+          const before = await readBefore();
+          await ref.set(data);
+          if(before){ const ch = auditDiff(before, data); if(ch) await auditWrite(raw, 'update', name, id, Object.assign({}, before, data), ch); }
+          else await auditWrite(raw, 'create', name, id, data, null);
+        },
+        async update(data){
+          if(!activityReady || Object.keys(data || {}).every(k => AUDIT_NOISE.has(k))) return ref.update(data);
+          const before = await readBefore();
+          await ref.update(data);
+          const ch = before ? auditDiff(before, data) : null;
+          if(ch) await auditWrite(raw, 'update', name, id, Object.assign({}, before, data), ch);
+        },
+        async delete(){
+          if(!activityReady) return ref.delete();
+          const before = await readBefore();
+          if(!before) return ref.delete();
+          await auditWrite(raw, 'delete', name, id, before, null, before);
+          try{ await ref.delete(); }
+          catch(err){ await auditWrite(raw, 'restore', name, id, before, {undone:[null, 'delete failed']}); throw err; }
+        },
+      });
+    }
+    return {
+      collection(name){
+        const col = raw.collection(name);
+        if(!AUDIT_COLLS[name]) return col;
+        return Object.assign({}, col, {
+          doc(id){ return wrapDoc(name, col.doc(id), id); },
+          async add(data){
+            const res = await col.add(data);
+            await auditWrite(raw, 'create', name, res.id, data, null);
+            return res;
+          },
+        });
+      },
+    };
+  }
+
+  let rpTab = 'delivered';
+  function setReportTab(tab){
+    rpTab = tab;
+    document.querySelectorAll('#rpTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-rptab') === tab));
+    const del = tab === 'delivered';
+    document.getElementById('rpDelCtl').hidden = !del;
+    document.getElementById('reportSummary').hidden = !del;
+    document.getElementById('reportResults').hidden = !del;
+    document.getElementById('rpDelNote').hidden = !del;
+    document.getElementById('rpLogCtl').hidden = del;
+    document.getElementById('rpActCtl').hidden = tab !== 'activity';
+    document.getElementById('rpTitle').textContent = del ? 'Delivered report' : (tab === 'trash' ? 'Trash' : 'Activity');
+    if(del){ runReport(); return; }
+    loadLogTab();
+  }
+  function logSetupHtml(){
+    return `<div class="arc-setup">
+      <h3>One setup step before ${rpTab === 'trash' ? 'Trash' : 'Activity'} works</h3>
+      The change log needs a new table in Supabase. Add it once:
+      <ol>
+        <li>Open your Scarlett project in Supabase and go to the SQL Editor.</li>
+        <li>Paste this in and press Run:<pre>${escapeHtml(CHANGELOG_SQL)}</pre></li>
+        <li>Come back here and refresh the page.</li>
+      </ol>
+      <div style="margin-top:10px;"><button class="btn-ghost" id="lgCopySqlBtn">Copy SQL</button></div>
+    </div>`;
+  }
+  function bindLogSetup(){
+    const btn = document.getElementById('lgCopySqlBtn');
+    if(!btn) return;
+    btn.addEventListener('click', () => {
+      (navigator.clipboard ? navigator.clipboard.writeText(CHANGELOG_SQL) : Promise.reject())
+        .then(() => { btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = 'Copy SQL'; }, 1800); })
+        .catch(() => { btn.textContent = 'Select the text above to copy'; });
+    });
+  }
+  let logRows = [], logLoadSeq = 0;
+  async function loadLogTab(){
+    const body = document.getElementById('rpLogBody');
+    if(!db){ body.innerHTML = '<div class="report-empty">The log needs the shared board connection.</div>'; return; }
+    body.innerHTML = '<div class="report-empty">Loading…</div>';
+    const seq = ++logLoadSeq;
+    if(!activityReady) await probeChangeLog();
+    if(seq !== logLoadSeq) return;
+    if(!activityReady){ body.innerHTML = logSetupHtml(); bindLogSetup(); return; }
+    try{
+      if(rpTab === 'trash'){
+        const [dels, ress] = await Promise.all([
+          rawDb.collection('changeLog').where('action','==','delete').get(),
+          rawDb.collection('changeLog').where('action','==','restore').get(),
+        ]);
+        if(seq !== logLoadSeq) return;
+        logRows = dels.docs.map(d => d.data()).concat(ress.docs.map(d => d.data()));
+      } else {
+        const days = parseInt(document.getElementById('rpDays').value, 10) || 30;
+        const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+        const snap = await rawDb.collection('changeLog').where('at','>=',cutoff).get();
+        if(seq !== logLoadSeq) return;
+        logRows = snap.docs.map(d => d.data());
+      }
+      logRows.sort((a,b) => (b.at || '').localeCompare(a.at || ''));
+      renderLogTab();
+    }catch(err){
+      body.innerHTML = `<div class="report-empty">Couldn't load the log: ${escapeHtml((err && err.message) || 'try again in a moment')}.</div>`;
+    }
+  }
+  function lgDayLabel(iso){
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+  }
+  function lgTime(iso){ return new Date(iso).toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}); }
+  function lgVal(k, v){
+    if(v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length)) return 'none';
+    if(k === 'status' && STATUS_META[v]) return STATUS_META[v].label;
+    if(Array.isArray(v)) return v.map(x => (x && typeof x === 'object') ? JSON.stringify(x) : String(x)).join(', ');
+    if(typeof v === 'object') return JSON.stringify(v);
+    return String(v);
+  }
+  function lgChanges(ch){
+    return Object.keys(ch || {}).map(k => `${escapeHtml(FIELD_LABELS[k] || k)}: ${escapeHtml(lgVal(k, ch[k][0]))} → ${escapeHtml(lgVal(k, ch[k][1]))}`).join('; ');
+  }
+  function lgFillFilters(){
+    const collSel = document.getElementById('rpColl');
+    if(collSel.options.length <= 1){
+      collSel.innerHTML = '<option value="">All sections</option>' + Object.keys(AUDIT_COLLS).map(k => `<option value="${k}">${escapeHtml(AUDIT_COLLS[k])}</option>`).join('');
+    }
+    const whoSel = document.getElementById('rpWho');
+    const keep = whoSel.value;
+    const names = [...new Set(logRows.map(r => r.actor).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+    whoSel.innerHTML = '<option value="">Everyone</option>' + names.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('');
+    whoSel.value = names.includes(keep) ? keep : '';
+  }
+  function renderLogTab(){
+    const body = document.getElementById('rpLogBody');
+    if(rpTab === 'trash') return renderTrash(body);
+    lgFillFilters();
+    const coll = document.getElementById('rpColl').value;
+    const who = document.getElementById('rpWho').value;
+    const q = document.getElementById('rpSearch').value.trim().toLowerCase();
+    let rows = logRows.filter(r => (!coll || r.coll === coll) && (!who || r.actor === who));
+    if(q) rows = rows.filter(r => [r.title, r.client, r.actor, AUDIT_COLLS[r.coll]].join(' ').toLowerCase().includes(q));
+    if(!rows.length){ body.innerHTML = '<div class="report-empty">Nothing logged for this view yet.</div>'; return; }
+    const shown = rows.slice(0, 400);
+    const verbs = {create:'created', update:'edited', delete:'deleted', restore:'restored'};
+    const tagCls = {delete:'del', restore:'res'};
+    let html = '', lastDay = '';
+    shown.forEach(r => {
+      const day = lgDayLabel(r.at);
+      if(day !== lastDay){ if(lastDay) html += '</div>'; html += `<div class="lg-day">${escapeHtml(day)}</div><div class="lg-card">`; lastDay = day; }
+      const sub = r.action === 'update' ? lgChanges(r.changes) : '';
+      html += `<div class="lg-row"><span class="lg-time">${escapeHtml(lgTime(r.at))}</span>
+        <div class="lg-what"><span class="lg-tag ${tagCls[r.action] || ''}">${escapeHtml(verbs[r.action] || r.action)}</span><b>${escapeHtml(r.actor || 'Someone')}</b> ${escapeHtml(verbs[r.action] || r.action)} ${escapeHtml((AUDIT_COLLS[r.coll] || r.coll).toLowerCase())} <b>${escapeHtml(r.title || '(untitled)')}</b>${r.client && r.client !== r.title ? ' (' + escapeHtml(r.client) + ')' : ''}${sub ? `<div class="lg-sub">${sub}</div>` : ''}</div></div>`;
+    });
+    html += '</div>';
+    if(rows.length > shown.length) html += `<div class="lg-day">Showing the latest ${shown.length} of ${rows.length}. Narrow the filters to see older entries.</div>`;
+    body.innerHTML = html;
+  }
+  function trashEntries(){
+    const lastRestore = new Map();
+    logRows.forEach(r => { if(r.action === 'restore'){ const k = r.coll + '|' + r.docId; if(!lastRestore.has(k) || r.at > lastRestore.get(k)) lastRestore.set(k, r.at); } });
+    const seen = new Set();
+    return logRows.filter(r => {
+      if(r.action !== 'delete' || !r.snapshot) return false;
+      const k = r.coll + '|' + r.docId;
+      if(lastRestore.has(k) && lastRestore.get(k) > r.at) return false;
+      if(seen.has(k)) return false; // newest delete of this item only
+      seen.add(k);
+      return true;
+    });
+  }
+  function renderTrash(body){
+    const rows = trashEntries();
+    if(!rows.length){ body.innerHTML = '<div class="report-empty">Trash is empty. Anything deleted from now on will show up here and can be restored.</div>'; return; }
+    let html = '', lastDay = '';
+    rows.slice(0, 400).forEach(r => {
+      const day = lgDayLabel(r.at);
+      if(day !== lastDay){ if(lastDay) html += '</div>'; html += `<div class="lg-day">Deleted ${escapeHtml(day)}</div><div class="lg-card">`; lastDay = day; }
+      const dateBit = (r.snapshot && (r.snapshot.dateISO || r.snapshot.date)) ? ' · ' + escapeHtml(r.snapshot.dateISO || r.snapshot.date) : '';
+      html += `<div class="lg-row"><span class="lg-time">${escapeHtml(lgTime(r.at))}</span>
+        <div class="lg-what"><b>${escapeHtml(r.title || '(untitled)')}</b><div class="lg-sub">${escapeHtml(AUDIT_COLLS[r.coll] || r.coll)}${r.client && r.client !== r.title ? ' · ' + escapeHtml(r.client) : ''}${dateBit} · deleted by ${escapeHtml(r.actor || 'someone')}</div></div>
+        <button type="button" class="lg-restore" data-lg-restore="${escapeAttr(r.coll + '|' + r.docId + '|' + r.at)}">Restore</button></div>`;
+    });
+    html += '</div>';
+    body.innerHTML = html;
+  }
+  async function restoreFromTrash(key, btn){
+    const r = trashEntries().find(x => (x.coll + '|' + x.docId + '|' + x.at) === key);
+    if(!r || !rawDb) return;
+    btn.disabled = true; btn.textContent = 'Restoring…';
+    try{
+      const ref = rawDb.collection(r.coll).doc(r.docId);
+      const existing = await ref.get();
+      if(!existing.exists) await ref.set(r.snapshot);
+      await auditWrite(rawDb, 'restore', r.coll, r.docId, r.snapshot, null);
+      if(r.coll === 'tasks') syncTaskToDelivery(r.docId, r.snapshot);
+      btn.textContent = existing.exists ? 'Already back' : 'Restored';
+      setTimeout(() => { if(rpTab === 'trash') loadLogTab(); }, 900);
+    }catch(err){
+      btn.disabled = false; btn.textContent = 'Restore';
+      showSaveError("Couldn't restore that item: " + ((err && err.message) || 'try again'));
+    }
+  }
+  document.getElementById('rpTabs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-rptab]');
+    if(b) setReportTab(b.getAttribute('data-rptab'));
+  });
+  ['rpColl','rpWho'].forEach(id => document.getElementById(id).addEventListener('change', renderLogTab));
+  document.getElementById('rpDays').addEventListener('change', loadLogTab);
+  document.getElementById('rpSearch').addEventListener('input', renderLogTab);
+  document.getElementById('rpLogBody').addEventListener('click', e => {
+    const b = e.target.closest('[data-lg-restore]');
+    if(b) restoreFromTrash(b.getAttribute('data-lg-restore'), b);
+  });
+
   // ---------------- my tasks (every task assigned to me, any week) ----------------
   // The board only ever holds the week being viewed, so a task dated in another week can look like
   // it vanished. This page asks for every task I own across all weeks, open ones first (oldest
@@ -5861,7 +6193,7 @@
   // through the board first.
   const APP_PAGES = {
     board:    { el: 'boardApp' },
-    reports:  { el: 'reportApp',   onEnter: () => { refreshReportFilters(); renderQuarterLabel(); runReport(); } },
+    reports:  { el: 'reportApp',   onEnter: () => { refreshReportFilters(); renderQuarterLabel(); setReportTab(rpTab); } },
     ops:      { el: 'opsApp',      onEnter: subscribeOps,      onLeave: unsubscribeOps },
     calendar: { el: 'calendarApp', onEnter: () => { renderCalMonthLabel(); subscribeCalendarShows(); },
                                     onLeave: () => { if(unsubCalendarShows){ unsubCalendarShows(); unsubCalendarShows = null; } } },
@@ -8768,7 +9100,9 @@
   function startAppOnce(){
     if(appStarted) return;
     appStarted = true;
-    db = createFirestoreShim(supabaseClient);
+    rawDb = createFirestoreShim(supabaseClient);
+    db = withAuditLog(rawDb);
+    probeChangeLog();
     canEdit = true;
     subscribeWeek();
     subscribeTasks();
