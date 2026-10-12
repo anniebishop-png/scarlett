@@ -1157,7 +1157,7 @@
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <label class="checkbox-row" style="margin:0;">
-          <input type="checkbox" id="downloadMineOnly"> <span style="font-size:12.5px;font-weight:600;color:var(--ink);">Mine only</span>
+          <input type="checkbox" id="downloadMineOnly"> <span style="font-size:12.5px;font-weight:600;color:var(--ink);" title="Show only tasks assigned to you (also applies to Download)">Mine only</span>
         </label>
         <button class="btn-ghost" id="downloadWeekBtn">Download</button>
         <button class="btn-ghost" id="bulkAddBtn">Bulk add</button>
@@ -2109,17 +2109,38 @@
   let canEdit = true; // optimistic; flips false if db unavailable
   let currentUserEmail = null; // signed-in email, stamped on archive actions
   let currentUserName = null; // TEAM_ROSTER name matched from the signed-in email, for "Mine only" filtering
+  // Who is signed in is decided by the exact email address, never by guessing from the first part of it
+  // (that let marissa@gmail.com and marissa@equiratings.com both count as "Marissa", and two people called
+  // Sam count as one). The roster name stays what tasks are assigned to. A new joiner needs one line here;
+  // until they have it, "My tasks", alerts and "Mine only" say their sign-in isn't matched.
+  const EMAIL_NAME_MAP = {
+    'annie.bishop@equiratings.com': 'Annie',
+    'ali@equiratings.com': 'Ali',
+    'diarm@equiratings.com': 'Diarm',
+    'maria@equiratings.com': 'Maz',
+    'georgia@equiratings.com': 'Georgia',
+    'sam@equiratings.com': 'Sam',
+    'charlotte@equiratings.com': 'Charlotte',
+    'emma@equiratings.com': 'Emma',
+    'samantha@equiratings.com': 'Sammy',
+    'nicole@equiratings.com': 'Nicole',
+    'brayden@equiratings.com': 'Brayden',
+    'ruairi@equiratings.com': 'Geogs',
+    'sean@equiratings.com': 'Sean',
+    'marissa@equiratings.com': 'Marissa',
+    'rozzie@equiratings.com': 'Rozzie',
+  };
   function nameFromEmail(email){
-    if(!email) return null;
-    const first = email.split('@')[0].split(/[._-]/)[0].toLowerCase();
-    if(!first) return null;
-    if(EMAIL_NAME_ALIASES[first]) return EMAIL_NAME_ALIASES[first];
-    const match = TEAM_ROSTER.find(p => p.name.split(' ')[0].toLowerCase() === first);
-    return match ? match.name : null;
+    const e = String(email || '').trim().toLowerCase();
+    if(!e) return null;
+    if(EMAIL_NAME_MAP[e]) return EMAIL_NAME_MAP[e];
+    // Otherwise only an @equiratings.com address whose whole name part is a roster name ("sam.l@" = "Sam L").
+    const m = /^([^@\s]+)@equiratings\.com$/.exec(e);
+    if(!m) return null;
+    const local = m[1].replace(/[._-]+/g, ' ');
+    const hit = TEAM_ROSTER.find(p => p.name.toLowerCase() === local);
+    return hit ? hit.name : null;
   }
-  // For people whose email starts with something other than their roster name. The roster name stays what
-  // tasks are assigned to; this just tells the site who is signed in (alerts, "Mine only", notifications).
-  const EMAIL_NAME_ALIASES = { samantha: 'Sammy', maria: 'Maz', ruairi: 'Geogs' };
   // "What's due for me" notifications (bell + login banner) -- see checkDueNotifications() below.
   let dueNotifications = [];      // items assigned to the signed-in person that need attention, most urgent first
   let priorLastSeenAt = null;     // their teamActivity.lastActive from BEFORE this login overwrote it -- marks the
@@ -3313,7 +3334,10 @@
       return;
     }
     document.getElementById('statusFilters').style.display = '';
-    const filtered = activeStatus ? tasks.filter(t=>t.status===activeStatus) : tasks;
+    const mineBox = document.getElementById('downloadMineOnly');
+    const mineOn = !!(mineBox && mineBox.checked);
+    const base = (mineOn && currentUserName) ? tasks.filter(t => (t.owners||[]).includes(currentUserName)) : tasks;
+    const filtered = activeStatus ? base.filter(t=>t.status===activeStatus) : base;
     const map = new Map();
 
     if(groupMode === 'person'){
@@ -3332,7 +3356,10 @@
     const keys = orderedKeys(new Set(map.keys()));
 
     if(!keys.length){
-      document.getElementById('groups').innerHTML = `<div class="empty-state" style="padding:22px;">No tasks yet ${activeStatus? 'for this filter' : 'this week'} — add one to get started.</div>`;
+      const emptyMsg = (mineOn && !currentUserName) ? "Your sign-in isn't matched to a team member, so Mine only can't filter. Tell Annie." :
+        mineOn ? `No tasks of yours ${activeStatus ? 'for this filter' : 'this week'}. Untick Mine only to see everyone's.` :
+        `No tasks yet ${activeStatus? 'for this filter' : 'this week'} — add one to get started.`;
+      document.getElementById('groups').innerHTML = `<div class="empty-state" style="padding:22px;">${emptyMsg}</div>`;
       activeGroupKey = null;
       return;
     }
@@ -4045,6 +4072,16 @@
   }, true);
 
   document.getElementById('addTaskBtn').addEventListener('click', () => openTaskModal(null));
+
+  // "Mine only" filters the board itself (and so the Download too), and is remembered on this device.
+  (function(){
+    const box = document.getElementById('downloadMineOnly');
+    try{ box.checked = localStorage.getItem('scarlett.mineOnly') === '1'; }catch(e){}
+    box.addEventListener('change', () => {
+      try{ localStorage.setItem('scarlett.mineOnly', box.checked ? '1' : '0'); }catch(e){}
+      renderGroups();
+    });
+  })();
 
   // ---------------- download week ----------------
   function exportWeekTasksCSV(){
@@ -8771,6 +8808,7 @@
       showLoginScreen(false);
       startAppOnce();
       currentUserName = nameFromEmail(session.user && session.user.email);
+      try{ renderGroups(); }catch(e){}   // "Mine only" needs the name, which arrives just after the first draw
       const email = session.user && session.user.email;
       currentUserEmail = email || null;
       if(email && !notifSessionStarted){
