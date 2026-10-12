@@ -633,6 +633,12 @@
   .pulse-legend .k i{width:8px; height:8px; border-radius:50%; display:inline-block;}
   .pulse-legend .k.done i{background:#2FBE33;} .pulse-legend .k.inprogress i{background:#4C93E5;} .pulse-legend .k.notstarted i{background:rgba(255,255,255,.45);}
   .pulse-legend .k.overdue{color:#F7B5B4;} .pulse-legend .k.overdue i{background:#E5605F; box-shadow:0 0 0 3px rgba(229,96,95,.25);}
+  .nav-badge{display:inline-block; min-width:18px; padding:1px 6px; margin-left:6px; border-radius:99px; font-size:11px; font-weight:800; line-height:1.5; text-align:center; background:var(--gold); color:#1a3852;}
+  .nav-badge.late{background:#d9433f; color:#fff;}
+  .tip-card{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 16px; margin:0 0 14px; padding:12px 16px; background:var(--surface); border:1px solid var(--hairline); border-left:4px solid var(--gold); border-radius:12px; font-size:13px; line-height:1.5; color:var(--ink);}
+  .tip-card[hidden]{display:none;}
+  .tip-card .tip-actions{display:flex; flex-wrap:wrap; gap:8px;}
+  .view-wrap{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
   .pulse-click{cursor:pointer;}
   .pulse-figure.pulse-click:hover .pulse-pct, .pulse-figure.pulse-click:focus-visible .pulse-pct{text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:6px; text-decoration-color:var(--gold);}
   .pulse-line.pulse-click:hover, .pulse-line.pulse-click:focus-visible{text-decoration:underline; text-underline-offset:3px;}
@@ -1179,12 +1185,24 @@
       <div class="chip-row" id="teamActivityList"></div>
     </div>
 
+    <div class="tip-card" id="featureTip" hidden>
+      <div><b>Finding your way around.</b> <b>My tasks</b> lists everything assigned to you from every week, not just this one. <b>By day</b> splits the week into one tab per day, opening on today.</div>
+      <div class="tip-actions">
+        <button type="button" class="btn-ghost" id="tipMyTasks">Open My tasks</button>
+        <button type="button" class="btn-ghost" id="tipByDay">Show By day</button>
+        <button type="button" class="btn-ghost" id="tipDismiss">Got it</button>
+      </div>
+    </div>
+
     <div class="controls-row">
+      <div class="view-wrap">
       <div class="segmented" id="viewTabs">
         <button data-mode="client" class="active">By client</button>
         <button data-mode="day">By day</button>
         <button data-mode="person">By person</button>
         <button data-mode="division">By team</button>
+      </div>
+      <button type="button" class="btn-ghost" id="gotoTodayBtn" title="Jump to today's tasks, split by day">Today</button>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <label class="checkbox-row" style="margin:0;">
@@ -4886,14 +4904,32 @@
     applyTheme(saved);
   })();
 
+  // The view (By client / By day / ...) is remembered per browser, so someone who prefers By day
+  // doesn't have to switch to it every visit. 'Today' jumps to today's day tab from anywhere.
+  function syncViewTabs(){
+    document.querySelectorAll('#viewTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-mode') === groupMode));
+  }
+  function setViewMode(mode){
+    groupMode = mode;
+    syncViewTabs();
+    try{ localStorage.setItem('scarlett.viewMode', mode); }catch(e){}
+  }
   document.querySelectorAll('#viewTabs button').forEach(btn=>{
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#viewTabs button').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      groupMode = btn.getAttribute('data-mode');
+      setViewMode(btn.getAttribute('data-mode'));
       activeGroupKey = null;
       renderGroups();
     });
+  });
+  (function(){
+    let saved = null;
+    try{ saved = localStorage.getItem('scarlett.viewMode'); }catch(e){}
+    if(saved && ['client','day','person','division'].includes(saved)){ groupMode = saved; syncViewTabs(); }
+  })();
+  document.getElementById('gotoTodayBtn').addEventListener('click', () => {
+    setViewMode('day');
+    activeGroupKey = fmtDayLabel(toDateStr(new Date()));
+    if(currentWeekId !== CURRENT_WEEK) goToWeek(CURRENT_WEEK); else renderGroups();
   });
 
   function renderAll(){
@@ -4996,6 +5032,41 @@
       carryRows = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
       renderPulse();
     }, () => {});
+  }
+  // Count badge on every "My tasks" button: how many open tasks are assigned to me across all
+  // weeks, turning red when any are overdue. It is what tells people the page has something in it.
+  let mineBadgeRows = [], unsubMineBadge = null;
+  function updateMineBadge(){
+    const today = toDateStr(new Date());
+    const late = mineBadgeRows.filter(t => t.dateISO && t.dateISO < today).length;
+    document.querySelectorAll('[data-nav="mytasks"]').forEach(b => {
+      let badge = b.querySelector('.nav-badge');
+      if(!mineBadgeRows.length){ if(badge) badge.remove(); return; }
+      if(!badge){ badge = document.createElement('span'); b.appendChild(badge); }
+      badge.className = 'nav-badge' + (late ? ' late' : '');
+      badge.textContent = mineBadgeRows.length;
+      b.title = `${mineBadgeRows.length} open task${mineBadgeRows.length === 1 ? '' : 's'} assigned to you${late ? ', ' + late + ' overdue' : ''}, from every week`;
+    });
+  }
+  function subscribeMineBadge(){
+    if(unsubMineBadge || !db || !currentUserName) return;
+    unsubMineBadge = tasksCol().where('owners','array-contains', currentUserName).where('status','!=','done').onSnapshot(snap => {
+      mineBadgeRows = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+      updateMineBadge();
+    }, () => {});
+  }
+  // One-time pointer to My tasks and By day; stays gone once dismissed.
+  function tipInit(){
+    document.querySelectorAll('[data-nav="mytasks"]').forEach(b => { if(!b.title) b.title = 'Everything assigned to you, from every week'; });
+    const tip = document.getElementById('featureTip');
+    let seen = false;
+    try{ seen = localStorage.getItem('scarlett.tipSeen1') === '1'; }catch(e){}
+    if(seen) return;
+    tip.hidden = false;
+    const dismiss = () => { tip.hidden = true; try{ localStorage.setItem('scarlett.tipSeen1', '1'); }catch(e){} };
+    document.getElementById('tipDismiss').addEventListener('click', dismiss);
+    document.getElementById('tipMyTasks').addEventListener('click', () => { dismiss(); switchApp('mytasks'); });
+    document.getElementById('tipByDay').addEventListener('click', () => { dismiss(); setViewMode('day'); activeGroupKey = null; renderGroups(); });
   }
   function renderOpenTasks(){
     const body = document.getElementById('otBody');
@@ -9205,6 +9276,7 @@
     subscribeWeek();
     subscribeTasks();
     subscribeCarry();
+    tipInit();
     subscribeShows();
     subscribeUpcomingShows();
     fridayInit();
@@ -9242,6 +9314,7 @@
       startAppOnce();
       currentUserName = nameFromEmail(session.user && session.user.email);
       try{ renderGroups(); }catch(e){}   // "Mine only" needs the name, which arrives just after the first draw
+      subscribeMineBadge();
       const email = session.user && session.user.email;
       currentUserEmail = email || null;
       if(email && !notifSessionStarted){
