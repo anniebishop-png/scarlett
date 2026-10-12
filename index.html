@@ -633,6 +633,23 @@
   .pulse-legend .k i{width:8px; height:8px; border-radius:50%; display:inline-block;}
   .pulse-legend .k.done i{background:#2FBE33;} .pulse-legend .k.inprogress i{background:#4C93E5;} .pulse-legend .k.notstarted i{background:rgba(255,255,255,.45);}
   .pulse-legend .k.overdue{color:#F7B5B4;} .pulse-legend .k.overdue i{background:#E5605F; box-shadow:0 0 0 3px rgba(229,96,95,.25);}
+  .mt-row.has-cb{grid-template-columns:22px 96px 1fr 132px;}
+  .mt-row input[type=checkbox], .mt-head input[type=checkbox], .ro-row input[type=checkbox]{width:16px; height:16px; accent-color:var(--navy); cursor:pointer; margin:0;}
+  .mt-head .mt-selall{margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--ink-2); cursor:pointer;}
+  .mt-bulkbar{position:sticky; top:8px; z-index:6; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin:0 0 14px; padding:10px 16px; background:var(--navy); color:#fff; border-radius:12px; font-size:13px; font-weight:600; box-shadow:0 8px 24px rgba(17,40,60,.28);}
+  .mt-bulkbar .grow{flex:1;}
+  .mt-bulkbar button{border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.12); color:#fff; border-radius:8px; padding:6px 12px; font-weight:700; font-size:12.5px; cursor:pointer;}
+  .mt-bulkbar button.go{background:var(--gold); color:#1a3852; border-color:transparent;}
+  @media (max-width:560px){ .mt-row.has-cb{grid-template-columns:22px 1fr; row-gap:6px;} .mt-row.has-cb > :nth-child(n+3){grid-column:2;} }
+  .ro-sub{font-size:12.5px; color:var(--ink-2); line-height:1.5; margin:0 0 12px;}
+  .ro-tools{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; justify-content:space-between; margin:0 0 8px;}
+  .ro-all{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; cursor:pointer;}
+  #roBody{max-height:52vh; overflow-y:auto; border:1px solid var(--hairline); border-radius:12px;}
+  .ro-row{display:grid; grid-template-columns:22px 70px 1fr; gap:10px; align-items:center; padding:9px 12px; border-bottom:1px solid var(--hairline); font-size:13px; cursor:pointer;}
+  .ro-row:last-child{border-bottom:none;}
+  .ro-row .ro-day{color:var(--ink-muted); font-size:12px;}
+  .ro-row .ro-day.late{color:#b3261e; font-weight:700;}
+  .ro-meta{display:block; color:var(--ink-muted); font-size:11.5px;}
   .nav-badge{display:inline-block; min-width:18px; padding:1px 6px; margin-left:6px; border-radius:99px; font-size:11px; font-weight:800; line-height:1.5; text-align:center; background:var(--gold); color:#1a3852;}
   .nav-badge.late{background:#d9433f; color:#fff;}
   .tip-card{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 16px; margin:0 0 14px; padding:12px 16px; background:var(--surface); border:1px solid var(--hairline); border-left:4px solid var(--gold); border-radius:12px; font-size:13px; line-height:1.5; color:var(--ink);}
@@ -1209,6 +1226,7 @@
           <input type="checkbox" id="downloadMineOnly"> <span style="font-size:12.5px;font-weight:600;color:var(--ink);" title="Show only tasks assigned to you (also applies to Download)">Mine only</span>
         </label>
         <button class="btn-ghost" id="downloadWeekBtn">Download</button>
+        <button class="btn-ghost" id="rollOverBtn" title="Move this week's unfinished tasks to next Monday">Roll over</button>
         <button class="btn-ghost" id="bulkAddBtn">Bulk add</button>
         <button class="btn-primary" id="addTaskBtn">+ Add task</button>
       </div>
@@ -1730,6 +1748,28 @@
       <div class="right">
         <button type="button" class="btn-ghost" id="confirmDeleteNoBtn">Cancel</button>
         <button type="button" class="btn-danger" id="confirmDeleteYesBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="rollOverlay" style="z-index:200;" hidden>
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="roTitle">
+    <h3 id="roTitle">Roll unfinished tasks to next week</h3>
+    <p class="ro-sub" id="roSub"></p>
+    <div class="ro-tools">
+      <div class="segmented" id="roScope">
+        <button type="button" data-ro="mine" class="active">Mine</button>
+        <button type="button" data-ro="all">Everyone</button>
+      </div>
+      <label class="ro-all"><input type="checkbox" id="roAll"> Select all</label>
+    </div>
+    <div id="roBody"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <div class="left"></div>
+      <div class="right">
+        <button type="button" class="btn-ghost" id="roCancelBtn">Cancel</button>
+        <button type="button" class="btn-primary" id="roGoBtn">Move</button>
       </div>
     </div>
   </div>
@@ -5033,6 +5073,108 @@
       renderPulse();
     }, () => {});
   }
+  function showToast(msg){
+    let el = document.getElementById('okToast');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'okToast';
+      el.setAttribute('role','status');
+      el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;max-width:90vw;padding:10px 16px;border-radius:10px;background:#1a3852;color:#fff;font-size:13px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.25);';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.hidden = false;
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { el.hidden = true; }, 4500);
+  }
+
+  // ---------------- roll over: move this week's unfinished tasks to next Monday ----------------
+  // Opens on the signed-in person's own tasks, all ticked; "Everyone" widens it to the whole team.
+  // Repeating tasks are left out because each one is recreated every week by its template.
+  let roScope = 'mine', roSel = new Set(), roList = [];
+  function roTarget(){ return addDays(currentWeekId, 7); }
+  function roBuildList(){
+    return tasks.filter(t => t.status !== 'done' && !t.recurringId && (roScope === 'all' || (currentUserName && (t.owners || []).includes(currentUserName))))
+      .sort((a,b) => (a.dateISO||'').localeCompare(b.dateISO||'') || (a.client||'').localeCompare(b.client||'') || (a.title||'').localeCompare(b.title||''));
+  }
+  function roRender(resetSel){
+    roList = roBuildList();
+    if(resetSel) roSel = new Set(roList.map(t => t.id));
+    else roSel = new Set([...roSel].filter(id => roList.some(t => t.id === id)));
+    const today = toDateStr(new Date());
+    const repeating = tasks.filter(t => t.status !== 'done' && t.recurringId).length;
+    const tgt = new Date(roTarget() + 'T00:00:00').toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'});
+    document.getElementById('roSub').textContent = `Moves the ticked tasks from this week to ${tgt}.` + (repeating ? ` ${repeating} repeating task${repeating === 1 ? '' : 's'} not listed: they come back each week on their own.` : '');
+    document.querySelectorAll('#roScope button').forEach(b => b.classList.toggle('active', b.getAttribute('data-ro') === roScope));
+    document.getElementById('roBody').innerHTML = roList.length ? roList.map(t => {
+      const late = t.dateISO && t.dateISO < today;
+      return `<label class="ro-row"><input type="checkbox" data-ro-id="${escapeAttr(t.id)}"${roSel.has(t.id) ? ' checked' : ''}>
+        <span class="ro-day${late ? ' late' : ''}">${escapeHtml(t.dateISO ? fmtDayLabel(t.dateISO) : 'No date')}</span>
+        <span>${escapeHtml(t.title || '(untitled)')}<span class="ro-meta">${escapeHtml([t.client, (t.owners || []).join(', ') || 'Unassigned'].filter(Boolean).join(' · '))}</span></span></label>`;
+    }).join('') : `<div class="report-empty" style="border:none;">${roScope === 'mine' ? 'You have nothing unfinished this week.' : 'Nothing unfinished this week.'}</div>`;
+    roSync();
+  }
+  function roSync(){
+    const n = roSel.size;
+    const go = document.getElementById('roGoBtn');
+    go.textContent = n ? `Move ${n} task${n === 1 ? '' : 's'}` : 'Move';
+    go.disabled = !n;
+    const all = document.getElementById('roAll');
+    all.checked = !!roList.length && n === roList.length;
+    all.indeterminate = n > 0 && n < roList.length;
+    all.disabled = !roList.length;
+  }
+  function openRollOver(){
+    if(!canEdit) return;
+    roScope = currentUserName ? 'mine' : 'all';
+    document.getElementById('rollOverlay').hidden = false;
+    roRender(true);
+  }
+  function closeRollOver(){ document.getElementById('rollOverlay').hidden = true; }
+  async function doRollOver(){
+    const ids = [...roSel];
+    if(!ids.length) return;
+    const target = roTarget();
+    const go = document.getElementById('roGoBtn');
+    go.disabled = true; go.textContent = 'Moving…';
+    const picked = tasks.filter(t => ids.includes(t.id));
+    const results = await Promise.allSettled(picked.map(t =>
+      tasksCol().doc(t.id).update({dateISO: target, weekId: target, calendarSynced: false}).then(() => {
+        syncTaskToDelivery(t.id, Object.assign({}, t, {dateISO: target, weekId: target}));
+        if(t.sourceType === 'delivery' && t.sourceId) deliveryCol().doc(t.sourceId).update({date: target}).catch(() => {});
+      })));
+    const failed = results.filter(r => r.status === 'rejected').length;
+    const moved = picked.length - failed;
+    closeRollOver();
+    if(failed) showSaveError(`${failed} task${failed === 1 ? '' : 's'} couldn't be moved. Try again, and tell Annie if it keeps happening.`);
+    else showToast(`Moved ${moved} task${moved === 1 ? '' : 's'} to next week`);
+  }
+  (function(){
+    document.getElementById('rollOverBtn').addEventListener('click', openRollOver);
+    document.getElementById('roCancelBtn').addEventListener('click', closeRollOver);
+    document.getElementById('roGoBtn').addEventListener('click', doRollOver);
+    const ov = document.getElementById('rollOverlay');
+    ov.addEventListener('click', e => { if(e.target === ov) closeRollOver(); });
+    ov.addEventListener('keydown', e => { if(e.key === 'Escape') closeRollOver(); });
+    document.getElementById('roScope').addEventListener('click', e => {
+      const b = e.target.closest('[data-ro]');
+      if(!b || b.getAttribute('data-ro') === roScope) return;
+      roScope = b.getAttribute('data-ro'); roRender(true);
+    });
+    document.getElementById('roAll').addEventListener('change', e => {
+      roSel = e.target.checked ? new Set(roList.map(t => t.id)) : new Set();
+      document.querySelectorAll('#roBody [data-ro-id]').forEach(c => { c.checked = e.target.checked; });
+      roSync();
+    });
+    document.getElementById('roBody').addEventListener('change', e => {
+      const c = e.target.closest('[data-ro-id]');
+      if(!c) return;
+      const id = c.getAttribute('data-ro-id');
+      if(c.checked) roSel.add(id); else roSel.delete(id);
+      roSync();
+    });
+  })();
+
   // Count badge on every "My tasks" button: how many open tasks are assigned to me across all
   // weeks, turning red when any are overdue. It is what tells people the page has something in it.
   let mineBadgeRows = [], unsubMineBadge = null;
@@ -6179,7 +6321,33 @@
   let mtOverdue = false, mtPerson = '';
   let mtShowDone = false, mtDoneAll = false, mtQuery = '';
   let pendingOpenTask = null; // {id, weekId}: open this task's modal once its week has loaded
+  let mtSel = new Set(), mtShownIds = [];
   function mtRows(){ return mtOverdue ? overdueRows : myTasksRows; }
+  function mtBulkBarHtml(){
+    if(!mtSel.size) return '';
+    return `<div class="mt-bulkbar"><span>${mtSel.size} selected</span><span class="grow"></span><button type="button" class="go" id="mtBulkDone">Mark ${mtSel.size} done</button><button type="button" id="mtBulkClear">Clear</button></div>`;
+  }
+  function mtSelAllHtml(){
+    if(!canEdit || !mtShownIds.length) return '';
+    const all = mtShownIds.every(id => mtSel.has(id));
+    return `<label class="mt-selall"><input type="checkbox" id="mtSelAll"${all ? ' checked' : ''}> Select all</label>`;
+  }
+  function mtBulkDone(){
+    const ids = [...mtSel];
+    if(!ids.length || !canEdit) return;
+    confirmDelete(`Mark ${ids.length} task${ids.length === 1 ? '' : 's'} as done?`, async () => {
+      const rows = mtRows().filter(t => ids.includes(t.id));
+      const prev = new Map(rows.map(t => [t.id, t.status]));
+      rows.forEach(t => { t.status = 'done'; });
+      mtSel = new Set();
+      renderMyTasks();
+      const res = await Promise.allSettled(rows.map(t => tasksCol().doc(t.id).update({status:'done'}).then(() => syncTaskToDelivery(t.id, t))));
+      const failed = [];
+      res.forEach((r, i) => { if(r.status === 'rejected'){ failed.push(rows[i].id); rows[i].status = prev.get(rows[i].id); } });
+      if(failed.length){ renderMyTasks(); showSaveError(`${failed.length} task${failed.length === 1 ? '' : 's'} couldn't be saved and stayed open. Try again, and tell Annie if it keeps happening.`); }
+      else showToast(`Marked ${rows.length} task${rows.length === 1 ? '' : 's'} done`);
+    }, {title:'Mark as done?', confirmLabel:'Mark done', safe:true});
+  }
   function mtSyncUI(){
     document.querySelectorAll('#mtModeTabs button').forEach(b => b.classList.toggle('active', (b.getAttribute('data-mtmode') === 'overdue') === mtOverdue));
     document.getElementById('mtTitle').textContent = mtOverdue ? 'Overdue tasks' : 'My tasks';
@@ -6187,6 +6355,7 @@
   }
   function enterMyTasks(){
     unsubscribeMtData();
+    mtSel = new Set();
     mtPerson = mtPendingPerson; mtPendingPerson = '';
     mtSyncUI();
     if(mtOverdue) subscribeOverdue(); else subscribeMine();
@@ -6237,7 +6406,9 @@
     const bits = [who, t.client, t.tag, wk ? 'Week of ' + mtDateLabel(wk).replace(/^\w+,\s*/, '') : ''].filter(Boolean).join(' · ');
     const flag = overdue ? (showOwners ? mtDaysLate(t.dateISO, today) + 'd late' : 'Overdue') : '';
     const opts = Object.keys(STATUS_META).map(k => `<option value="${k}"${t.status === k ? ' selected' : ''}>${STATUS_META[k].label}</option>`).join('');
-    return `<div class="mt-row ${done ? 'is-done' : ''} ${overdue ? 'is-overdue' : ''}" data-mt-id="${escapeAttr(t.id)}">
+    const sel = canEdit && !done;
+    return `<div class="mt-row ${done ? 'is-done' : ''} ${overdue ? 'is-overdue' : ''} ${sel ? 'has-cb' : ''}" data-mt-id="${escapeAttr(t.id)}">
+      ${sel ? `<input type="checkbox" data-mt-sel="${escapeAttr(t.id)}" aria-label="Select this task"${mtSel.has(t.id) ? ' checked' : ''}>` : ''}
       <div class="mt-day">${escapeHtml(mtDateLabel(t.dateISO))}${flag ? `<br><span class="flag-overdue">${flag}</span>` : ''}</div>
       <div class="mt-main" data-mt-open="${escapeAttr(t.id)}" role="button" tabindex="0">
         <div class="mt-title">${escapeHtml(t.title || '(untitled)')}</div>
@@ -6267,7 +6438,9 @@
     const oldest = rows.length ? mtDaysLate(rows[0].dateISO, today) : 0;
     const tile = (n, l) => `<div class="report-stat"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
     sum.innerHTML = tile(rows.length, 'Overdue') + tile(names.length, 'People') + (rows.length ? tile(oldest + 'd', 'Oldest') : '');
-    body.innerHTML = `<div class="mt-card"><div class="mt-head">${mtPerson ? escapeHtml(mtPerson) + ': overdue' : 'Overdue, everyone'} <span class="mt-count">${rows.length}</span></div>` +
+    mtShownIds = rows.map(t => t.id);
+    mtSel = new Set([...mtSel].filter(id => mtShownIds.includes(id)));
+    body.innerHTML = mtBulkBarHtml() + `<div class="mt-card"><div class="mt-head">${mtPerson ? escapeHtml(mtPerson) + ': overdue' : 'Overdue, everyone'} <span class="mt-count">${rows.length}</span>${mtSelAllHtml()}</div>` +
       (rows.length ? rows.map(t => mtRowHtml(t, today, true)).join('') : `<div class="mt-empty">${q ? 'No overdue tasks match that search.' : 'Nothing overdue. Nice.'}</div>`) + '</div>';
   }
   function renderMyTasks(){
@@ -6287,7 +6460,9 @@
     const overdueN = open.filter(t => t.dateISO && t.dateISO < today).length;
     const tile = (n, l) => `<div class="report-stat"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
     sum.innerHTML = tile(open.length, 'Open') + (overdueN ? tile(overdueN, 'Overdue') : '') + tile(done.length, 'Done');
-    let html = `<div class="mt-card"><div class="mt-head">Open <span class="mt-count">${open.length}</span></div>` +
+    mtShownIds = open.map(t => t.id);
+    mtSel = new Set([...mtSel].filter(id => mtShownIds.includes(id)));
+    let html = mtBulkBarHtml() + `<div class="mt-card"><div class="mt-head">Open <span class="mt-count">${open.length}</span>${mtSelAllHtml()}</div>` +
       (open.length ? open.map(t => mtRowHtml(t, today, false)).join('') : `<div class="mt-empty">${q ? 'No open tasks match that search.' : 'Nothing open. You are all caught up.'}</div>`) + '</div>';
     const shown = mtDoneAll ? done : done.slice(0, 50);
     html += `<div class="mt-card"><button type="button" class="mt-head ${mtShowDone ? '' : 'collapsed'}" id="mtDoneToggle" aria-expanded="${mtShowDone}">${mtShowDone ? '▾' : '▸'} Done <span class="mt-count">${done.length}</span></button>` +
@@ -6330,6 +6505,8 @@
   (function(){
     const body = document.getElementById('mtBody');
     body.addEventListener('click', (e) => {
+      if(e.target.closest('#mtBulkDone')){ mtBulkDone(); return; }
+      if(e.target.closest('#mtBulkClear')){ mtSel = new Set(); renderMyTasks(); return; }
       if(e.target.closest('#mtDoneToggle')){ mtShowDone = !mtShowDone; renderMyTasks(); return; }
       if(e.target.closest('#mtDoneMore')){ mtDoneAll = true; renderMyTasks(); return; }
       const o = e.target.closest('[data-mt-open]');
@@ -6342,11 +6519,14 @@
     });
     body.addEventListener('change', (e) => {
       const sel = e.target.closest('[data-mt-status]');
-      if(sel) myTaskSetStatus(sel.getAttribute('data-mt-status'), sel.value);
+      if(sel){ myTaskSetStatus(sel.getAttribute('data-mt-status'), sel.value); return; }
+      const cb = e.target.closest('[data-mt-sel]');
+      if(cb){ const id = cb.getAttribute('data-mt-sel'); if(cb.checked) mtSel.add(id); else mtSel.delete(id); renderMyTasks(); return; }
+      if(e.target.id === 'mtSelAll'){ mtSel = e.target.checked ? new Set(mtShownIds) : new Set(); renderMyTasks(); }
     });
     document.getElementById('mtPeople').addEventListener('click', (e) => {
       const c = e.target.closest('[data-mt-person]');
-      if(c){ mtPerson = c.getAttribute('data-mt-person'); renderMyTasks(); }
+      if(c){ mtPerson = c.getAttribute('data-mt-person'); mtSel = new Set(); renderMyTasks(); }
     });
     document.getElementById('mtModeTabs').addEventListener('click', (e) => {
       const b = e.target.closest('[data-mtmode]');
