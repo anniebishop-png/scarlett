@@ -553,7 +553,10 @@
   .checkbox-row input{width:auto;}
   .checkbox-row label{font-size:12.5px; font-weight:600; color:var(--ink); text-transform:none; letter-spacing:normal;}
   .recur-days{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
-  .recur-days[hidden]{display:none;}
+  .recur-days[hidden], .recur-month[hidden]{display:none;}
+  .recur-month{display:flex; align-items:center; gap:8px; margin-top:6px; font-size:13px; color:var(--ink-2);}
+  .recur-month select{flex:1; min-width:0;}
+  .recur-month select[hidden]{display:none;}
   .rd-chip{border:1px solid var(--hairline-strong); background:var(--surface-2); color:var(--ink-2); border-radius:999px; padding:5px 12px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer;}
   .rd-chip.on{background:var(--gold); border-color:var(--gold-deep); color:#11283C;}
   .recur-note{display:flex; align-items:center; gap:8px; color:var(--ink-muted); font-size:12px; margin:-4px 0 13px;}
@@ -1598,10 +1601,13 @@
           <option value="weekly" id="repeatWeeklyOpt">Weekly on this day</option>
           <option value="biweekly" id="repeatBiweeklyOpt">Every 2 weeks on this day</option>
           <option value="custom" id="repeatCustomOpt">Choose days of the week...</option>
-          <option value="monthly" id="repeatMonthlyOpt">Monthly on this day</option>
-          <option value="nthday" id="repeatNthOpt">Monthly on the same weekday</option>
-          <option value="lastday" id="repeatLastOpt">Monthly on the last weekday</option>
+          <option value="monthly" id="repeatMonthlyOpt">Monthly</option>
         </select>
+        <div class="recur-month" id="recurMonth" hidden>
+          <span>On the</span>
+          <select id="f_monthN" aria-label="Which day of the month"></select>
+          <select id="f_monthWd" aria-label="Which weekday" hidden></select>
+        </div>
         <div class="recur-days" id="recurDays" hidden>
           <button type="button" class="rd-chip" data-d="0">Mon</button><button type="button" class="rd-chip" data-d="1">Tue</button><button type="button" class="rd-chip" data-d="2">Wed</button><button type="button" class="rd-chip" data-d="3">Thu</button><button type="button" class="rd-chip" data-d="4">Fri</button><button type="button" class="rd-chip" data-d="5">Sat</button><button type="button" class="rd-chip" data-d="6">Sun</button>
         </div>
@@ -4076,30 +4082,52 @@
   function updateRepeatLabels(){
     const wk = document.getElementById('repeatWeeklyOpt'), mo = document.getElementById('repeatMonthlyOpt');
     if(!wk || !mo) return;
-    const bw = document.getElementById('repeatBiweeklyOpt'), nth = document.getElementById('repeatNthOpt'), lst = document.getElementById('repeatLastOpt');
+    const bw = document.getElementById('repeatBiweeklyOpt');
     const ds = document.getElementById('f_date').value;
     if(ds){
       const wkd = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', {weekday:'long'});
       wk.textContent = 'Weekly on ' + wkd + 's';
       bw.textContent = 'Every 2 weeks on ' + wkd + 's';
       const dom = Number(ds.slice(8, 10));
-      mo.textContent = 'Monthly on the ' + ordinalDay(dom) + (dom > 28 ? ' (or the last day of shorter months)' : '');
-      const n = Math.ceil(dom / 7);
-      nth.textContent = 'Monthly on the ' + (['first','second','third','fourth','fifth'][n - 1]) + ' ' + wkd;
-      lst.textContent = 'Monthly on the last ' + wkd;
-      nth.hidden = nth.disabled = !recurStartCol || n > 4;   // a "fifth" weekday is not in every month; offer "last" instead
     } else {
-      wk.textContent = 'Weekly on this day'; mo.textContent = 'Monthly on this day';
+      wk.textContent = 'Weekly on this day';
       bw.textContent = 'Every 2 weeks on this day';
-      nth.textContent = 'Monthly on the same weekday'; lst.textContent = 'Monthly on the last weekday';
     }
     // Everything beyond plain weekly needs the startWeek column (see recurStartCol); without it, don't offer them.
-    [mo, bw, lst, document.getElementById('repeatWeekdaysOpt'), document.getElementById('repeatCustomOpt')].forEach(o => { o.hidden = !recurStartCol; o.disabled = !recurStartCol; });
-    if(!ds) nth.hidden = nth.disabled = !recurStartCol;
+    [mo, bw, document.getElementById('repeatWeekdaysOpt'), document.getElementById('repeatCustomOpt')].forEach(o => { o.hidden = !recurStartCol; o.disabled = !recurStartCol; });
     syncRecurDays();
   }
   // "Choose days of the week": a row of day chips under the dropdown, the start date's day pre-ticked.
+  // "Monthly": a second picker for which day -- a date (1st to 31st, or the last day) or a weekday ("second Tuesday").
+  let monthTouched = false;
+  function initMonthlyPicker(){
+    const n = document.getElementById('f_monthN'), wd = document.getElementById('f_monthWd');
+    if(n.options.length) return;
+    let h = '<optgroup label="A date">';
+    for(let i = 1; i <= 31; i++) h += '<option value="d' + i + '">' + ordinalDay(i) + '</option>';
+    h += '<option value="dL">Last day</option></optgroup><optgroup label="A weekday">';
+    [['1','First'],['2','Second'],['3','Third'],['4','Fourth'],['L','Last']].forEach(a => { h += '<option value="w' + a[0] + '">' + a[1] + '</option>'; });
+    n.innerHTML = h + '</optgroup>';
+    wd.innerHTML = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((x, i) => '<option value="' + i + '">' + x + '</option>').join('');
+    n.addEventListener('change', () => { monthTouched = true; wd.hidden = n.value.charAt(0) !== 'w'; });
+    wd.addEventListener('change', () => { monthTouched = true; });
+  }
+  function syncMonthly(){
+    const box = document.getElementById('recurMonth'); if(!box) return;
+    const on = document.getElementById('f_repeat').value === 'monthly';
+    if(!on){ box.hidden = true; monthTouched = false; return; }
+    initMonthlyPicker();
+    box.hidden = false;
+    if(!monthTouched){
+      const ds = document.getElementById('f_date').value;
+      const n = document.getElementById('f_monthN'), wd = document.getElementById('f_monthWd');
+      n.value = ds ? 'd' + Number(ds.slice(8, 10)) : 'd1';
+      if(ds) wd.value = String(dayOfWeekIndex(ds));
+      wd.hidden = n.value.charAt(0) !== 'w';
+    }
+  }
   function syncRecurDays(){
+    syncMonthly();
     const row = document.getElementById('recurDays'); if(!row) return;
     const on = document.getElementById('f_repeat').value === 'custom';
     if(on && row.hidden){
@@ -4172,7 +4200,7 @@
       dateISO: row.querySelector('.extra-task-date').value,
     })).filter(r => r.title && r.dateISO) : [];
     const repeatMode = (!editingTaskId && !extraTasks.length) ? document.getElementById('f_repeat').value : 'none';
-    const makeRecurring = ['weekly','monthly','biweekly','weekdays','custom','nthday','lastday'].includes(repeatMode);
+    const makeRecurring = ['weekly','monthly','biweekly','weekdays','custom'].includes(repeatMode);
     let recurPicked = [];
     if(repeatMode === 'custom'){
       recurPicked = Array.from(document.querySelectorAll('#recurDays .rd-chip.on')).map(b => Number(b.dataset.d));
@@ -4206,20 +4234,22 @@
         owners:data.owners, status:data.status, notes:data.notes,
         dayOfWeek: dayOfWeekIndex(dateISO), active:true,
       };
-      if(repeatMode === 'monthly' && recurStartCol){
+      const monthPick = repeatMode === 'monthly' ? document.getElementById('f_monthN').value : '';
+      if(repeatMode === 'monthly' && recurStartCol && monthPick.charAt(0) === 'w'){
+        template.type = 'nthday:' + monthPick.slice(1) + ':' + document.getElementById('f_monthWd').value + ':' + data.weekId;
+        template.startWeek = '9999-12-31';
+        template.dayOfWeek = Number(document.getElementById('f_monthWd').value);
+      } else if(repeatMode === 'monthly' && recurStartCol){
         // Stored as type "monthly:<day of month>:<first week>" so no new database column is needed.
         // startWeek is parked far in the future on purpose: any older open copy of Scarlett that does not
         // know about monthly repeats then skips this template instead of repeating it every week.
-        template.type = 'monthly:' + Number(dateISO.slice(8, 10)) + ':' + data.weekId;
+        template.type = 'monthly:' + (monthPick === 'dL' ? 31 : Number(monthPick.slice(1)) || Number(dateISO.slice(8, 10))) + ':' + data.weekId;
         template.startWeek = '9999-12-31';
       } else if(repeatMode === 'biweekly' && recurStartCol){
         template.type = 'biweekly:' + data.weekId;
         template.startWeek = '9999-12-31';
       } else if((repeatMode === 'weekdays' || repeatMode === 'custom') && recurStartCol){
         template.type = 'days:' + (repeatMode === 'weekdays' ? '0,1,2,3,4' : recurPicked.slice().sort().join(',')) + ':' + dateISO;
-        template.startWeek = '9999-12-31';
-      } else if((repeatMode === 'nthday' || repeatMode === 'lastday') && recurStartCol){
-        template.type = 'nthday:' + (repeatMode === 'lastday' ? 'L' : Math.ceil(Number(dateISO.slice(8, 10)) / 7)) + ':' + dayOfWeekIndex(dateISO) + ':' + data.weekId;
         template.startWeek = '9999-12-31';
       } else if(recurStartCol) template.startWeek = data.weekId;
       recurCol().add(template).then(ref => {
