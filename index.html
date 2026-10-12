@@ -818,6 +818,7 @@
   .hr-bar-row.muted{opacity:.55;}
   .hr-bar-row.val{grid-template-columns:104px 1fr 64px;}
   .hr-bar-row.val .lbl .cnt{font-weight:500; color:var(--ink-muted); margin-left:4px;}
+  .pc-search{flex:0 1 230px; min-width:150px; padding:8px 11px; border:1px solid var(--hairline-strong); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; font-size:13px;}
   .ho-toolbar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:0 0 10px;}
   .ho-toolbar input[type=search]{flex:1 1 220px; min-width:200px; max-width:340px;}
   .ho-toolbar select{max-width:190px;}
@@ -1473,6 +1474,7 @@
       <button type="button" data-sort="date" class="active">Date</button>
       <button type="button" data-sort="lead">Person</button>
     </div>
+    <input type="search" id="pcSearch" class="pc-search" placeholder="Search episodes" autocomplete="off" aria-label="Search episodes">
     <button class="btn-primary" id="addEpisodeBtn" style="margin-left:auto;">+ Add episode</button>
   </div>
   <div class="hs-notice" id="podcastNotice" hidden></div>
@@ -1928,7 +1930,7 @@
       <div class="field"><label>Title <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="e_title" placeholder="Episode title"></div>
       <div class="field-row">
         <div class="field"><label>Brand <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="e_brand" autocomplete="off" placeholder="Pick one or type your own"></div>
-        <div class="field"><label>Ads <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="e_ads" autocomplete="off" placeholder="Pick one or type your own"></div>
+        <div class="field"><label>Ads <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="e_ads" autocomplete="off" placeholder="Pick one or more, or type your own"></div>
       </div>
       <datalist id="brandOptions">
         <option value="Red Mills"><option value="Bedmax"><option value="Foran"><option value="British Eventing">
@@ -7483,23 +7485,29 @@
       resultsEl.innerHTML = '<div class="report-empty">Podcast schedule needs the shared board connection — open this board from claude.ai to use it.</div>';
       return;
     }
-    const cal = podcastView === 'calendar';
+    const searching = !!pcQ.trim();
+    const cal = podcastView === 'calendar' && !searching;
     document.getElementById('podcastCalendar').style.display = cal ? '' : 'none';
     resultsEl.style.display = cal ? 'none' : '';
     document.getElementById('podcastWeekNav').style.display = cal ? '' : 'none';
     document.getElementById('podcastWeekLabel').style.display = cal ? '' : 'none';
-    document.getElementById('podcastMonthTabs').style.display = cal ? 'none' : '';
-    document.getElementById('podcastSortTabs').style.display = cal ? 'none' : '';
+    document.getElementById('podcastMonthTabs').style.display = (cal || searching) ? 'none' : '';
+    document.getElementById('podcastSortTabs').style.display = (cal || searching) ? 'none' : '';
     document.querySelectorAll('#podcastViewTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-pview') === podcastView));
     renderPodcastFilters();
     if(cal){ renderPodcastCalendar(); return; }
     let rows = pcFilter(podcastEpisodes);
-    if(podcastMonthFilter) rows = rows.filter(e => (e.date||'').slice(0,7) === podcastMonthFilter);
+    if(podcastMonthFilter && !searching) rows = rows.filter(e => (e.date||'').slice(0,7) === podcastMonthFilter);
     if(!rows.length){
-      resultsEl.innerHTML = '<div class="report-empty">No episodes here yet — add one to get started.</div>';
+      resultsEl.innerHTML = searching
+        ? '<div class="report-empty">No episodes match "' + escapeHtml(pcQ.trim()) + '".</div>'
+        : '<div class="report-empty">No episodes here yet — add one to get started.</div>';
       return;
     }
-    if(podcastSortBy === 'lead'){
+    if(searching){
+      rows = rows.slice().sort((a,b) => (a.date||'').localeCompare(b.date||''));
+      resultsEl.innerHTML = `<div class="report-group"><div class="report-group-head"><span>Search: ${escapeHtml(pcQ.trim())}</span><span>${rows.length} episode${rows.length===1?'':'s'}, all dates</span></div>` + rows.map(podcastRowHtml).join('') + `</div>`;
+    } else if(podcastSortBy === 'lead'){
       const byLead = new Map();
       rows.forEach(ep => { const k = ep.lead || 'Unassigned'; if(!byLead.has(k)) byLead.set(k, []); byLead.get(k).push(ep); });
       const leadKeys = [...byLead.keys()].sort((a,b) => {
@@ -7522,19 +7530,28 @@
   }
 
   // ---- Podcast calendar: week-by-week grid, so release days and gaps in the schedule jump out ----
-  let pcShow = '', pcHost = '', pcSponsor = '', pcWeeks = 4;
+  let pcShow = '', pcHost = '', pcSponsor = '', pcWeeks = 4, pcQ = '';
   const PC_NONE = '__none__';
   const PC_SHORT = {'Eventing Podcast':'Eventing', 'Jumping Podcast':'Jumping'};
   function pcShortDate(d){ return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short'}); }
   // a sponsor is whatever is in an episode's Brand or Ads field (counted once per episode)
   function pcSponsorsOf(ep){
     const out = [];
-    [ep.brand, ep.ads].forEach(v => { v = (v || '').trim(); if(v && !out.includes(v)) out.push(v); });
+    // Ads can hold several, separated by commas ("Foran, Red Mills")
+    [ep.brand].concat(String(ep.ads || '').split(',')).forEach(v => { v = (v || '').trim(); if(v && !out.includes(v)) out.push(v); });
     return out;
+  }
+  // Search: every word typed has to appear somewhere in the episode (title, guest, host, channel, brand, ads, notes, date)
+  function pcMatchQ(ep){
+    const words = pcQ.toLowerCase().split(/\s+/).filter(Boolean);
+    if(!words.length) return true;
+    const hay = [ep.title, ep.guest, ep.lead, ep.platform, ep.brand, ep.ads, ep.notes, ep.date, ep.date ? pcShortDate(ep.date) : ''].join(' ').toLowerCase();
+    return words.every(w => hay.includes(w));
   }
   // skip = leave one filter out, so a panel can show every host (or sponsor) while that filter is set
   function pcFilter(list, skip){
     return list.filter(ep =>
+      pcMatchQ(ep) &&
       (skip === 'show' || !pcShow || ep.platform === pcShow) &&
       (skip === 'host' || !pcHost || (pcHost === PC_NONE ? !ep.lead : ep.lead === pcHost)) &&
       (skip === 'sponsor' || !pcSponsor || pcSponsorsOf(ep).includes(pcSponsor)));
@@ -7546,7 +7563,7 @@
     const hosts = [...new Set(PODCAST_LEADS.concat(podcastEpisodes.map(e => e.lead).filter(Boolean)))].sort((a,b) => a.localeCompare(b));
     const sponsors = [...new Set([].concat(...podcastEpisodes.map(pcSponsorsOf)))].sort((a,b) => a.localeCompare(b));
     const opt = (v, t, cur) => `<option value="${escapeAttr(v)}" ${v === cur ? 'selected' : ''}>${escapeHtml(t)}</option>`;
-    const active = !!(pcShow || pcHost || pcSponsor);
+    const active = !!(pcShow || pcHost || pcSponsor || pcQ);
     el.innerHTML = `
       <label>Channel <select id="pcShowSel">${opt('', 'All channels', pcShow)}${shows.map(x => opt(x, x, pcShow)).join('')}</select></label>
       <label>Host <select id="pcHostSel">${opt('', 'Everyone', pcHost)}${opt(PC_NONE, 'No host yet', pcHost)}${hosts.map(x => opt(x, x, pcHost)).join('')}</select></label>
@@ -7559,7 +7576,7 @@
     on('pcSponsorSel', v => { pcSponsor = v; });
     on('pcWeeksSel', v => { pcWeeks = Number(v) || 4; });
     const c = document.getElementById('pcClear');
-    if(c) c.addEventListener('click', () => { pcShow = pcHost = pcSponsor = ''; renderPodcast(); });
+    if(c) c.addEventListener('click', () => { pcShow = pcHost = pcSponsor = pcQ = ''; const q = document.getElementById('pcSearch'); if(q) q.value = ''; renderPodcast(); });
   }
   function pcCardHtml(ep){
     const st = PODCAST_STATUS_META[ep.status] || PODCAST_STATUS_META.planned;
@@ -7699,10 +7716,28 @@
   }
   document.getElementById('addExtraDateBtn').addEventListener('click', () => addExtraDateRow(''));
 
+  // A new episode starts on a date you can actually see: today, or the first day shown if you have paged ahead.
+  // (It used to start on the 1st of the month filter, which is often before the calendar's window, so the
+  // saved episode looked like it had vanished.)
+  function pcDefaultDate(){
+    const today = toDateStr(new Date());
+    if(podcastView === 'calendar') return (pcWeekStart && pcWeekStart > today) ? pcWeekStart : today;
+    if(podcastMonthFilter && podcastMonthFilter !== today.slice(0, 7) && podcastMonthFilter > today.slice(0, 7)) return podcastMonthFilter + '-01';
+    return today;
+  }
+  // After adding, bring the new episode's date into view so it is clearly there.
+  function pcRevealDate(date){
+    if(!date) return;
+    if(pcWeekStart){
+      const last = addDays(pcWeekStart, pcWeeks * 7 - 1);
+      if(date < pcWeekStart || date > last) pcWeekStart = mondayOf(date);
+    }
+    if(podcastMonthFilter && date.slice(0, 7) !== podcastMonthFilter){ podcastMonthFilter = date.slice(0, 7); renderPodcastMonthTabs(); }
+  }
   function openEpisodeModal(ep, presetDate){
     editingEpisodeId = ep ? ep.id : null;
     document.getElementById('episodeModalTitle').textContent = ep ? 'Edit episode' : 'Add episode';
-    document.getElementById('e_date').value = ep ? (ep.date||'') : (presetDate || (podcastMonthFilter ? podcastMonthFilter + '-01' : toDateStr(new Date())));
+    document.getElementById('e_date').value = ep ? (ep.date||'') : (presetDate || pcDefaultDate());
     document.getElementById('e_platform').value = ep && ep.platform ? ep.platform : 'Eventing Podcast';
     document.getElementById('e_recordField').style.display = podcastRecCols ? '' : 'none';
     document.getElementById('e_recordDate').value = ep ? (ep.recordDate||'') : '';
@@ -7733,19 +7768,23 @@
 
   // Brand / Ads: the phone's built-in suggestion strip only shows three options, so these two fields show
   // every option as tappable chips instead (still free-type for anything not on the list).
-  function setupPickList(inputId, listId){
+  function setupPickList(inputId, listId, multi){
     const input = document.getElementById(inputId), dl = document.getElementById(listId);
     if(!input || !dl) return;
     const options = Array.from(dl.querySelectorAll('option')).map(o => o.value).filter(Boolean).sort((a, b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
     const box = document.createElement('div');
     box.className = 'pick-chips'; box.hidden = true;
     input.insertAdjacentElement('afterend', box);
+    // multi: the field holds a comma-separated list ("Foran, Red Mills"); chips toggle on and off and the
+    // panel stays open so several can be picked in a row. Typing after the last comma filters the chips.
+    const tokens = () => input.value.split(',').map(t => t.trim()).filter(Boolean);
     function draw(){
-      const q = input.value.trim().toLowerCase();
+      const toks = multi ? tokens().map(t => t.toLowerCase()) : [input.value.trim().toLowerCase()];
+      const q = multi ? ((input.value.lastIndexOf(',') >= 0 ? input.value.slice(input.value.lastIndexOf(',') + 1) : input.value).trim().toLowerCase()) : toks[0];
       const exact = options.some(o => o.toLowerCase() === q);
       const shown = (!q || exact) ? options : options.filter(o => o.toLowerCase().includes(q));
       if(!shown.length){ box.hidden = true; return; }
-      box.innerHTML = shown.map(o => '<button type="button" class="pick-chip' + (o.toLowerCase() === q ? ' on' : '') + '" data-v="' + escapeAttr(o) + '">' + escapeHtml(o) + '</button>').join('');
+      box.innerHTML = shown.map(o => '<button type="button" class="pick-chip' + (toks.includes(o.toLowerCase()) ? ' on' : '') + '" data-v="' + escapeAttr(o) + '">' + escapeHtml(o) + '</button>').join('');
       box.hidden = false;
     }
     input.addEventListener('focus', draw);
@@ -7754,7 +7793,22 @@
     box.addEventListener('click', e => {
       const b = e.target.closest('.pick-chip');
       if(!b) return;
-      input.value = (input.value.trim().toLowerCase() === b.getAttribute('data-v').toLowerCase()) ? '' : b.getAttribute('data-v');
+      const v = b.getAttribute('data-v');
+      if(multi){
+        let toks = tokens();
+        const tail = input.value.slice(input.value.lastIndexOf(',') + 1).trim();
+        const had = toks.some(t => t.toLowerCase() === v.toLowerCase());
+        if(had) toks = toks.filter(t => t.toLowerCase() !== v.toLowerCase());
+        else {
+          // a half-typed word at the end ("Fo") is replaced by the pick instead of being kept next to it
+          if(tail && !options.some(o => o.toLowerCase() === tail.toLowerCase())) toks = toks.filter((t, i) => !(i === toks.length - 1 && t === tail));
+          toks.push(v);
+        }
+        input.value = toks.join(', ');
+        draw();
+        return;
+      }
+      input.value = (input.value.trim().toLowerCase() === v.toLowerCase()) ? '' : v;
       box.hidden = true;
     });
     document.addEventListener('pointerdown', e => {
@@ -7764,7 +7818,7 @@
     });
   }
   setupPickList('e_brand', 'brandOptions');
-  setupPickList('e_ads', 'adsOptions');
+  setupPickList('e_ads', 'adsOptions', true);
 
   document.getElementById('episodeForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -7800,6 +7854,8 @@
         }
       }
       podcastCol().add(data).then(ref => syncEpisodeToDelivery(ref.id, data)).catch(()=>{});
+      pcRevealDate(data.date);
+      podcastNotice('Added "' + (data.title || (data.platform + ' episode')) + '" on ' + hFmtDate(data.date) + (extraDates.size ? ' and ' + extraDates.size + ' more date' + (extraDates.size === 1 ? '' : 's') : '') + '.', true);
       extraDates.forEach(d => {
         const epData = Object.assign({}, data, {date: d});
         if(podcastRecCols) epData.recordDate = '';   // a repeat/extra episode has its own recording day
@@ -7823,6 +7879,7 @@
     closeEpisodeModal();
   });
   document.getElementById('addEpisodeBtn').addEventListener('click', () => openEpisodeModal(null));
+  document.getElementById('pcSearch').addEventListener('input', e => { pcQ = e.target.value; renderPodcast(); });
 
   // "Recorded: send to Sammy" -- one click marks the episode Recorded and puts an edit task on the Board
   // assigned to the editor, so they get tagged that it is ready. The task has a fixed id per episode, so
