@@ -8553,16 +8553,19 @@
     const email = document.getElementById('authEmail').value.trim();
     const password = document.getElementById('authPassword').value;
     const btn = document.getElementById('authSubmitBtn');
+    if(!isTeamEmail(email)){ setLoginStatus('Only @equiratings.com addresses can sign in.', 'error'); return; }
     btn.disabled = true;
     const originalLabel = btn.textContent;
     btn.textContent = authMode === 'signin' ? 'Signing in…' : 'Creating account…';
-    const { error } = authMode === 'signin'
+    const { data: authData, error } = authMode === 'signin'
       ? await supabaseClient.auth.signInWithPassword({ email, password })
       : await supabaseClient.auth.signUp({ email, password });
     btn.disabled = false;
     btn.textContent = originalLabel;
     if(error){
       setLoginStatus(error.message || 'Something went wrong — try again.', 'error');
+    } else if(authMode === 'signup' && !(authData && authData.session)){
+      setLoginStatus('Check your email and click the confirmation link, then sign in.', 'ok');
     }
     // on success the onAuthStateChange listener below shows the app
   });
@@ -8597,7 +8600,16 @@
     }catch(e){}
   }
 
+  // Only @equiratings.com addresses get in. This is the friendly front door; the real lock is the
+  // database rule in Supabase that refuses everyone else's reads and writes.
+  function isTeamEmail(email){ return /^[^@\s]+@equiratings\.com$/i.test(String(email || '').trim()); }
   supabaseClient.auth.onAuthStateChange((event, session) => {
+    if(session && !isTeamEmail(session.user && session.user.email)){
+      supabaseClient.auth.signOut();
+      showLoginScreen(true);
+      setLoginStatus('Only @equiratings.com addresses can use Scarlett.', 'error');
+      return;
+    }
     if(session){
       showLoginScreen(false);
       startAppOnce();
