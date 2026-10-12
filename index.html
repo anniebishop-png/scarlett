@@ -334,6 +334,8 @@
   .del-tick{width:17px; height:17px; flex-shrink:0; cursor:pointer; accent-color:var(--navy); margin:0;}
   .del-linkchip{font-size:11px; font-weight:700; color:var(--ink-muted); border:1px dashed var(--hairline-strong); border-radius:999px; padding:2px 9px; background:none; cursor:pointer;}
   .del-linkchip:hover{color:var(--ink); border-color:var(--ink-muted);}
+  .del-slot{border-left:3px dashed var(--hairline-strong); cursor:pointer;}
+  .del-slot .del-title{color:var(--ink-muted); font-weight:600;}
   .del-title{color:var(--ink); font-weight:600; font-size:13.5px; line-height:1.4;}
   .del-meta{color:var(--ink-muted); font-size:11.5px; line-height:1.5;}
   .del-notes{color:var(--ink-muted); font-size:11.5px; line-height:1.5; font-style:italic;}
@@ -9397,6 +9399,16 @@
       const barOf = target || items.length;
       const countLabel = `<span class="del-cat-progress"><span class="del-bar ${deliveredCount>=barOf?'complete':''}"><span style="--w:${Math.min(100, Math.round(deliveredCount/barOf*100))}%"></span></span>${deliveredCount}/${barOf} delivered</span>`;
       const isOpen = deliveryExpandedCategories.has(cat);
+      // A contract line with a count (e.g. 3 website updates, 5 carousels) shows one empty tick-box row for each deliverable
+      // not yet logged, so the list always has as many rows as the contract says. Ticking one logs it as delivered.
+      const slotCount = (canEdit && target && items.length < target) ? target - items.length : 0;
+      const slotsHtml = Array.from({length: slotCount}, (_, i) => {
+        const n = items.length + i + 1;
+        return `<div class="del-row del-slot" data-slot-cat="${escapeAttr(cat)}" data-slot-n="${n}">
+          <div class="del-row-top"><input type="checkbox" class="del-tick" data-slot-tick title="Tick when delivered" aria-label="Delivered"><span class="del-title">${escapeHtml(cat)} · ${n} of ${target}</span></div>
+          <div class="del-row-bottom"><span class="del-status notstarted">Not started</span>${deliveryLinkReady ? '<button type="button" class="del-linkchip" data-slot-link>+ Link</button>' : ''}</div>
+        </div>`;
+      }).join('');
       return `<div class="report-group">
         <div class="report-group-head del-cat-head" data-toggle-category="${escapeAttr(cat)}">
           <span class="del-cat-label"><span class="del-cat-chev ${isOpen?'open':''}">▸</span>${escapeHtml(cat)}</span>
@@ -9426,6 +9438,7 @@
             </div>
           </div>`;
         }).join('')}
+        ${slotsHtml}
         </div>
       </div>`;
     }).join('');
@@ -9470,6 +9483,24 @@
         tasksCol().doc('spawn_del_' + id).update({status: deliveryStatusToTaskStatus(status)}).catch(()=>{});
       });
     });
+    // Empty contract slots: ticking one logs it as delivered; clicking the row or + Link logs it and opens it to add the link.
+    const makeSlotItem = (el, status) => {
+      const cat = el.getAttribute('data-slot-cat'), n = el.getAttribute('data-slot-n');
+      const data = {client: clientFilter, category: cat, division: '', owners: [], item: '', date: '', title: cat + ' ' + n + ' of ' + deliveryCategoryTarget(clientFilter, cat), graphics: '', status, notes: ''};
+      return deliveryCol().add(data).then(ref => Object.assign({id: ref.id}, data));
+    };
+    resultsEl.querySelectorAll('[data-slot-tick]').forEach(cb => {
+      cb.addEventListener('click', e => e.stopPropagation());
+      cb.addEventListener('change', () => {
+        if(!canEdit){ cb.checked = false; return; }
+        cb.disabled = true;
+        makeSlotItem(cb.closest('.del-slot'), 'delivered').catch(() => { cb.disabled = false; cb.checked = false; });
+      });
+    });
+    resultsEl.querySelectorAll('.del-slot').forEach(row => row.addEventListener('click', e => {
+      if(e.target.closest('[data-slot-tick]') || !canEdit) return;
+      makeSlotItem(row, 'notstarted').then(item => { openDeliveryModal(item); if(deliveryLinkReady) document.getElementById('d_link').focus(); }).catch(()=>{});
+    }));
     resultsEl.querySelectorAll('[data-delete-delivery]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
