@@ -192,6 +192,18 @@
   @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .arc-season-head h3{color:var(--gold);}}
   .arc-season-head span{color:var(--ink-muted); font-size:12.5px; font-weight:600;}
   /* ---- My tasks page ---- */
+  .mt-people{display:flex; flex-wrap:wrap; gap:8px; margin:0 0 14px;}
+  .mt-people[hidden]{display:none;}
+  .mt-chip{border:1px solid var(--hairline-strong); background:var(--surface); color:var(--ink); font:inherit; font-size:12px; font-weight:700; padding:6px 12px; border-radius:999px; cursor:pointer;}
+  .mt-chip small{font-weight:600; color:var(--ink-muted); margin-left:4px;}
+  .mt-chip.on{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .mt-chip.on small{color:rgba(255,255,255,.8);}
+  :root[data-theme="dark"] .mt-chip.on{background:var(--gold); color:var(--navy-deep); border-color:var(--gold);}
+  :root[data-theme="dark"] .mt-chip.on small{color:var(--navy-deep);}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .mt-chip.on{background:var(--gold); color:var(--navy-deep); border-color:var(--gold);} :root:not([data-theme="light"]) .mt-chip.on small{color:var(--navy-deep);}}
+  .overdue-chip{display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border-radius:999px; font:inherit; font-size:12px; font-weight:600; cursor:pointer; border:1px solid transparent; background:var(--st-blocked-bg); color:var(--st-blocked-text); opacity:.85;}
+  .overdue-chip:hover{opacity:1; border-color:currentColor;}
+  .overdue-chip .dot{width:7px; height:7px; border-radius:50%; background:var(--st-blocked-dot);}
   .mt-card{background:var(--surface); border:1px solid var(--hairline); border-radius:14px; margin-bottom:14px; overflow:hidden;}
   .mt-head{display:flex; align-items:baseline; gap:10px; padding:12px 16px; border-bottom:1px solid var(--hairline); font-weight:800; color:var(--navy); font-size:14px; width:100%; background:none; border-top:none; border-left:none; border-right:none; text-align:left;}
   :root[data-theme="dark"] .mt-head{color:var(--gold);}
@@ -1256,11 +1268,16 @@
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
     </div>
-    <h2>My tasks</h2>
+    <h2 id="mtTitle">My tasks</h2>
   </div>
   <div class="report-controls">
-    <input type="search" class="arc-search" id="mtSearch" placeholder="Search my tasks" aria-label="Search my tasks">
+    <div class="segmented" id="mtModeTabs">
+      <button type="button" data-mtmode="mine" class="active">My tasks</button>
+      <button type="button" data-mtmode="overdue">Overdue</button>
+    </div>
+    <input type="search" class="arc-search" id="mtSearch" placeholder="Search my tasks" aria-label="Search tasks">
   </div>
+  <div class="mt-people" id="mtPeople" hidden></div>
   <div class="report-summary" id="mtSummary"></div>
   <div id="mtBody"></div>
   <footer class="note">Every task you are assigned to, from any week. Click a task to open it in its week.</footer>
@@ -3210,7 +3227,9 @@
     const chips = Object.keys(STATUS_META).map(key => `
       <button class="status-chip ${activeStatus===key?'active':''}" data-status="${key}"><span class="dot"></span>${STATUS_META[key].label}</button>`).join('');
     const clear = activeStatus ? `<button class="clear-filter" id="clearFilter">Clear filter</button>` : '';
-    document.getElementById('statusFilters').innerHTML = chips + clear;
+    const overdueChip = `<button type="button" class="overdue-chip" id="overdueChip" title="See every overdue task, from any week"><span class="dot"></span>Overdue</button>`;
+    document.getElementById('statusFilters').innerHTML = chips + overdueChip + clear;
+    document.getElementById('overdueChip').addEventListener('click', openOverdueList);
     document.querySelectorAll('.status-chip').forEach(btn=>{
       btn.addEventListener('click', () => {
         const s = btn.getAttribute('data-status');
@@ -5557,12 +5576,31 @@
   // ---------------- my tasks (every task assigned to me, any week) ----------------
   // The board only ever holds the week being viewed, so a task dated in another week can look like
   // it vanished. This page asks for every task I own across all weeks, open ones first (oldest
-  // first, so anything overdue sits at the top), finished ones tucked underneath.
+  // first, so anything overdue sits at the top), finished ones tucked underneath. The Overdue tab
+  // flips it to every overdue task across the whole team, with a chip per person to narrow it.
   let unsubMyTasks = null, myTasksRows = [], myTasksState = 'idle';
+  let unsubOverdue = null, overdueRows = [], overdueState = 'idle';
+  let mtOverdue = false, mtPerson = '';
   let mtShowDone = false, mtDoneAll = false, mtQuery = '';
   let pendingOpenTask = null; // {id, weekId}: open this task's modal once its week has loaded
+  function mtRows(){ return mtOverdue ? overdueRows : myTasksRows; }
+  function mtSyncUI(){
+    document.querySelectorAll('#mtModeTabs button').forEach(b => b.classList.toggle('active', (b.getAttribute('data-mtmode') === 'overdue') === mtOverdue));
+    document.getElementById('mtTitle').textContent = mtOverdue ? 'Overdue tasks' : 'My tasks';
+    document.getElementById('mtSearch').placeholder = mtOverdue ? 'Search overdue tasks' : 'Search my tasks';
+  }
   function enterMyTasks(){
-    leaveMyTasks();
+    unsubscribeMtData();
+    mtPerson = '';
+    mtSyncUI();
+    if(mtOverdue) subscribeOverdue(); else subscribeMine();
+  }
+  function unsubscribeMtData(){
+    if(unsubMyTasks){ unsubMyTasks(); unsubMyTasks = null; }
+    if(unsubOverdue){ unsubOverdue(); unsubOverdue = null; }
+  }
+  function leaveMyTasks(){ unsubscribeMtData(); mtOverdue = false; }
+  function subscribeMine(){
     myTasksState = 'loading';
     renderMyTasks();
     if(!db || !currentUserName){ myTasksState = 'noname'; renderMyTasks(); return; }
@@ -5572,20 +5610,39 @@
       renderMyTasks();
     }, () => { myTasksState = 'error'; renderMyTasks(); });
   }
-  function leaveMyTasks(){ if(unsubMyTasks){ unsubMyTasks(); unsubMyTasks = null; } }
+  function subscribeOverdue(){
+    overdueState = 'loading';
+    renderMyTasks();
+    if(!db){ overdueState = 'error'; renderMyTasks(); return; }
+    unsubOverdue = tasksCol().where('status','!=','done').where('dateISO','<', toDateStr(new Date())).onSnapshot(snap => {
+      overdueRows = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+      overdueState = 'ready';
+      renderMyTasks();
+    }, () => { overdueState = 'error'; renderMyTasks(); });
+  }
+  function setMtMode(on){
+    if(mtOverdue === on) return;
+    mtOverdue = on;
+    enterMyTasks();
+  }
   function mtDateLabel(dateStr){
     if(!dateStr) return 'No date';
     const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric'});
   }
-  function mtRowHtml(t, today){
+  function mtDaysLate(dateStr, today){
+    return Math.max(1, Math.round((new Date(today + 'T00:00:00') - new Date(dateStr + 'T00:00:00')) / 86400000));
+  }
+  function mtRowHtml(t, today, showOwners){
     const done = t.status === 'done';
     const overdue = !done && t.dateISO && t.dateISO < today;
     const wk = t.weekId || (t.dateISO ? mondayOf(t.dateISO) : '');
-    const bits = [t.client, t.tag, wk ? 'Week of ' + mtDateLabel(wk).replace(/^\w+,\s*/, '') : ''].filter(Boolean).join(' · ');
+    const who = showOwners ? ((t.owners || []).join(', ') || 'Unassigned') : '';
+    const bits = [who, t.client, t.tag, wk ? 'Week of ' + mtDateLabel(wk).replace(/^\w+,\s*/, '') : ''].filter(Boolean).join(' · ');
+    const flag = overdue ? (showOwners ? mtDaysLate(t.dateISO, today) + 'd late' : 'Overdue') : '';
     const opts = Object.keys(STATUS_META).map(k => `<option value="${k}"${t.status === k ? ' selected' : ''}>${STATUS_META[k].label}</option>`).join('');
     return `<div class="mt-row ${done ? 'is-done' : ''} ${overdue ? 'is-overdue' : ''}" data-mt-id="${escapeAttr(t.id)}">
-      <div class="mt-day">${escapeHtml(mtDateLabel(t.dateISO))}${overdue ? '<br><span class="flag-overdue">Overdue</span>' : ''}</div>
+      <div class="mt-day">${escapeHtml(mtDateLabel(t.dateISO))}${flag ? `<br><span class="flag-overdue">${flag}</span>` : ''}</div>
       <div class="mt-main" data-mt-open="${escapeAttr(t.id)}" role="button" tabindex="0">
         <div class="mt-title">${escapeHtml(t.title || '(untitled)')}</div>
         ${bits ? `<div class="mt-meta">${escapeHtml(bits)}</div>` : ''}
@@ -5593,10 +5650,36 @@
       ${canEdit ? `<select class="mt-status" data-mt-status="${escapeAttr(t.id)}" aria-label="Status">${opts}</select>` : `<span>${STATUS_META[t.status] ? STATUS_META[t.status].label : ''}</span>`}
     </div>`;
   }
+  function renderOverdueView(){
+    const body = document.getElementById('mtBody'), sum = document.getElementById('mtSummary'), people = document.getElementById('mtPeople');
+    if(overdueState === 'error'){ sum.innerHTML = ''; people.hidden = true; body.innerHTML = '<div class="mt-card"><div class="mt-empty">Could not load overdue tasks. Try again in a moment.</div></div>'; return; }
+    if(overdueState !== 'ready'){ sum.innerHTML = ''; people.hidden = true; body.innerHTML = '<div class="mt-card"><div class="mt-empty">Loading overdue tasks...</div></div>'; return; }
+    const today = toDateStr(new Date());
+    const q = mtQuery.trim().toLowerCase();
+    const all = overdueRows.filter(t => t.status !== 'done' && t.dateISO && t.dateISO < today);
+    const counts = {};
+    all.forEach(t => { const o = (t.owners && t.owners.length) ? t.owners : ['Unassigned']; o.forEach(n => { counts[n] = (counts[n] || 0) + 1; }); });
+    const names = Object.keys(counts).sort((a,b) => counts[b] - counts[a] || a.localeCompare(b));
+    if(mtPerson && !counts[mtPerson]) mtPerson = '';
+    people.hidden = false;
+    people.innerHTML = `<button type="button" class="mt-chip ${mtPerson ? '' : 'on'}" data-mt-person="">Everyone<small>${all.length}</small></button>` +
+      names.map(n => `<button type="button" class="mt-chip ${mtPerson === n ? 'on' : ''}" data-mt-person="${escapeAttr(n)}">${escapeHtml(n)}<small>${counts[n]}</small></button>`).join('');
+    const rows = all.filter(t => {
+      if(mtPerson){ const o = (t.owners && t.owners.length) ? t.owners : ['Unassigned']; if(!o.includes(mtPerson)) return false; }
+      return !q || [t.title, t.client, t.tag, t.notes, (t.owners || []).join(' ')].join(' ').toLowerCase().includes(q);
+    }).sort((a,b) => (a.dateISO||'').localeCompare(b.dateISO||'') || (a.title||'').localeCompare(b.title||''));
+    const oldest = rows.length ? mtDaysLate(rows[0].dateISO, today) : 0;
+    const tile = (n, l) => `<div class="report-stat"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
+    sum.innerHTML = tile(rows.length, 'Overdue') + tile(names.length, 'People') + (rows.length ? tile(oldest + 'd', 'Oldest') : '');
+    body.innerHTML = `<div class="mt-card"><div class="mt-head">${mtPerson ? escapeHtml(mtPerson) + ': overdue' : 'Overdue, everyone'} <span class="mt-count">${rows.length}</span></div>` +
+      (rows.length ? rows.map(t => mtRowHtml(t, today, true)).join('') : `<div class="mt-empty">${q ? 'No overdue tasks match that search.' : 'Nothing overdue. Nice.'}</div>`) + '</div>';
+  }
   function renderMyTasks(){
     const body = document.getElementById('mtBody');
     const sum = document.getElementById('mtSummary');
     if(!body) return;
+    if(mtOverdue){ renderOverdueView(); return; }
+    document.getElementById('mtPeople').hidden = true;
     if(myTasksState === 'noname'){ sum.innerHTML = ''; body.innerHTML = '<div class="mt-card"><div class="mt-empty">Your sign-in is not matched to a team member, so there is no personal list to show.</div></div>'; return; }
     if(myTasksState === 'error'){ sum.innerHTML = ''; body.innerHTML = '<div class="mt-card"><div class="mt-empty">Could not load your tasks. Try again in a moment.</div></div>'; return; }
     if(myTasksState !== 'ready'){ sum.innerHTML = ''; body.innerHTML = '<div class="mt-card"><div class="mt-empty">Loading your tasks...</div></div>'; return; }
@@ -5609,15 +5692,15 @@
     const tile = (n, l) => `<div class="report-stat"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
     sum.innerHTML = tile(open.length, 'Open') + (overdueN ? tile(overdueN, 'Overdue') : '') + tile(done.length, 'Done');
     let html = `<div class="mt-card"><div class="mt-head">Open <span class="mt-count">${open.length}</span></div>` +
-      (open.length ? open.map(t => mtRowHtml(t, today)).join('') : `<div class="mt-empty">${q ? 'No open tasks match that search.' : 'Nothing open. You are all caught up.'}</div>`) + '</div>';
+      (open.length ? open.map(t => mtRowHtml(t, today, false)).join('') : `<div class="mt-empty">${q ? 'No open tasks match that search.' : 'Nothing open. You are all caught up.'}</div>`) + '</div>';
     const shown = mtDoneAll ? done : done.slice(0, 50);
     html += `<div class="mt-card"><button type="button" class="mt-head ${mtShowDone ? '' : 'collapsed'}" id="mtDoneToggle" aria-expanded="${mtShowDone}">${mtShowDone ? '▾' : '▸'} Done <span class="mt-count">${done.length}</span></button>` +
-      (mtShowDone ? (shown.length ? shown.map(t => mtRowHtml(t, today)).join('') : '<div class="mt-empty">No finished tasks yet.</div>') +
+      (mtShowDone ? (shown.length ? shown.map(t => mtRowHtml(t, today, false)).join('') : '<div class="mt-empty">No finished tasks yet.</div>') +
         (done.length > shown.length ? `<button type="button" class="mt-more" id="mtDoneMore">Show all ${done.length}</button>` : '') : '') + '</div>';
     body.innerHTML = html;
   }
   function openMyTask(id){
-    const t = myTasksRows.find(x => x.id === id);
+    const t = mtRows().find(x => x.id === id);
     if(!t) return;
     const wk = t.weekId || (t.dateISO ? mondayOf(t.dateISO) : currentWeekId);
     switchApp('board');
@@ -5627,7 +5710,7 @@
     if(wk !== currentWeekId) goToWeek(wk);
   }
   function myTaskSetStatus(id, status){
-    const t = myTasksRows.find(x => x.id === id);
+    const t = mtRows().find(x => x.id === id);
     if(!t || !canEdit) return;
     const prev = t.status;
     t.status = status;
@@ -5639,6 +5722,12 @@
         t.status = prev; renderMyTasks();
         showSaveError('Couldn\'t save that status change. Try again, and tell Annie if it keeps happening.');
       });
+  }
+  // From the Home board: jump straight to the team-wide overdue list.
+  function openOverdueList(){
+    mtOverdue = true;
+    if(currentAppPage === 'mytasks'){ enterMyTasks(); return; }
+    switchApp('mytasks');
   }
   (function(){
     const body = document.getElementById('mtBody');
@@ -5656,6 +5745,14 @@
     body.addEventListener('change', (e) => {
       const sel = e.target.closest('[data-mt-status]');
       if(sel) myTaskSetStatus(sel.getAttribute('data-mt-status'), sel.value);
+    });
+    document.getElementById('mtPeople').addEventListener('click', (e) => {
+      const c = e.target.closest('[data-mt-person]');
+      if(c){ mtPerson = c.getAttribute('data-mt-person'); renderMyTasks(); }
+    });
+    document.getElementById('mtModeTabs').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-mtmode]');
+      if(b) setMtMode(b.getAttribute('data-mtmode') === 'overdue');
     });
     document.getElementById('mtSearch').addEventListener('input', (e) => { mtQuery = e.target.value; renderMyTasks(); });
   })();
