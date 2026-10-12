@@ -559,6 +559,30 @@
   .recur-month select[hidden]{display:none;}
   .rd-chip{border:1px solid var(--hairline-strong); background:var(--surface-2); color:var(--ink-2); border-radius:999px; padding:5px 12px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer;}
   .rd-chip.on{background:var(--gold); border-color:var(--gold-deep); color:#11283C;}
+  .cl-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:12px; margin-top:6px;}
+  .cl-card{background:var(--surface); border:1px solid var(--hairline); border-radius:12px; padding:14px 16px; text-align:left; cursor:pointer; font:inherit; color:var(--ink); box-shadow:var(--shadow);}
+  .cl-card:hover{border-color:var(--navy);}
+  .cl-top{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .cl-name{font-family:var(--font-display); font-weight:700; font-size:15px;}
+  .cl-meta{font-size:12px; color:var(--ink-2); margin-top:5px; line-height:1.4;}
+  .cl-pill{font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; padding:3px 8px; border-radius:999px; background:var(--st-done-bg); color:var(--st-done-text);}
+  .cl-pill.prospect{background:var(--st-inprogress-bg); color:var(--st-inprogress-text);}
+  .cl-pill.past{background:var(--st-notstarted-bg); color:var(--st-notstarted-text);}
+  .cl-unrec{margin:0 0 14px; font-size:12.5px; color:var(--ink-2);}
+  .cl-unrec summary{cursor:pointer; font-weight:700;}
+  .cl-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .cl-sec{background:var(--surface); border:1px solid var(--hairline); border-radius:12px; padding:14px 16px; margin:0 0 12px;}
+  .cl-sec h3{margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-2); display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .cl-kv{display:grid; grid-template-columns:140px 1fr; gap:7px 12px; font-size:13px; margin:0;}
+  .cl-kv dt{color:var(--ink-2); font-weight:700;} .cl-kv dd{margin:0; white-space:pre-wrap;}
+  .cl-row{display:flex; gap:10px; align-items:center; justify-content:space-between; padding:8px 0; border:0; border-top:1px solid var(--hairline); font-size:13px; width:100%; background:none; text-align:left; font-family:inherit; color:var(--ink);}
+  #clContractBody .cl-row:first-child, #clTasksBody .cl-row:first-child, #clShowsBody .cl-row:first-child{border-top:0;}
+  button.cl-row{cursor:pointer;} button.cl-row:hover{background:var(--surface-2);}
+  .cl-row small{color:var(--ink-2);}
+  .cl-bar{height:6px; border-radius:99px; background:var(--hairline); overflow:hidden; margin-top:5px;} .cl-bar i{display:block; height:100%; background:var(--gold-deep);}
+  .cl-linkrow{display:flex; gap:6px; margin-bottom:6px;} .cl-linkrow input{flex:1; min-width:0;} .cl-linkrow .cl-lab{flex:0 0 36%;}
+  .cl-x{border:0; background:none; color:var(--ink-2); font-size:20px; cursor:pointer; padding:0 6px;}
+  @media (max-width:600px){ .cl-kv{grid-template-columns:1fr;} }
   .recur-note{display:flex; align-items:center; gap:8px; color:var(--ink-muted); font-size:12px; margin:-4px 0 13px;}
   .extra-date-row{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
   .extra-date-row input{flex:1;}
@@ -1176,6 +1200,7 @@
       <button class="header-btn" id="calendarBtn" data-nav="calendar">Calendar</button>
       <button class="header-btn" id="clientOpsBtn" data-nav="ops">Client Ops</button>
       <button class="header-btn" id="deliveryBtn" data-nav="delivery">Delivery Tracker</button>
+      <button class="header-btn" id="clientsBtn" data-nav="clients">Clients</button>
       <button class="header-btn" id="hustleBtn" data-nav="hustle">Hustle</button>
       <button class="header-btn" id="podcastBtn" data-nav="podcast">Podcast</button>
       <button class="header-btn" id="reportsBtn" data-nav="reports">Reports</button>
@@ -1288,6 +1313,7 @@
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="clients">Clients</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
@@ -1334,6 +1360,7 @@
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="clients">Clients</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
@@ -1358,6 +1385,7 @@
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="clients">Clients</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
@@ -1386,6 +1414,7 @@
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="clients">Clients</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
@@ -1415,6 +1444,7 @@
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="clients">Clients</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
@@ -1453,6 +1483,7 @@
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="clients">Clients</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
@@ -1485,6 +1516,41 @@
   <footer class="note">Pulled in from the EquiRatings Podcast Schedule sheet — edits here are live and shared with the team, but don't sync back to the Google Sheet.</footer>
 </div>
 
+<div class="app" id="clientsApp" style="display:none;">
+  <div class="report-header">
+    <div class="global-nav">
+      <button class="global-nav-btn" data-nav="board">Home</button>
+      <button class="global-nav-btn" data-nav="mytasks">My tasks</button>
+      <button class="global-nav-btn" data-nav="archive">Archive</button>
+      <button class="global-nav-btn" data-nav="calendar">Calendar</button>
+      <button class="global-nav-btn" data-nav="ops">Client Ops</button>
+      <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="clients">Clients</button>
+      <button class="global-nav-btn" data-nav="hustle">Hustle</button>
+      <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="reports">Reports</button>
+    </div>
+    <h2 id="clientsTitle">Clients</h2>
+  </div>
+  <div class="hs-notice" id="clientsNotice" hidden></div>
+  <div id="clientsSetup" hidden></div>
+  <div class="report-controls" id="clientsControls">
+    <input type="search" class="pc-search" id="clSearch" placeholder="Search clients" autocomplete="off" aria-label="Search clients">
+    <div class="segmented" id="clStatusTabs">
+      <button type="button" data-clstatus="live" class="active">Active and prospects</button>
+      <button type="button" data-clstatus="active">Active</button>
+      <button type="button" data-clstatus="prospect">Prospects</button>
+      <button type="button" data-clstatus="past">Past</button>
+      <button type="button" data-clstatus="all">All</button>
+    </div>
+    <button class="btn-primary" id="clAddBtn" style="margin-left:auto;">+ Add client</button>
+  </div>
+  <div id="clientsUnrecorded"></div>
+  <div id="clientsList"></div>
+  <div id="clientProfile" hidden></div>
+  <footer class="note">One record per client. A client's name is what ties its tasks, shows and deliverables together, so it can't be changed once the client exists.</footer>
+</div>
+
 <div class="app" id="hustleApp" style="display:none;">
   <div class="report-header">
     <div class="global-nav">
@@ -1494,6 +1560,7 @@
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="clients">Clients</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
@@ -1541,6 +1608,7 @@
       <button class="global-nav-btn" data-nav="calendar">Calendar</button>
       <button class="global-nav-btn" data-nav="ops">Client Ops</button>
       <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="clients">Clients</button>
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
@@ -1994,6 +2062,36 @@
   </div>
 </div>
 
+<div class="overlay" id="clientOverlay" hidden>
+  <div class="modal">
+    <h3 id="clientModalTitle">Add client</h3>
+    <form id="clientForm">
+      <div class="field"><label>Client name</label><input id="c_name" required autocomplete="off" placeholder="e.g. Aloga"><div class="shows-hint" id="c_nameHint"></div></div>
+      <div class="field-row">
+        <div class="field"><label>Status</label>
+          <select id="c_status"><option value="active">Active</option><option value="prospect">Prospect</option><option value="past">Past</option></select>
+        </div>
+        <div class="field"><label>Account owner</label><select id="c_owner"></select></div>
+      </div>
+      <div class="field"><label>Team <span style="text-transform:none;font-weight:500;">(optional, who normally works on them)</span></label><div class="recur-days" id="c_team"></div></div>
+      <div class="field-row">
+        <div class="field"><label>Contract starts <span style="text-transform:none;font-weight:500;">(optional)</span></label><input type="date" id="c_start"></div>
+        <div class="field"><label>Contract ends <span style="text-transform:none;font-weight:500;">(optional)</span></label><input type="date" id="c_end"></div>
+      </div>
+      <div class="field"><label>Shows and events <span style="text-transform:none;font-weight:500;">(optional, separated by commas)</span></label><input id="c_shows" autocomplete="off" placeholder="e.g. Burghley, Blenheim"></div>
+      <div class="field"><label>Links <span style="text-transform:none;font-weight:500;">(optional)</span></label>
+        <div id="c_links"></div>
+        <button type="button" class="add-row-btn" id="c_addLink" style="width:auto;padding:6px 2px;">+ Add link</button>
+      </div>
+      <div class="field"><label>Notes <span style="text-transform:none;font-weight:500;">(optional)</span></label><textarea id="c_notes"></textarea></div>
+      <div class="modal-actions">
+        <div class="left"><button type="button" class="btn-ghost" id="c_delete" style="display:none;color:var(--st-blocked-text);border-color:var(--st-blocked-text);">Delete</button></div>
+        <div class="right"><button type="button" class="btn-ghost" id="c_cancel">Cancel</button><button type="submit" class="btn-primary">Save</button></div>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="overlay" id="hustleOverlay" hidden>
   <div class="modal">
     <h3 id="hustleModalTitle">Add opportunity</h3>
@@ -2205,7 +2303,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-firestore-shim.js?v=3"></script>
+<script src="supabase-firestore-shim.js?v=4"></script>
 
 <script>
 (function(){
@@ -6324,7 +6422,7 @@
   // on it, so the "who" can't be forged). A delete also keeps a full copy of the row, which is what
   // the Trash tab restores from. Until the one-off SQL has been run, nothing is logged and the
   // Trash and Activity tabs show the setup steps instead.
-  const AUDIT_COLLS = {tasks:'Task', shows:'Show', clientOps:'Client Ops', podcastEpisodes:'Podcast', hustleOpportunities:'Hustle', deliveryItems:'Delivery', contractClients:'Delivery client', recurringTasks:'Repeating task'};
+  const AUDIT_COLLS = {tasks:'Task', shows:'Show', clientOps:'Client Ops', clients:'Client', podcastEpisodes:'Podcast', hustleOpportunities:'Hustle', deliveryItems:'Delivery', contractClients:'Delivery client', recurringTasks:'Repeating task'};
   const AUDIT_NOISE = new Set(['order','calendarSynced','updated_at','created_at','assignedAt','stageChangedAt','deliveredAt','activityLog','archivedBy']);
   const AUDIT_SKIP_ID = /^(sync_|spawn_del_)/;
   const FIELD_LABELS = {dateISO:'date', weekId:'week', owners:'owners', status:'status', title:'title', notes:'notes', client:'client', division:'team', tag:'tag', eventName:'event', clients:'clients', archivedAt:'archived', opportunity:'name', nextAction:'next action', nextActionDate:'next action date', expectedClose:'expected close', recordDate:'record date'};
@@ -6373,7 +6471,7 @@
   }
   function auditTitle(row){
     row = row || {};
-    return String(row.title || row.opportunity || row.eventName || row.item || row.client || '').slice(0, 140);
+    return String(row.title || row.opportunity || row.eventName || row.item || row.client || row.name || '').slice(0, 140);
   }
   function auditClip(v){
     if(v === undefined) return null;
@@ -6856,6 +6954,7 @@
     calendar: { el: 'calendarApp', onEnter: () => { renderCalMonthLabel(); subscribeCalendarShows(); },
                                     onLeave: () => { if(unsubCalendarShows){ unsubCalendarShows(); unsubCalendarShows = null; } } },
     podcast:  { el: 'podcastApp',  onEnter: subscribePodcast,  onLeave: unsubscribePodcast },
+    clients:  { el: 'clientsApp',  onEnter: () => { clSelected = null; subscribeClients(); }, onLeave: unsubscribeClients },
     hustle:   { el: 'hustleApp',   onEnter: () => { hustleView = 'dashboard'; subscribeHustle(); }, onLeave: unsubscribeHustle },
     // contractClients itself is subscribed globally in startAppOnce() now, not just while this
     // page is open — syncEpisodeToDelivery/syncTaskToDelivery (podcast/task saves, which can
@@ -10003,6 +10102,259 @@
   });
 
   let appStarted = false;
+
+  // ---------------- Clients ----------------
+  // One record per client (sql/2026-10-clients.sql). The client's name is its key, and is what tasks, shows and
+  // Delivery Tracker items already use to point at it, so the name is locked once the record exists.
+  const CLIENTS_SQL = "-- Scarlett: Clients (one record per client: owner, team, contract dates, shows, links, notes)\n-- A client's name is its key everywhere in Scarlett (tasks, delivery items, shows), so it is the table's key too.\n\ncreate table if not exists public.clients (\n  name text primary key,\n  status text not null default 'active' check (status in ('active','prospect','past')),\n  owner text,\n  team text[] not null default '{}',\n  \"contractStart\" text,\n  \"contractEnd\" text,\n  shows text[] not null default '{}',\n  links jsonb not null default '[]'::jsonb,\n  notes text,\n  \"createdFrom\" text,\n  \"createdBy\" text,\n  created_at timestamptz not null default now(),\n  updated_at timestamptz not null default now()\n);\n\nalter table public.clients enable row level security;\ndo $$\ndeclare r record;\nbegin\n  for r in select policyname from pg_policies where schemaname = 'public' and tablename = 'clients'\n  loop\n    execute format('drop policy %I on public.clients', r.policyname);\n  end loop;\nend $$;\n\n-- Everyone on the team can see, add and edit clients; only managers can delete one.\ncreate policy clients_read   on public.clients for select to authenticated using (true);\ncreate policy clients_insert on public.clients for insert to authenticated with check (true);\ncreate policy clients_update on public.clients for update to authenticated using (true) with check (true);\ncreate policy clients_delete on public.clients for delete to authenticated using (public.is_manager());\ncreate policy equiratings_only on public.clients as restrictive for all to authenticated\n  using (lower(coalesce(auth.jwt()->>'email','')) like '%@equiratings.com')\n  with check (lower(coalesce(auth.jwt()->>'email','')) like '%@equiratings.com');\n\nrevoke all on public.clients from anon;\ngrant select, insert, update, delete on public.clients to authenticated;\n\n-- live updates for other people's changes\ndo $$ begin\n  alter publication supabase_realtime add table public.clients;\nexception when duplicate_object then null; when undefined_object then null;\nend $$;\n\nnotify pgrst, 'reload schema';\n";
+  function clientsCol(){ return db.collection('clients'); }
+  let clients = [], clientsReady = false, clientsChecked = false, unsubClients = null;
+  let clSelected = null, clQuery = '', clStatusF = 'live', clEditingName = null;
+  const CL_STATUS = {active:'Active', prospect:'Prospect', past:'Past'};
+  function clNotice(msg, ok){
+    const el = document.getElementById('clientsNotice'); if(!el) return;
+    el.textContent = msg; el.classList.toggle('ok', !!ok); el.hidden = !msg;
+    if(msg) setTimeout(() => { if(el.textContent === msg) el.hidden = true; }, 9000);
+  }
+  function subscribeClients(){
+    if(unsubClients){ unsubClients(); unsubClients = null; }
+    if(!db) return;
+    unsubClients = clientsCol().onSnapshot(snap => {
+      clients = snap.docs.map(d => Object.assign({}, d.data(), {name: d.id}));
+      clientsReady = true; clientsChecked = true;
+      if(currentAppPage === 'clients') renderClients();
+    }, () => { clientsReady = false; clientsChecked = true; if(currentAppPage === 'clients') renderClients(); });
+  }
+  function unsubscribeClients(){ if(unsubClients){ unsubClients(); unsubClients = null; } }
+  function clStatusOf(c){ return CL_STATUS[c.status] ? c.status : 'active'; }
+  function clByName(name){ return clients.find(c => c.name === name) || null; }
+  // names already used on tasks, shows and contracts that don't have a client record yet
+  function clUnrecorded(){
+    const have = new Set(clients.map(c => c.name.toLowerCase()));
+    const set = new Set(CLIENT_ORDER.concat(CLIENT_ROSTER, Object.keys(contractClients)));
+    tasks.forEach(t => { if(t.client) set.add(t.client); });
+    showsWeek.forEach(sh => (sh.clients || []).forEach(c => { if(c) set.add(c); }));
+    return [...set].filter(n => n && !have.has(n.toLowerCase()) && !/^(test|new)$/i.test(n)).sort((a, b) => a.localeCompare(b));
+  }
+  function clDate(d){ return d ? hFmtDate(d) : ''; }
+  function clContractSummary(c){
+    const lines = (contractClients[c.name] || []).length;
+    const bits = [];
+    if(lines) bits.push(lines + ' contract line' + (lines === 1 ? '' : 's'));
+    if(c.contractEnd) bits.push('ends ' + clDate(c.contractEnd));
+    return bits.join(' · ');
+  }
+  function renderClients(){
+    const setup = document.getElementById('clientsSetup'), list = document.getElementById('clientsList'), prof = document.getElementById('clientProfile');
+    const ctl = document.getElementById('clientsControls'), unrec = document.getElementById('clientsUnrecorded');
+    if(!db){ list.innerHTML = '<div class="report-empty">Clients need the shared board connection.</div>'; return; }
+    if(clientsChecked && !clientsReady){
+      ctl.style.display = 'none'; list.innerHTML = ''; prof.hidden = true; unrec.innerHTML = '';
+      setup.hidden = false;
+      setup.innerHTML = `<div class="arc-setup">
+        <h3>One setup step before Clients works</h3>
+        Clients live in a new table. Add it once in Supabase:
+        <ol>
+          <li>Open your Scarlett project in Supabase and go to the SQL Editor.</li>
+          <li>Paste this in and press Run:<pre>${escapeHtml(CLIENTS_SQL)}</pre></li>
+          <li>Come back here and press Check again.</li>
+        </ol>
+        <div style="margin-top:10px; display:flex; gap:8px;"><button class="btn-ghost" id="clCopySqlBtn">Copy SQL</button><button class="btn-ghost" id="clRecheckBtn">Check again</button></div>
+      </div>`;
+      const cb = document.getElementById('clCopySqlBtn');
+      cb.addEventListener('click', () => {
+        (navigator.clipboard ? navigator.clipboard.writeText(CLIENTS_SQL) : Promise.reject())
+          .then(() => { cb.textContent = 'Copied'; setTimeout(() => { cb.textContent = 'Copy SQL'; }, 1800); })
+          .catch(() => { cb.textContent = 'Select the text above to copy'; });
+      });
+      document.getElementById('clRecheckBtn').addEventListener('click', () => { clientsChecked = false; subscribeClients(); });
+      return;
+    }
+    setup.hidden = true;
+    if(clSelected){
+      ctl.style.display = 'none'; list.innerHTML = ''; unrec.innerHTML = '';
+      prof.hidden = false;
+      renderClientProfile();
+      return;
+    }
+    prof.hidden = true; ctl.style.display = '';
+    document.getElementById('clientsTitle').textContent = 'Clients';
+    document.querySelectorAll('#clStatusTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-clstatus') === clStatusF));
+    const q = clQuery.trim().toLowerCase();
+    const rows = clients.filter(c => {
+      const st = clStatusOf(c);
+      if(clStatusF === 'live' ? st === 'past' : (clStatusF !== 'all' && st !== clStatusF)) return false;
+      return !q || [c.name, c.owner, (c.team || []).join(' '), (c.shows || []).join(' '), c.notes].join(' ').toLowerCase().includes(q);
+    }).sort((a, b) => a.name.localeCompare(b.name));
+    list.innerHTML = rows.length
+      ? '<div class="cl-grid">' + rows.map(c => {
+          const st = clStatusOf(c);
+          const meta = [c.owner ? 'Owner: ' + c.owner : '', (c.team || []).length ? 'Team: ' + c.team.join(', ') : ''].filter(Boolean).join(' · ');
+          const cs = clContractSummary(c);
+          return `<button type="button" class="cl-card" data-cl-open="${escapeAttr(c.name)}">
+            <div class="cl-top"><span class="cl-name">${escapeHtml(c.name)}</span><span class="cl-pill ${st}">${CL_STATUS[st]}</span></div>
+            ${meta ? `<div class="cl-meta">${escapeHtml(meta)}</div>` : ''}
+            ${cs ? `<div class="cl-meta">${escapeHtml(cs)}</div>` : ''}
+          </button>`;
+        }).join('') + '</div>'
+      : `<div class="report-empty">${clients.length ? 'No clients match.' : 'No clients yet. Add one, or pick from the names already in use below.'}</div>`;
+    const un = clUnrecorded();
+    unrec.innerHTML = un.length
+      ? `<details class="cl-unrec"><summary>${un.length} name${un.length === 1 ? ' is' : 's are'} already used on tasks, shows or contracts but ${un.length === 1 ? 'has' : 'have'} no client record. Tap one to add it.</summary><div class="cl-chips">${un.map(n => `<button type="button" class="pick-chip" data-cl-new="${escapeAttr(n)}">${escapeHtml(n)}</button>`).join('')}</div></details>`
+      : '';
+  }
+  function renderClientProfile(){
+    const prof = document.getElementById('clientProfile');
+    const c = clByName(clSelected);
+    if(!c){ clSelected = null; renderClients(); return; }
+    const name = c.name, st = clStatusOf(c);
+    document.getElementById('clientsTitle').textContent = name;
+    const kv = [
+      ['Status', CL_STATUS[st]],
+      ['Account owner', c.owner || ''],
+      ['Team', (c.team || []).join(', ')],
+      ['Contract', [c.contractStart ? 'from ' + clDate(c.contractStart) : '', c.contractEnd ? 'to ' + clDate(c.contractEnd) : ''].filter(Boolean).join(' ')],
+      ['Shows and events', (c.shows || []).join(', ')],
+      ['Notes', c.notes || ''],
+    ].filter(r => r[1]);
+    const links = Array.isArray(c.links) ? c.links.filter(l => l && hSafeUrl(l.url)) : [];
+    const lines = contractClients[name] || [];
+    prof.innerHTML = `
+      <div class="report-controls">
+        <button type="button" class="btn-ghost" id="clBackBtn">&lsaquo; All clients</button>
+        <span class="cl-pill ${st}">${CL_STATUS[st]}</span>
+        <button type="button" class="btn-primary" id="clEditBtn" style="margin-left:auto;">Edit client</button>
+      </div>
+      <div class="cl-sec"><h3>Details</h3>
+        <dl class="cl-kv">${kv.map(r => `<dt>${escapeHtml(r[0])}</dt><dd>${escapeHtml(r[1])}</dd>`).join('')}
+          ${links.length ? `<dt>Links</dt><dd>${links.map(l => `<a href="${escapeAttr(hSafeUrl(l.url))}" target="_blank" rel="noopener">${escapeHtml(l.label || hSafeUrl(l.url))}</a>`).join('<br>')}</dd>` : ''}
+        </dl>
+        ${(kv.length + links.length) <= 1 ? '<div class="cl-meta">Nothing else recorded yet. Use Edit client to add an owner, team, links and notes.</div>' : ''}
+      </div>
+      <div class="cl-sec"><h3><span>Contract and deliverables</span><span><button type="button" class="btn-ghost" id="clContractBtn">${lines.length ? 'Edit contract' : 'Set up contract'}</button> <button type="button" class="btn-ghost" id="clDeliveryBtn">Delivery Tracker</button></span></h3>
+        <div id="clContractBody">${lines.length ? lines.map(l => `<div class="cl-row"><span>${escapeHtml(l.name)}</span><small>${l.target ? 'target ' + l.target : ''}</small></div>`).join('') : '<div class="cl-meta">No contract lines set up yet.</div>'}</div>
+      </div>
+      <div class="cl-sec"><h3>Open tasks</h3><div id="clTasksBody"><div class="cl-meta">Loading...</div></div></div>
+      <div class="cl-sec"><h3>Shows</h3><div id="clShowsBody"><div class="cl-meta">Loading...</div></div></div>`;
+    document.getElementById('clBackBtn').addEventListener('click', () => { clSelected = null; renderClients(); });
+    document.getElementById('clEditBtn').addEventListener('click', () => openClientModal(name));
+    document.getElementById('clContractBtn').addEventListener('click', () => openContractSetupModal(name, () => { if(clSelected === name) renderClientProfile(); }));
+    document.getElementById('clDeliveryBtn').addEventListener('click', () => switchApp('delivery'));
+    // delivered so far against each contract line
+    if(lines.length) deliveryCol().where('client', '==', name).get().then(snap => {
+      if(clSelected !== name) return;
+      const done = {}; snap.docs.forEach(d => { const r = d.data(); if(r.status === 'delivered' && r.category) done[r.category] = (done[r.category] || 0) + 1; });
+      const body = document.getElementById('clContractBody'); if(!body) return;
+      body.innerHTML = lines.map(l => {
+        const n = done[l.name] || 0, tg = Number(l.target) || 0;
+        return `<div class="cl-row" style="display:block;"><div style="display:flex;justify-content:space-between;gap:10px;"><span>${escapeHtml(l.name)}</span><small>${n}${tg ? ' of ' + tg : ''} delivered</small></div>${tg ? `<div class="cl-bar"><i style="width:${Math.min(100, Math.round(100 * n / tg))}%"></i></div>` : ''}</div>`;
+      }).join('');
+    }).catch(() => {});
+    tasksCol().where('client', '==', name).get().then(snap => {
+      if(clSelected !== name) return;
+      const all = snap.docs.map(d => Object.assign({id: d.id}, d.data()));
+      const open = all.filter(t => t.status !== 'done').sort((a, b) => (a.dateISO || '').localeCompare(b.dateISO || ''));
+      const body = document.getElementById('clTasksBody'); if(!body) return;
+      body.innerHTML = open.length
+        ? open.slice(0, 15).map(t => `<button type="button" class="cl-row" data-cl-week="${escapeAttr(t.weekId || '')}"><span>${escapeHtml(t.title || '(untitled)')}<br><small>${escapeHtml([hFmtDate(t.dateISO), (t.owners || []).join(', ')].filter(Boolean).join(' · '))}</small></span><small>${escapeHtml((STATUS_META[t.status] || {}).label || '')}</small></button>`).join('')
+          + (open.length > 15 ? `<div class="cl-meta">and ${open.length - 15} more</div>` : '') + `<div class="cl-meta">${all.length - open.length} done</div>`
+        : `<div class="cl-meta">No open tasks.${all.length ? ' ' + all.length + ' done.' : ''}</div>`;
+    }).catch(() => { const b = document.getElementById('clTasksBody'); if(b) b.innerHTML = '<div class="cl-meta">Could not load tasks.</div>'; });
+    showsCol().where('clients', 'array-contains', name).get().then(snap => {
+      if(clSelected !== name) return;
+      const sh = snap.docs.map(d => Object.assign({id: d.id}, d.data())).sort((a, b) => (b.weekId || '').localeCompare(a.weekId || ''));
+      const body = document.getElementById('clShowsBody'); if(!body) return;
+      body.innerHTML = sh.length
+        ? sh.slice(0, 12).map(x => `<button type="button" class="cl-row" data-cl-week="${escapeAttr(x.weekId || '')}"><span>${escapeHtml(x.eventName || 'Show')}<br><small>${escapeHtml([x.discipline, x.weekId ? 'Week of ' + hFmtDate(x.weekId) : ''].filter(Boolean).join(' · '))}</small></span>${x.archivedAt ? '<small>Archived</small>' : ''}</button>`).join('')
+        : '<div class="cl-meta">Not flagged on any show yet.</div>';
+    }).catch(() => { const b = document.getElementById('clShowsBody'); if(b) b.innerHTML = '<div class="cl-meta">Could not load shows.</div>'; });
+    prof.onclick = (e) => {
+      const w = e.target.closest('[data-cl-week]');
+      if(w && w.getAttribute('data-cl-week')){ switchApp('board'); goToWeek(w.getAttribute('data-cl-week')); }
+    };
+  }
+  // ---- add / edit ----
+  function clLinkRow(l){
+    const row = document.createElement('div'); row.className = 'cl-linkrow';
+    row.innerHTML = '<input class="cl-lab" placeholder="Label" autocomplete="off"><input class="cl-url" placeholder="https://..." autocomplete="off"><button type="button" class="cl-x" aria-label="Remove link">&times;</button>';
+    row.querySelector('.cl-lab').value = (l && l.label) || ''; row.querySelector('.cl-url').value = (l && l.url) || '';
+    row.querySelector('.cl-x').addEventListener('click', () => row.remove());
+    document.getElementById('c_links').appendChild(row);
+  }
+  function openClientModal(name, prefillName){
+    clEditingName = name || null;
+    const c = name ? clByName(name) : null;
+    document.getElementById('clientModalTitle').textContent = c ? 'Edit ' + c.name : 'Add client';
+    const nm = document.getElementById('c_name');
+    nm.value = c ? c.name : (prefillName || ''); nm.readOnly = !!c;
+    document.getElementById('c_nameHint').textContent = c ? "The name can't be changed: tasks, shows and deliverables are linked by it." : '';
+    document.getElementById('c_status').value = c ? clStatusOf(c) : 'active';
+    document.getElementById('c_owner').innerHTML = '<option value="">None yet</option>' + TEAM_ROSTER.map(m => `<option value="${escapeAttr(m.name)}">${escapeHtml(m.name)}</option>`).join('');
+    document.getElementById('c_owner').value = c ? (c.owner || '') : '';
+    const team = new Set(c ? (c.team || []) : []);
+    document.getElementById('c_team').innerHTML = TEAM_ROSTER.map(m => `<button type="button" class="rd-chip${team.has(m.name) ? ' on' : ''}" data-n="${escapeAttr(m.name)}">${escapeHtml(m.name)}</button>`).join('');
+    document.getElementById('c_start').value = c ? (c.contractStart || '') : '';
+    document.getElementById('c_end').value = c ? (c.contractEnd || '') : '';
+    document.getElementById('c_shows').value = c ? (c.shows || []).join(', ') : '';
+    document.getElementById('c_links').innerHTML = '';
+    ((c && Array.isArray(c.links)) ? c.links : []).forEach(clLinkRow);
+    document.getElementById('c_notes').value = c ? (c.notes || '') : '';
+    document.getElementById('c_delete').style.display = (c && myRole !== 'member') ? 'inline-block' : 'none';
+    document.getElementById('clientOverlay').hidden = false;
+    if(!c) nm.focus();
+  }
+  function closeClientModal(){ document.getElementById('clientOverlay').hidden = true; clEditingName = null; }
+  document.getElementById('c_team').addEventListener('click', e => { const b = e.target.closest('.rd-chip'); if(b) b.classList.toggle('on'); });
+  document.getElementById('c_addLink').addEventListener('click', () => clLinkRow(null));
+  document.getElementById('c_cancel').addEventListener('click', closeClientModal);
+  document.getElementById('clientOverlay').addEventListener('click', e => { if(e.target.id === 'clientOverlay') closeClientModal(); });
+  document.getElementById('clientForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const editing = clEditingName;
+    const name = document.getElementById('c_name').value.trim().replace(/\s+/g, ' ');
+    if(!name) return;
+    if(!editing && clients.some(c => c.name.toLowerCase() === name.toLowerCase())){
+      document.getElementById('c_nameHint').textContent = 'There is already a client called "' + clients.find(c => c.name.toLowerCase() === name.toLowerCase()).name + '".';
+      return;
+    }
+    const links = Array.from(document.querySelectorAll('#c_links .cl-linkrow')).map(r => {
+      const url = hSafeUrl(r.querySelector('.cl-url').value);
+      let label = r.querySelector('.cl-lab').value.trim();
+      if(url && !label){ try { label = new URL(url).hostname.replace(/^www\./, ''); } catch(x){} }
+      return url ? {label, url} : null;
+    }).filter(Boolean);
+    const data = {
+      status: document.getElementById('c_status').value,
+      owner: document.getElementById('c_owner').value || null,
+      team: Array.from(document.querySelectorAll('#c_team .rd-chip.on')).map(b => b.getAttribute('data-n')),
+      contractStart: document.getElementById('c_start').value || null,
+      contractEnd: document.getElementById('c_end').value || null,
+      shows: document.getElementById('c_shows').value.split(',').map(x => x.trim()).filter(Boolean),
+      links,
+      notes: document.getElementById('c_notes').value.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+    closeClientModal();
+    if(editing){
+      clientsCol().doc(editing).update(data).then(() => clNotice('Saved ' + editing + '.', true)).catch(err => clNotice("That didn't save: " + ((err && err.message) || err)));
+    } else {
+      data.createdBy = auditWho();
+      clientsCol().doc(name).set(data).then(() => { clSelected = name; clNotice('Added ' + name + '.', true); if(currentAppPage === 'clients') renderClients(); }).catch(err => clNotice("That didn't save: " + ((err && err.message) || err)));
+    }
+  });
+  document.getElementById('c_delete').addEventListener('click', () => {
+    const name = clEditingName; if(!name) return;
+    closeClientModal();
+    confirmDelete(`Delete the client record for ${name}? Their tasks, shows and deliverables are not deleted, only this record.`, () => {
+      clientsCol().doc(name).delete().then(() => { clSelected = null; renderClients(); }).catch(err => clNotice("That didn't delete: " + ((err && err.message) || err)));
+    });
+  });
+  document.getElementById('clAddBtn').addEventListener('click', () => openClientModal(null));
+  document.getElementById('clSearch').addEventListener('input', e => { clQuery = e.target.value; renderClients(); });
+  document.getElementById('clStatusTabs').addEventListener('click', e => { const b = e.target.closest('[data-clstatus]'); if(b){ clStatusF = b.getAttribute('data-clstatus'); renderClients(); } });
+  document.getElementById('clientsList').addEventListener('click', e => { const b = e.target.closest('[data-cl-open]'); if(b){ clSelected = b.getAttribute('data-cl-open'); renderClients(); window.scrollTo(0, 0); } });
+  document.getElementById('clientsUnrecorded').addEventListener('click', e => { const b = e.target.closest('[data-cl-new]'); if(b) openClientModal(null, b.getAttribute('data-cl-new')); });
+
   function startAppOnce(){
     if(appStarted) return;
     appStarted = true;
