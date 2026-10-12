@@ -27,7 +27,7 @@ function createFirestoreShim(supabaseClient) {
   // Almost every table is keyed by an "id" column. contractClients is the exception: its key is the
   // client's name, stored in a "client" column. Without this, saving a contract failed silently
   // (no "id" column to write to) and nothing was ever kept.
-  const KEY_COLUMN = { contractClients: 'client' };
+  const KEY_COLUMN = { contractClients: 'client', appUsers: 'email' };
   function keyOf(table) { return KEY_COLUMN[table] || 'id'; }
 
   // Live refresh after our own saves. Postgres Realtime is what normally tells a screen that data

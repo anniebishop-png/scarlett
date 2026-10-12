@@ -1472,6 +1472,7 @@
     <button class="btn-primary" id="addHustleBtn" style="margin-left:auto;">+ Add opportunity</button>
   </div>
   <div class="hs-notice" id="hustleNotice" hidden></div>
+  <div class="shows-hint" id="hustlePermNote" style="margin:0 0 12px; font-size:12px;" hidden>You are seeing the opportunities you own. Management can see the whole pipeline.</div>
   <div id="hustleOppsView" hidden>
     <div id="hustleOwnerCards"></div>
     <div class="report-controls">
@@ -2223,6 +2224,8 @@
   let db = null;
   let canEdit = true; // optimistic; flips false if db unavailable
   let currentUserEmail = null; // signed-in email, stamped on archive actions
+  let myRole = null;          // 'manager' or 'member' once the appUsers table is set up; null until then (everything behaves as before)
+  let roleLoadedFor = null;
   let currentUserName = null; // TEAM_ROSTER name matched from the signed-in email, for "Mine only" filtering
   // Who is signed in is decided by the exact email address, never by guessing from the first part of it
   // (that let marissa@gmail.com and marissa@equiratings.com both count as "Marissa", and two people called
@@ -5180,6 +5183,25 @@
     });
   })();
 
+  // Who is who: the appUsers table (managed by Annie in Supabase) holds each person's name and role.
+  // Managers see the whole Hustle pipeline; members see only the opportunities they own. The database
+  // enforces that; this just tailors the screen to match. Until the table exists nothing changes.
+  function loadMyRole(email){
+    const e = String(email || '').toLowerCase();
+    if(!e || roleLoadedFor === e || !rawDb) return;
+    roleLoadedFor = e;
+    rawDb.collection('appUsers').where('email','==',e).get().then(snap => {
+      const row = snap.docs.length ? snap.docs[0].data() : null;
+      myRole = (row && row.role === 'manager') ? 'manager' : 'member';
+      if(row && row.name && row.name !== currentUserName){
+        currentUserName = row.name;
+        if(unsubMineBadge){ unsubMineBadge(); unsubMineBadge = null; }
+        subscribeMineBadge();
+        try{ renderGroups(); }catch(_){}
+      }
+      if(currentAppPage === 'hustle') renderHustleAll();
+    }).catch(() => { myRole = null; });
+  }
   // Count badge on every "My tasks" button: how many open tasks are assigned to me across all
   // weeks, turning red when any are overdue. It is what tells people the page has something in it.
   let mineBadgeRows = [], unsubMineBadge = null;
@@ -7721,6 +7743,7 @@
   function unsubscribeHustle(){ if(unsubHustle){ unsubHustle(); unsubHustle = null; } }
 
   function renderHustleAll(){
+    document.getElementById('hustlePermNote').hidden = myRole !== 'member';
     document.getElementById('hustleOppsView').hidden = hustleView !== 'opportunities';
     document.getElementById('hustleActionsView').hidden = hustleView !== 'actions';
     document.getElementById('hustleDashboardView').hidden = hustleView !== 'dashboard';
@@ -7916,7 +7939,9 @@
     const el = document.getElementById('hustleActionsView');
     const owners = hOwnerList();
     if(currentUserName && !owners.includes(currentUserName)) owners.push(currentUserName);
-    if(actionsOwner === null) actionsOwner = (currentUserName && hustleOpportunities.some(o => o.owner === currentUserName)) ? currentUserName : '';
+    const scoped = myRole === 'member';
+    if(scoped) actionsOwner = currentUserName || '';
+    else if(actionsOwner === null) actionsOwner = (currentUserName && hustleOpportunities.some(o => o.owner === currentUserName)) ? currentUserName : '';
     const scope = actionsOwner ? hustleOpportunities.filter(o => o.owner === actionsOwner) : hustleOpportunities;
     const today = hToday(), wk = hWeekEnd();
     const byDate = (a,b) => (a.nextActionDate||'').localeCompare(b.nextActionDate||'') || (a.opportunity||'').localeCompare(b.opportunity||'');
@@ -7967,7 +7992,7 @@
 
     el.innerHTML = `
       <div class="report-controls">
-        <label style="font-size:12.5px;font-weight:700;color:var(--ink-2);">Owner
+        <label style="font-size:12.5px;font-weight:700;color:var(--ink-2);${scoped ? 'display:none;' : ''}">Owner
           <select id="hustleActionsOwner" style="margin-left:6px;"><option value="">Everyone</option>${owners.map(n => `<option value="${escapeAttr(n)}" ${n===actionsOwner?'selected':''}>${escapeHtml(n)}</option>`).join('')}</select>
         </label>
         <span class="hs-muted">Every live deal's next action, from any week, soonest first. Done asks for the next step; Snooze pushes the date.</span>
@@ -8069,6 +8094,8 @@
   function renderHustleDashboard(){
     const el = document.getElementById('hustleDashboardView');
     const owners = hOwnerList();
+    const scoped = myRole === 'member';
+    if(scoped) hrOwner = currentUserName || '';
     const list = hrOwner ? hustleOpportunities.filter(o => o.owner === hrOwner) : hustleOpportunities;
     const today = hToday();
     const live = list.filter(hOpen);
@@ -8127,7 +8154,7 @@
         <label>Period <select id="hrPeriod">
           <option value="ytd">${new Date().getFullYear()} year to date</option><option value="quarter">This quarter</option>
           <option value="12m">Last 12 months</option><option value="all">All time</option></select></label>
-        <label>Owner <select id="hrOwner"><option value="">Everyone</option>${owners.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('')}</select></label>
+        <label${scoped ? ' style="display:none;"' : ''}>Owner <select id="hrOwner"><option value="">Everyone</option>${owners.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('')}</select></label>
         <span class="hs-muted">Won, Lost and Parked follow the period. Live counts are always as of today.</span>
       </div>
       <div class="hs-tiles">
@@ -8245,7 +8272,8 @@
     document.getElementById('hustleModalTitle').textContent = op ? 'Edit opportunity' : 'Add opportunity';
     document.getElementById('h_opportunity').value = op ? (op.opportunity||'') : '';
     document.getElementById('h_stage').value = op && op.stage ? op.stage : (hustleStageFilter || '1. Prospect');
-    document.getElementById('h_owner').value = op ? (op.owner||'') : (hustleOwnerFilter || '');
+    hFillOwnerSelect();
+    document.getElementById('h_owner').value = op ? (op.owner||'') : (myRole === 'member' ? (currentUserName || '') : (hustleOwnerFilter || ''));
     document.getElementById('h_nextAction').value = op ? (op.nextAction||'') : '';
     document.getElementById('h_nextActionDate').value = op ? (op.nextActionDate||'') : '';
     document.getElementById('h_closedReason').value = op ? (op.closedReason||'') : '';
@@ -8358,8 +8386,13 @@
   });
 
   // populate the Owner / Start / End / Engage selects once, up front
-  document.getElementById('h_owner').innerHTML = '<option value="">—</option>' +
-    TEAM_ROSTER.map(p => `<option value="${escapeAttr(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+  function hFillOwnerSelect(){
+    const sel = document.getElementById('h_owner');
+    // Members can only create opportunities in their own name; managers can assign to anyone.
+    if(myRole === 'member' && currentUserName){ sel.innerHTML = `<option value="${escapeAttr(currentUserName)}">${escapeHtml(currentUserName)}</option>`; return; }
+    sel.innerHTML = '<option value="">—</option>' + TEAM_ROSTER.map(p => `<option value="${escapeAttr(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+  }
+  hFillOwnerSelect();
   ['h_start','h_end','h_engage'].forEach(id => {
     document.getElementById(id).innerHTML = '<option value="">—</option>' +
       MONTH_NAMES.map(m => `<option value="${m}">${m}</option>`).join('');
@@ -9488,6 +9521,7 @@
       subscribeMineBadge();
       const email = session.user && session.user.email;
       currentUserEmail = email || null;
+      if(email) loadMyRole(email);
       if(email && !notifSessionStarted){
         notifSessionStarted = true;
         // First sign-in of this browser session: read this person's lastActive BEFORE
