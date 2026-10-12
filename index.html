@@ -2830,7 +2830,12 @@
   });
   // Fixed positioning means scrolling the page leaves the panel visually stranded (it doesn't track
   // the bell as the page scrolls) -- simplest fix is to just close it, same as clicking away.
-  window.addEventListener('scroll', () => { document.getElementById('notifPanel').hidden = true; }, {passive:true, capture:true});
+  // Scrolling inside the panel itself (its own list, via wheel or scroll bar) must not close it.
+  window.addEventListener('scroll', e => {
+    const panel = document.getElementById('notifPanel');
+    if(e.target === panel || (e.target && e.target.nodeType === 1 && panel.contains(e.target))) return;
+    panel.hidden = true;
+  }, {passive:true, capture:true});
   window.addEventListener('resize', () => { document.getElementById('notifPanel').hidden = true; });
   document.getElementById('dueBannerDismissBtn').addEventListener('click', () => {
     bannerDismissed = true;
