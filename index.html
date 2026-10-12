@@ -1192,8 +1192,9 @@
         <div class="shows-hint">Click a show to flag it as a client.</div>
       </div>
       <div class="info-card">
-        <div class="info-head"><h3>Out this week</h3><button class="add-link" id="addOutBtn">+ Add</button></div>
+        <div class="info-head"><h3>Out this week</h3><button class="add-link" id="addOutBtn" title="Log time off: the whole week, certain days, or part of a day such as 4 to 6">+ Add time off</button></div>
         <div class="chip-row" id="outChips"></div>
+        <div class="shows-hint">Add time off for the whole week, certain days, or part of a day, like 4 to 6pm.</div>
       </div>
     </div>
 
@@ -1833,13 +1834,14 @@
 <div class="overlay" id="addOutOverlay" hidden>
   <div class="modal">
     <h3>Who's out this week?</h3>
+    <p style="font-size:12.5px;color:var(--ink-2);line-height:1.5;margin:-6px 0 14px;">Log time off for the whole week, for certain days, or for part of a day. For a part day, tick the day and put the hours in the note, like 4 to 6pm.</p>
     <form id="addOutForm">
       <div class="field"><label>Name</label><input type="text" id="out_name" required placeholder="e.g. Sammy"></div>
       <div class="field">
         <label>Day(s) out <span style="text-transform:none;font-weight:500;">(optional — leave blank for the whole week)</span></label>
         <div class="owners-pop-static" id="addOutDaysList"></div>
       </div>
-      <div class="field"><label>Note <span style="text-transform:none;font-weight:500;">(optional)</span></label><input type="text" id="out_note" placeholder="e.g. back Thu"></div>
+      <div class="field"><label>Note <span style="text-transform:none;font-weight:500;">(optional)</span></label><input type="text" id="out_note" placeholder="e.g. 4 to 6pm, or back Thu"></div>
       <div class="modal-actions">
         <div class="left"></div>
         <div class="right">
@@ -2271,7 +2273,8 @@
   let showsWeek = [];         // this week's shows (live, from the 'shows' collection)
   let upcomingShows = [];     // this viewed week's shows onward (live) — powers the Add task Event picker
   let groupMode = 'client';
-  let activeStatus = null;
+  let personDefaultApplied = false;
+  let activeStatuses = new Set(); // several status chips can be on at once (e.g. In Progress + Not Started)
   let activeGroupKey = null;  // which show/tab is open within the current grouping
   let recurring = [];         // weekly and monthly recurring task templates
   let selectedOwners = [];    // owners chosen in the open task form
@@ -3366,20 +3369,20 @@
 
   function renderStatusFilters(){
     const chips = Object.keys(STATUS_META).map(key => `
-      <button class="status-chip ${activeStatus===key?'active':''}" data-status="${key}"><span class="dot"></span>${STATUS_META[key].label}</button>`).join('');
-    const clear = activeStatus ? `<button class="clear-filter" id="clearFilter">Clear filter</button>` : '';
+      <button class="status-chip ${activeStatuses.has(key)?'active':''}" data-status="${key}" aria-pressed="${activeStatuses.has(key)}"><span class="dot"></span>${STATUS_META[key].label}</button>`).join('');
+    const clear = activeStatuses.size ? `<button class="clear-filter" id="clearFilter">Clear filter</button>` : '';
     const overdueChip = `<button type="button" class="overdue-chip" id="overdueChip" title="See every overdue task, from any week"><span class="dot"></span>Overdue</button>`;
     document.getElementById('statusFilters').innerHTML = chips + overdueChip + clear;
     document.getElementById('overdueChip').addEventListener('click', openOverdueList);
     document.querySelectorAll('.status-chip').forEach(btn=>{
       btn.addEventListener('click', () => {
         const s = btn.getAttribute('data-status');
-        activeStatus = (activeStatus === s) ? null : s;
+        if(activeStatuses.has(s)) activeStatuses.delete(s); else activeStatuses.add(s);
         renderStatusFilters(); renderGroups();
       });
     });
     const clearBtn = document.getElementById('clearFilter');
-    if(clearBtn) clearBtn.addEventListener('click', () => { activeStatus=null; renderStatusFilters(); renderGroups(); });
+    if(clearBtn) clearBtn.addEventListener('click', () => { activeStatuses = new Set(); renderStatusFilters(); renderGroups(); });
   }
 
   function pillHtml(status, taskId){
@@ -3439,6 +3442,11 @@
         return da.localeCompare(db_);
       });
     }
+    if(groupMode==='person'){
+      // You come first, then everyone else A to Z, with Unassigned last
+      const rank = k => k === currentUserName ? 0 : (k === 'Unassigned' ? 2 : 1);
+      return [...keys].sort((a,b) => rank(a) - rank(b) || a.localeCompare(b));
+    }
     return [...keys].sort();
   }
 
@@ -3453,7 +3461,7 @@
     const mineBox = document.getElementById('downloadMineOnly');
     const mineOn = !!(mineBox && mineBox.checked);
     const base = (mineOn && currentUserName) ? tasks.filter(t => (t.owners||[]).includes(currentUserName)) : tasks;
-    const filtered = activeStatus ? base.filter(t=>t.status===activeStatus) : base;
+    const filtered = activeStatuses.size ? base.filter(t=>activeStatuses.has(t.status)) : base;
     const map = new Map();
 
     if(groupMode === 'person'){
@@ -3473,8 +3481,8 @@
 
     if(!keys.length){
       const emptyMsg = (mineOn && !currentUserName) ? "Your sign-in isn't matched to a team member, so Mine only can't filter. Tell Annie." :
-        mineOn ? `No tasks of yours ${activeStatus ? 'for this filter' : 'this week'}. Untick Mine only to see everyone's.` :
-        `No tasks yet ${activeStatus? 'for this filter' : 'this week'} — add one to get started.`;
+        mineOn ? `No tasks of yours ${activeStatuses.size ? 'for this filter' : 'this week'}. Untick Mine only to see everyone's.` :
+        `No tasks yet ${activeStatuses.size ? 'for this filter' : 'this week'} — add one to get started.`;
       document.getElementById('groups').innerHTML = `<div class="empty-state" style="padding:22px;">${emptyMsg}</div>`;
       activeGroupKey = null;
       return;
@@ -5483,8 +5491,8 @@
 
   // ---------- Win celebrations ----------
   const ROSETTE_SVG = '<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><g fill="currentColor"><circle cx="16" cy="12" r="9" opacity=".95"/><path d="M9 19l-3 11 6-3 4 3 4-3 6 3-3-11z" opacity=".7"/></g><circle cx="16" cy="12" r="5.2" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1.4"/><circle cx="16" cy="12" r="2" fill="rgba(0,0,0,.28)"/></svg>';
-  // ---------- Time zones under the weather: Ireland and the US East Coast ----------
-  const TZ_ZONES = [['Ireland','Europe/Dublin'], ['US East','America/New_York']];
+  // ---------- Time zones under the weather: Ireland, US East Coast and US West Coast ----------
+  const TZ_ZONES = [['Ireland','Europe/Dublin'], ['US East','America/New_York'], ['US West','America/Los_Angeles']];
   function tzRender(){
     const el = document.getElementById('tzLine');
     if(!el) return;
@@ -9493,6 +9501,7 @@
       showLoginScreen(false);
       startAppOnce();
       currentUserName = nameFromEmail(session.user && session.user.email);
+      if(!personDefaultApplied && currentUserName){ personDefaultApplied = true; if(groupMode === 'person') activeGroupKey = null; } // By person opens on you, not on whoever is first A to Z
       try{ renderGroups(); }catch(e){}   // "Mine only" needs the name, which arrives just after the first draw
       subscribeMineBadge();
       const email = session.user && session.user.email;
