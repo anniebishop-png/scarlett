@@ -756,6 +756,9 @@
   .hs-tile{background:var(--surface); border:1px solid var(--hairline); border-radius:14px; padding:12px 16px;}
   .hs-tile b{display:block; font-size:28px; line-height:1.1; font-weight:800; font-variant-numeric:tabular-nums;}
   .hs-tile span{font-size:12px; color:var(--ink-muted); font-weight:600;}
+  button.hs-tile{text-align:left; font:inherit; color:inherit; cursor:pointer;}
+  button.hs-tile:hover{border-color:var(--hairline-strong);}
+  .hs-tile.sel{border-color:var(--gold); box-shadow:0 0 0 2px rgba(237,161,0,.35);}
   .hs-tile.over b{color:var(--hs-overdue);} .hs-tile.due b{color:var(--hs-due);}
   .hs-mw-row{display:grid; grid-template-columns:92px 1fr auto; gap:6px 14px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--hairline); font-size:12.5px; cursor:pointer;}
   .hs-mw-row:last-child{border-bottom:none;}
@@ -1462,16 +1465,15 @@
   </div>
   <div class="report-controls">
     <div class="segmented" id="hustleViewTabs">
-      <button type="button" data-view="pipeline" class="active">Pipeline</button>
-      <button type="button" data-view="myweek">My week</button>
-      <button type="button" data-view="reports">Reports</button>
+      <button type="button" data-view="dashboard" class="active">Dashboard</button>
+      <button type="button" data-view="opportunities">Opportunities</button>
+      <button type="button" data-view="actions">Actions</button>
     </div>
     <button class="btn-primary" id="addHustleBtn" style="margin-left:auto;">+ Add opportunity</button>
   </div>
   <div class="hs-notice" id="hustleNotice" hidden></div>
-  <div id="hustlePipelineView">
+  <div id="hustleOppsView" hidden>
     <div id="hustleOwnerCards"></div>
-    <div id="hustleShape"></div>
     <div class="report-controls">
       <div class="segmented" id="hustleStageTabs"></div>
       <div class="segmented" id="hustleSortTabs">
@@ -1484,8 +1486,8 @@
     </div>
     <div id="hustleResults"></div>
   </div>
-  <div id="hustleMyWeekView" hidden></div>
-  <div id="hustleReportsView" hidden></div>
+  <div id="hustleActionsView" hidden></div>
+  <div id="hustleDashboardView"></div>
   <footer class="note">New-business pipeline — prospects through won/lost, by stage. No pricing shown here.</footer>
 </div>
 
@@ -1957,12 +1959,7 @@
       <div class="hs-nextblock">
         <div class="field-row">
           <div class="field"><label>Next action <span class="hs-req" id="h_reqNote"></span></label>
-            <input id="h_nextAction" list="hNextActionList" placeholder="e.g. Send revised proposal" autocomplete="off">
-            <datalist id="hNextActionList">
-              <option value="Identify Opportunity"><option value="Identify Key Contact"><option value="Engage Key Contact">
-              <option value="Build Proposal"><option value="Present Proposal"><option value="Agree Terms">
-              <option value="Sign Contract"><option value="Deliver"><option value="Report">
-            </datalist>
+            <input id="h_nextAction" placeholder="e.g. Send revised proposal" autocomplete="off">
           </div>
           <div class="field"><label>Due date</label><input type="date" id="h_nextActionDate"></div>
         </div>
@@ -2039,7 +2036,7 @@
     <h3 id="hsNextTitle">Next step</h3>
     <p class="hs-modal-sub" id="hsNextSub"></p>
     <form id="hsNextForm">
-      <div class="field"><label>Next action</label><input id="hsNextText" list="hNextActionList" placeholder="e.g. Send revised proposal" autocomplete="off" required></div>
+      <div class="field"><label>Next action</label><input id="hsNextText" placeholder="e.g. Send revised proposal" autocomplete="off" required></div>
       <div class="field"><label>Due date</label><input type="date" id="hsNextDate" required></div>
       <div class="modal-actions">
         <div class="left"></div>
@@ -6555,7 +6552,7 @@
     calendar: { el: 'calendarApp', onEnter: () => { renderCalMonthLabel(); subscribeCalendarShows(); },
                                     onLeave: () => { if(unsubCalendarShows){ unsubCalendarShows(); unsubCalendarShows = null; } } },
     podcast:  { el: 'podcastApp',  onEnter: subscribePodcast,  onLeave: unsubscribePodcast },
-    hustle:   { el: 'hustleApp',   onEnter: subscribeHustle,   onLeave: unsubscribeHustle },
+    hustle:   { el: 'hustleApp',   onEnter: () => { hustleView = 'dashboard'; subscribeHustle(); }, onLeave: unsubscribeHustle },
     // contractClients itself is subscribed globally in startAppOnce() now, not just while this
     // page is open — syncEpisodeToDelivery/syncTaskToDelivery (podcast/task saves, which can
     // happen from any page) need it to know which clients are set up, not only visits to this page.
@@ -7628,9 +7625,8 @@
   // Stale) is COMPUTED from those fields and from updated_at, never ticked by hand.
   const HUSTLE_OPEN = ['2. Qualify','3. Present','4. Close'];
   const HUSTLE_OWNER_ORDER = ['Diarm','Brayden','Nicole','Annie','Sam'];
-  let hustleView = 'pipeline';     // 'pipeline' or 'myweek'
+  let hustleView = 'dashboard';    // 'dashboard' (default landing), 'opportunities' or 'actions'
   let hustleOwnerFilter = null;    // owner name from a clicked owner card, or null
-  let myWeekOwner = null;          // whose follow-ups the My week view is showing
   let hsNextCtx = null;            // {id, mode:'done'|'set'} for the next-step prompt
   let hsSnoozeId = null;
   let hClientType = '', hLog = [];   // working copies for the open edit form
@@ -7725,14 +7721,13 @@
   function unsubscribeHustle(){ if(unsubHustle){ unsubHustle(); unsubHustle = null; } }
 
   function renderHustleAll(){
-    document.getElementById('hustlePipelineView').hidden = hustleView !== 'pipeline';
-    document.getElementById('hustleMyWeekView').hidden = hustleView !== 'myweek';
-    document.getElementById('hustleReportsView').hidden = hustleView !== 'reports';
+    document.getElementById('hustleOppsView').hidden = hustleView !== 'opportunities';
+    document.getElementById('hustleActionsView').hidden = hustleView !== 'actions';
+    document.getElementById('hustleDashboardView').hidden = hustleView !== 'dashboard';
     document.querySelectorAll('#hustleViewTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-view') === hustleView));
-    if(hustleView === 'myweek'){ renderHustleMyWeek(); return; }
-    if(hustleView === 'reports'){ renderHustleReports(); return; }
+    if(hustleView === 'actions'){ renderHustleActions(); return; }
+    if(hustleView === 'dashboard'){ renderHustleDashboard(); return; }
     renderHustleOwnerCards();
-    renderHustleShape();
     renderHustleOwnerChip();
     renderHustleStageTabs();
     renderHustle();
@@ -7764,32 +7759,6 @@
         renderHustleAll();
       });
     });
-  }
-
-  function renderHustleShape(){
-    const el = document.getElementById('hustleShape');
-    if(!hustleOpportunities.length){ el.innerHTML = ''; return; }
-    const owners = hOwnerList();
-    const cols = [['qualify','Qualify'],['present','Present'],['close','Close'],['won','Won'],['lost','Lost'],['parked','Parked'],['prospect','Prospects'],['stale','Stale 30d+']];
-    const rowFor = (label, list, dimZeros, cls) => {
-      const s = hOwnerStats(list);
-      return `<tr class="${cls||''}"><td>${escapeHtml(label)}</td>` + cols.map(c => {
-        const v = s[c[0]];
-        return v === 0 && dimZeros ? '<td class="dim">—</td>' : `<td>${v}</td>`;
-      }).join('') + '</tr>';
-    };
-    const unassigned = hustleOpportunities.filter(o => !o.owner);
-    el.innerHTML = `<div class="hs-shape">
-      <div class="hs-section-head"><h3>Pipeline shape</h3><span>Live deals by stage and owner. Parked is tracked separately from Lost. Won and Lost are this year.</span></div>
-      <div class="hs-shape-scroll"><table>
-        <thead><tr><th>Owner</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
-        <tbody>
-          ${owners.map(n => rowFor(n, hustleOpportunities.filter(o => o.owner === n), false)).join('')}
-          ${rowFor('Unassigned', unassigned, true)}
-          ${rowFor('Total', hustleOpportunities, false, 'total')}
-        </tbody>
-      </table></div>
-    </div>`;
   }
 
   function renderHustleOwnerChip(){
@@ -7938,25 +7907,30 @@
     bindHustleRowEvents(resultsEl, hustleOpportunities);
   }
 
-  // ---- My week: one person's follow-ups, grouped by what needs doing ----
-  function renderHustleMyWeek(){
-    const el = document.getElementById('hustleMyWeekView');
+  // ---- Actions: every outstanding next action, from any week, by owner and timeframe ----
+  // One next action per live deal (Qualify, Present, Close). Owner and timeframe filters work together
+  // or on their own: pick a person, a timeframe tile, both, or neither.
+  let actionsOwner = null;   // null = not chosen yet (starts on you); '' = everyone
+  let actionsFrame = 'all';  // 'all' | 'overdue' | 'week' | 'future' | 'none'
+  function renderHustleActions(){
+    const el = document.getElementById('hustleActionsView');
     const owners = hOwnerList();
     if(currentUserName && !owners.includes(currentUserName)) owners.push(currentUserName);
-    if(!myWeekOwner) myWeekOwner = owners.includes(currentUserName) ? currentUserName : (owners[0] || '');
-    const mine = hustleOpportunities.filter(o => o.owner === myWeekOwner);
+    if(actionsOwner === null) actionsOwner = (currentUserName && hustleOpportunities.some(o => o.owner === currentUserName)) ? currentUserName : '';
+    const scope = actionsOwner ? hustleOpportunities.filter(o => o.owner === actionsOwner) : hustleOpportunities;
     const today = hToday(), wk = hWeekEnd();
     const byDate = (a,b) => (a.nextActionDate||'').localeCompare(b.nextActionDate||'') || (a.opportunity||'').localeCompare(b.opportunity||'');
-    const overdue = mine.filter(o => hIsOverdue(o, today)).sort(byDate);
-    const week = mine.filter(o => hIsDueWeek(o, today, wk)).sort(byDate);
-    const noNext = mine.filter(hNoNext).sort((a,b) => {
+    const live = scope.filter(hOpen);
+    const overdue = scope.filter(o => hIsOverdue(o, today)).sort(byDate);
+    const week = scope.filter(o => hIsDueWeek(o, today, wk)).sort(byDate);
+    const future = live.filter(o => o.nextActionDate && o.nextActionDate > wk).sort(byDate);
+    const noNext = scope.filter(hNoNext).sort((a,b) => {
       const ad = hDaysSince(a.updated_at), bd = hDaysSince(b.updated_at);
       return ((bd === null ? -1 : bd) - (ad === null ? -1 : ad)) || (a.opportunity||'').localeCompare(b.opportunity||'');
     });
-    const parked = mine.filter(o => o.stage === '7. Parked');
-    const mondayLabel = new Date(mondayOf(today) + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'long'});
+    const wkLabel = new Date(mondayOf(today) + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'long'});
 
-    const row = (op, withDate) => {
+    const row = (op) => {
       const meta = HUSTLE_STAGE_META[op.stage] || HUSTLE_STAGE_META['1. Prospect'];
       const days = hDaysSince(op.updated_at);
       const bits = [];
@@ -7964,10 +7938,11 @@
       if(days !== null && (!op.nextActionDate || hIsStale(op))) bits.push('last touched ' + escapeHtml(hAgo(days)) + (hIsStale(op) ? ' · stale' : ''));
       const dateCell = op.nextActionDate ? hFmtDate(op.nextActionDate) : '—';
       const isOver = hIsOverdue(op, today);
+      const who = actionsOwner ? '' : ' · ' + escapeHtml(op.owner ? initials(op.owner) : 'Unassigned');
       return `<div class="hs-mw-row" data-mw-open="${op.id}">
         <div class="hs-mw-date ${isOver?'over':''}">${dateCell}</div>
         <div>
-          <div class="hs-mw-name">${escapeHtml(op.opportunity||'(untitled)')} <span>· ${escapeHtml(meta.short)}</span></div>
+          <div class="hs-mw-name">${escapeHtml(op.opportunity||'(untitled)')} <span>· ${escapeHtml(meta.short)}${who}</span></div>
           <div class="hs-mw-next">${bits.join(' · ') || '<span class="hs-muted">No next action yet</span>'}</div>
         </div>
         <div class="hs-mw-actions">
@@ -7981,25 +7956,33 @@
       <div class="report-group-head"><span>${title} <span class="hs-mw-group-note">${note}</span></span><span>${list.length}</span></div>
       ${list.length ? list.map(op => row(op)).join('') : '<div class="report-empty" style="padding:16px;">Nothing here.</div>'}
     </div>`;
+    const tile = (key, cls, n, label) => `<button type="button" class="hs-tile ${cls} ${actionsFrame === key ? 'sel' : ''}" data-af="${key}" aria-pressed="${actionsFrame === key}"><b>${n}</b><span>${label}</span></button>`;
+    const groups = {
+      overdue: group('Overdue', '', overdue),
+      week: group('Due this week', 'from ' + escapeHtml(wkLabel), week),
+      future: group('Future', 'due after this week', future),
+      none: group('Open with no next action', 'these are the ones that slip', noNext),
+    };
+    const shown = actionsFrame === 'all' ? ['overdue','week','future','none'] : [actionsFrame];
 
     el.innerHTML = `
       <div class="report-controls">
-        <label style="font-size:12.5px;font-weight:700;color:var(--ink-2);">Viewing as
-          <select id="hustleMyWeekOwner" style="margin-left:6px;">${owners.map(n => `<option value="${escapeAttr(n)}" ${n===myWeekOwner?'selected':''}>${escapeHtml(n)}</option>`).join('')}</select>
+        <label style="font-size:12.5px;font-weight:700;color:var(--ink-2);">Owner
+          <select id="hustleActionsOwner" style="margin-left:6px;"><option value="">Everyone</option>${owners.map(n => `<option value="${escapeAttr(n)}" ${n===actionsOwner?'selected':''}>${escapeHtml(n)}</option>`).join('')}</select>
         </label>
-        <span class="hs-muted">Week of ${escapeHtml(mondayLabel)} · sorted by next action date. Done asks for the next step; Snooze pushes the date.</span>
+        <span class="hs-muted">Every live deal's next action, from any week, soonest first. Done asks for the next step; Snooze pushes the date.</span>
       </div>
       <div class="hs-tiles">
-        <div class="hs-tile over"><b>${overdue.length}</b><span>Overdue</span></div>
-        <div class="hs-tile due"><b>${week.length}</b><span>Due this week</span></div>
-        <div class="hs-tile"><b>${noNext.length}</b><span>No next action set</span></div>
-        <div class="hs-tile"><b>${parked.length}</b><span>Parked</span></div>
+        ${tile('overdue','over',overdue.length,'Overdue')}
+        ${tile('week','due',week.length,'Due this week')}
+        ${tile('future','',future.length,'Future')}
+        ${tile('none','',noNext.length,'No next action set')}
+        ${tile('all','',live.length,'All outstanding')}
       </div>
-      ${group('Overdue', '', overdue)}
-      ${group('This week', '', week)}
-      ${group('Open with no next action', 'these are the ones that slip', noNext)}`;
+      ${shown.map(k => groups[k]).join('')}`;
 
-    document.getElementById('hustleMyWeekOwner').addEventListener('change', e => { myWeekOwner = e.target.value; renderHustleMyWeek(); });
+    document.getElementById('hustleActionsOwner').addEventListener('change', e => { actionsOwner = e.target.value; renderHustleActions(); });
+    el.querySelectorAll('[data-af]').forEach(b => b.addEventListener('click', () => { actionsFrame = b.getAttribute('data-af'); renderHustleActions(); }));
     el.querySelectorAll('[data-mw-open]').forEach(r => r.addEventListener('click', e => {
       if(e.target.closest('button')) return;
       const op = hustleOpportunities.find(x => x.id === r.getAttribute('data-mw-open'));
@@ -8083,8 +8066,8 @@
     return p[0] === n.getFullYear() && Math.floor((p[1]-1)/3) === Math.floor(n.getMonth()/3);
   }
 
-  function renderHustleReports(){
-    const el = document.getElementById('hustleReportsView');
+  function renderHustleDashboard(){
+    const el = document.getElementById('hustleDashboardView');
     const owners = hOwnerList();
     const list = hrOwner ? hustleOpportunities.filter(o => o.owner === hrOwner) : hustleOpportunities;
     const today = hToday();
@@ -8161,10 +8144,10 @@
       </div>`;
     document.getElementById('hrPeriod').value = hrPeriod;
     document.getElementById('hrOwner').value = hrOwner;
-    document.getElementById('hrPeriod').addEventListener('change', e => { hrPeriod = e.target.value; renderHustleReports(); });
-    document.getElementById('hrOwner').addEventListener('change', e => { hrOwner = e.target.value; renderHustleReports(); });
+    document.getElementById('hrPeriod').addEventListener('change', e => { hrPeriod = e.target.value; renderHustleDashboard(); });
+    document.getElementById('hrOwner').addEventListener('change', e => { hrOwner = e.target.value; renderHustleDashboard(); });
     const tg = document.getElementById('hrStaleToggle');
-    if(tg) tg.addEventListener('click', () => { hrShowAllStale = !hrShowAllStale; renderHustleReports(); });
+    if(tg) tg.addEventListener('click', () => { hrShowAllStale = !hrShowAllStale; renderHustleDashboard(); });
     el.querySelectorAll('[data-hr-open]').forEach(r => r.addEventListener('click', () => {
       const op = hustleOpportunities.find(x => x.id === r.getAttribute('data-hr-open'));
       if(op) openHustleModal(op);
@@ -8226,7 +8209,7 @@
   document.getElementById('hsSnoozeOverlay').addEventListener('click', e => { if(e.target.id === 'hsSnoozeOverlay') closeHsSnooze(); });
 
   document.querySelectorAll('#hustleViewTabs button').forEach(btn => {
-    btn.addEventListener('click', () => { hustleView = btn.getAttribute('data-view'); try{ localStorage.setItem('scarlett.hustleView', hustleView); }catch(e){} renderHustleAll(); });
+    btn.addEventListener('click', () => { hustleView = btn.getAttribute('data-view'); renderHustleAll(); });
   });
 
   function renderHustleDisciplineList(){
@@ -9479,9 +9462,8 @@
     subscribeArchivedShows();
     // After a refresh, go back to the page (and Delivery / Hustle view) you were on, not Home.
     try{
-      const dv = localStorage.getItem('scarlett.deliveryView'), hv = localStorage.getItem('scarlett.hustleView');
+      const dv = localStorage.getItem('scarlett.deliveryView');
       if(['tracker','mine','reports'].includes(dv)) deliveryView = dv;
-      if(['pipeline','myweek','reports'].includes(hv)) hustleView = hv;
       const pg = localStorage.getItem('scarlett.page');
       if(pg && pg !== 'board' && APP_PAGES[pg]) switchApp(pg);
     }catch(e){}
