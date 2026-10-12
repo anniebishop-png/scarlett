@@ -10339,7 +10339,7 @@
       clientsCol().doc(editing).update(data).then(() => clNotice('Saved ' + editing + '.', true)).catch(err => clNotice("That didn't save: " + ((err && err.message) || err)));
     } else {
       data.createdBy = auditWho();
-      clientsCol().doc(name).set(data).then(() => { clSelected = name; clNotice('Added ' + name + '.', true); if(currentAppPage === 'clients') renderClients(); }).catch(err => clNotice("That didn't save: " + ((err && err.message) || err)));
+      clientsCol().doc(name).set(data).then(() => { if(!clByName(name)) clients.push(Object.assign({}, data, {name})); clSelected = name; clNotice('Added ' + name + '.', true); if(currentAppPage === 'clients') renderClients(); }).catch(err => clNotice("That didn't save: " + ((err && err.message) || err)));
     }
   });
   document.getElementById('c_delete').addEventListener('click', () => {
