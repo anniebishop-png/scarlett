@@ -331,6 +331,9 @@
   .del-item{color:var(--ink-2); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; flex-shrink:0;}
   .del-del-btn{border:none; background:none; color:var(--ink-muted); opacity:.6; cursor:pointer; font-size:14px; line-height:1; padding:4px; margin-left:auto; flex-shrink:0;}
   .del-del-btn:hover{opacity:1; color:var(--st-blocked-text);}
+  .del-tick{width:17px; height:17px; flex-shrink:0; cursor:pointer; accent-color:var(--navy); margin:0;}
+  .del-linkchip{font-size:11px; font-weight:700; color:var(--ink-muted); border:1px dashed var(--hairline-strong); border-radius:999px; padding:2px 9px; background:none; cursor:pointer;}
+  .del-linkchip:hover{color:var(--ink); border-color:var(--ink-muted);}
   .del-title{color:var(--ink); font-weight:600; font-size:13.5px; line-height:1.4;}
   .del-meta{color:var(--ink-muted); font-size:11.5px; line-height:1.5;}
   .del-notes{color:var(--ink-muted); font-size:11.5px; line-height:1.5; font-style:italic;}
@@ -2162,6 +2165,7 @@
           </select>
         </div>
       </div>
+      <div class="field" id="deliveryLinkField" style="display:none;"><label>Link <span style="text-transform:none;font-weight:500;">(optional, e.g. the published article)</span></label><input id="d_link" type="url" placeholder="https://" autocomplete="off"></div>
       <div class="field"><label>Notes <span style="text-transform:none;font-weight:500;">(optional)</span></label><textarea id="d_notes"></textarea></div>
       <div class="modal-actions">
         <div class="left">
@@ -2645,6 +2649,13 @@
   // Which contract line a board task counts toward (tasks.deliveryCategory, see sql/2026-10-task-delivery-category.sql).
   // Until that column exists the "Counts toward" field stays hidden and saves leave it out.
   let taskCatReady = false;
+  // A link on a delivery item (deliveryItems.link, see sql/2026-10-delivery-link.sql), e.g. the published article.
+  let deliveryLinkReady = false;
+  function probeDeliveryLink(){
+    if(!db) return;
+    deliveryCol().where('link','==','__probe__').get()
+      .then(() => { deliveryLinkReady = true; renderDelivery(); }).catch(() => { deliveryLinkReady = false; });
+  }
   function probeTaskCat(){
     if(!db) return;
     tasksCol().where('deliveryCategory','==','__probe__').get()
@@ -9398,6 +9409,7 @@
           const syncedTitle = r.sourceType ? `Synced automatically from the ${r.sourceType==='podcast'?'Podcast':'board task'} page — edit it there to change this row.` : '';
           return `<div class="del-row${dRowClass(r, dToday, dWk)}" data-open-delivery="${r.id}">
             <div class="del-row-top">
+              ${(canEdit && !r.sourceType) ? `<input type="checkbox" class="del-tick" data-tick-delivery="${escapeAttr(r.id)}" ${r.status === 'delivered' ? 'checked' : ''} title="Tick when delivered" aria-label="Delivered">` : ''}
               <span class="ddate">${r.date ? escapeHtml(fmtDayLabel(r.date)) : '—'}</span>
               <span class="del-item">${escapeHtml(r.item||'')}</span>
               ${r.sourceType ? `<span class="del-synced" title="${escapeAttr(syncedTitle)}">↻ ${r.sourceType==='podcast'?'Podcast':'Task'}</span>` : ''}
@@ -9410,6 +9422,7 @@
               <span class="del-status ${escapeAttr(r.status||'notstarted')}">${escapeHtml(statusMeta.label)}</span>
               ${dChipHtml(r, dToday, dWk)}
               ${dOwnersHtml(r)}
+              ${hSafeUrl(r.link) ? `<a class="hs-link" href="${escapeAttr(hSafeUrl(r.link))}" target="_blank" rel="noopener noreferrer">Link ↗</a>` : ((deliveryLinkReady && canEdit) ? `<button type="button" class="del-linkchip" data-add-link="${escapeAttr(r.id)}">+ Link</button>` : '')}
             </div>
           </div>`;
         }).join('')}
@@ -9439,9 +9452,22 @@
     });
     resultsEl.querySelectorAll('[data-open-delivery]').forEach(row => {
       row.addEventListener('click', (e) => {
-        if(e.target.closest('[data-delete-delivery]')) return;
+        if(e.target.closest('[data-delete-delivery], [data-tick-delivery], a')) return;
         const item = deliveryItems.find(x=>x.id===row.getAttribute('data-open-delivery'));
         if(item) openDeliveryModal(item);
+        if(item && e.target.closest('[data-add-link]')) document.getElementById('d_link').focus();
+      });
+    });
+    // Tick = delivered. Un-tick puts it back to Not started. Items made from the Task board or Podcast tab are
+    // updated there instead (they have no tick box).
+    resultsEl.querySelectorAll('[data-tick-delivery]').forEach(cb => {
+      cb.addEventListener('click', e => e.stopPropagation());
+      cb.addEventListener('change', () => {
+        if(!canEdit){ cb.checked = !cb.checked; return; }
+        const id = cb.getAttribute('data-tick-delivery');
+        const status = cb.checked ? 'delivered' : 'notstarted';
+        deliveryCol().doc(id).update({status}).catch(() => { cb.checked = !cb.checked; });
+        tasksCol().doc('spawn_del_' + id).update({status: deliveryStatusToTaskStatus(status)}).catch(()=>{});
       });
     });
     resultsEl.querySelectorAll('[data-delete-delivery]').forEach(btn => {
@@ -9481,6 +9507,8 @@
     document.getElementById('d_graphics').value = item ? (item.graphics||'') : '';
     document.getElementById('d_status').value = item && item.status ? item.status : 'notstarted';
     document.getElementById('d_notes').value = item ? (item.notes||'') : '';
+    document.getElementById('deliveryLinkField').style.display = deliveryLinkReady ? '' : 'none';
+    document.getElementById('d_link').value = item ? (item.link||'') : '';
     // "Add more tasks" only makes sense while adding fresh -- same rule as the Add task modal's
     // own "+ Add another task" (see openTaskModal/updateRecurRowVisibility).
     document.getElementById('deliveryExtraTasksList').innerHTML = '';
@@ -9589,6 +9617,7 @@
       status: document.getElementById('d_status').value,
       notes: document.getElementById('d_notes').value.trim(),
     };
+    if(deliveryLinkReady) base.link = hSafeUrl(document.getElementById('d_link').value) || null;
     {
       const prevDel = editingDeliveryId ? deliveryItems.find(x => x.id === editingDeliveryId) : null;
       stampAssign(base, prevDel ? prevDel.owners : [], base.owners, base.title || base.item || (selectedDeliveryCategories[0] || 'a delivery item'));
@@ -9807,6 +9836,7 @@
         probeRecurStart();
         probeTaskFiles();
         probeTaskCat();
+        probeDeliveryLink();
         pushRefresh();
         teamActivityCol().doc(email).get()
           .then(snap => { priorLastSeenAt = snap.exists ? (snap.data().lastActive || null) : null; })
