@@ -1398,6 +1398,7 @@
       <button type="button" data-mtmode="overdue">Overdue</button>
     </div>
     <input type="search" class="arc-search" id="mtSearch" placeholder="Search my tasks" aria-label="Search tasks">
+    <button class="btn-primary" id="mtAddBtn" style="margin-left:auto;">+ Add task</button>
   </div>
   <div class="mt-people" id="mtPeople" hidden></div>
   <div class="report-summary" id="mtSummary"></div>
@@ -4408,6 +4409,11 @@
   }, true);
 
   document.getElementById('addTaskBtn').addEventListener('click', () => openTaskModal(null));
+  // From My tasks the new task starts out assigned to you (change or add owners as usual).
+  document.getElementById('mtAddBtn').addEventListener('click', () => {
+    openTaskModal(null);
+    if(currentUserName){ selectedOwners = [currentUserName]; updateOwnersBtnLabel(); }
+  });
 
   // "Mine only" filters the board itself (and so the Download too), and is remembered on this device.
   (function(){
