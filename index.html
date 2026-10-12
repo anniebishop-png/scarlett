@@ -804,6 +804,28 @@
   @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .hr-bar i{background:var(--gold);} }
   .hr-bar.won i{background:var(--st-done-dot);} .hr-bar.lost i{background:var(--hs-overdue);} .hr-bar.parked i{background:#C9A227;}
   .hr-bar-row.muted{opacity:.55;}
+  .hr-bar-row.val{grid-template-columns:104px 1fr 64px;}
+  .hr-bar-row.val .lbl .cnt{font-weight:500; color:var(--ink-muted); margin-left:4px;}
+  .ho-toolbar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:0 0 10px;}
+  .ho-toolbar input[type=search]{flex:1 1 220px; min-width:200px; max-width:340px;}
+  .ho-toolbar select{max-width:190px;}
+  .ho-summary{font-size:12.5px; color:var(--ink-2); margin:0 0 10px;}
+  .ho-wrap{background:var(--surface); border:1px solid var(--hairline); border-radius:14px; overflow-x:auto;}
+  .ho-table{width:100%; min-width:1000px; border-collapse:collapse; font-size:12.5px;}
+  .ho-table th{text-align:left; padding:9px 10px; background:var(--surface-2); color:var(--ink-muted); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid var(--hairline); white-space:nowrap; cursor:pointer; user-select:none;}
+  .ho-table th:hover{color:var(--ink);}
+  .ho-table th.ho-x{cursor:default; width:34px;}
+  .ho-table td{padding:8px 10px; border-bottom:1px solid var(--hairline); vertical-align:middle;}
+  .ho-table th.num, .ho-table td.num{text-align:right; font-variant-numeric:tabular-nums;}
+  .ho-table tbody tr{cursor:pointer;}
+  .ho-table tbody tr:hover td{background:var(--surface-2);}
+  .ho-table tbody tr:last-child td{border-bottom:none;}
+  .ho-name{font-weight:700; color:var(--ink);}
+  .ho-sub{font-size:11px; color:var(--ink-muted); font-weight:500;}
+  .ho-next{max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .ho-pager{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; font-size:12.5px; color:var(--ink-2);}
+  .ho-pager-ctl{display:inline-flex; flex-wrap:wrap; align-items:center; gap:10px;}
+  .ho-pager-ctl select{margin-left:6px;}
   .hr-note{font-size:12px; color:var(--ink-2); margin-top:10px; line-height:1.5;}
   .hr-table{width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums;}
   .hr-table th{color:var(--ink-muted); font-weight:700; text-align:right; padding:6px 8px; border-bottom:1px solid var(--hairline);}
@@ -1472,24 +1494,27 @@
     <button class="btn-primary" id="addHustleBtn" style="margin-left:auto;">+ Add opportunity</button>
   </div>
   <div class="hs-notice" id="hustleNotice" hidden></div>
+  <div id="hustleSetup" hidden></div>
   <div class="shows-hint" id="hustlePermNote" style="margin:0 0 12px; font-size:12px;" hidden>You are seeing the opportunities you own. Management can see the whole pipeline.</div>
   <div id="hustleOppsView" hidden>
     <div id="hustleOwnerCards"></div>
-    <div class="report-controls">
-      <div class="segmented" id="hustleStageTabs"></div>
-      <div class="segmented" id="hustleSortTabs">
-        <button type="button" data-sort="due" class="active" title="Soonest next action first">Due date</button>
-        <button type="button" data-sort="name">Name</button>
-        <button type="button" data-sort="touched" title="Longest since anyone touched it first">Last touched</button>
-        <button type="button" data-sort="owner">Person</button>
-      </div>
-      <span id="hustleOwnerChip"></span>
+    <div class="ho-toolbar">
+      <div class="segmented" id="hoYears" aria-label="Pipeline year"></div>
+      <input type="search" id="hoSearch" placeholder="Search name or contact" autocomplete="off" aria-label="Search opportunities">
+      <select id="hoOwner" aria-label="Owner"></select>
+      <select id="hoStage" aria-label="Stage"></select>
+      <select id="hoDivision" aria-label="Division"></select>
+      <select id="hoService" aria-label="Service"></select>
+      <select id="hoClient" aria-label="Client type"></select>
+      <button type="button" class="btn-ghost" id="hoClear" hidden>Clear filters</button>
     </div>
-    <div id="hustleResults"></div>
+    <div class="ho-summary" id="hoSummary"></div>
+    <div id="hoTable"></div>
+    <div class="ho-pager" id="hoPager"></div>
   </div>
   <div id="hustleActionsView" hidden></div>
   <div id="hustleDashboardView"></div>
-  <footer class="note">New-business pipeline — prospects through won/lost, by stage. No pricing shown here.</footer>
+  <footer class="note">New-business pipeline — prospects through won/lost, by stage. Values are in euro and only show for the opportunities you can see.</footer>
 </div>
 
 <div class="app" id="deliveryApp" style="display:none;">
@@ -1966,6 +1991,12 @@
         </div>
         <div class="field"><label>Expected close <span class="hs-req">(month, optional)</span></label><select id="h_expectedClose"></select></div>
       </div>
+      <div id="h_valueWrap" hidden>
+        <div class="field-row">
+          <div class="field"><label>Value <span class="hs-req">(€, optional)</span></label><input id="h_value" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 25000" autocomplete="off"></div>
+          <div class="field"><label>Pipeline year</label><select id="h_pipelineYear"></select></div>
+        </div>
+      </div>
       <div class="field-row">
         <div class="field"><label>Division</label>
           <select id="h_division">
@@ -2303,8 +2334,7 @@
   let hustleOpportunities = []; // new-business pipeline, loaded when that page is open
   let unsubHustle = null;
   let editingHustleId = null;
-  let hustleStageFilter = null; // one of HUSTLE_STAGES, or null for all
-  let hustleSortBy = 'due';     // 'due' (soonest next action), 'name', 'touched' (stalest first) or 'owner' (grouped by person)
+  let hustleStageFilter = null; // one of HUSTLE_STAGES, '__live', or null for all
   let selectedDisciplines = []; // disciplines checked in the open hustle-opportunity form
   let deliveryItems = [];    // client deliverables/contract-fulfillment tracker, loaded when that page is open
   let unsubDelivery = null;
@@ -7652,7 +7682,7 @@
   let hsNextCtx = null;            // {id, mode:'done'|'set'} for the next-step prompt
   let hsSnoozeId = null;
   let hClientType = '', hLog = [];   // working copies for the open edit form
-  let hrPeriod = 'ytd', hrOwner = '', hrShowAllStale = false;   // Reports filters
+  let hrPeriod = 'ytd', hrOwner = '', hrYear = '', hrShowAllStale = false;   // Reports filters
 
   function hOpen(op){ return HUSTLE_OPEN.includes(op.stage); }
   function hToday(){ return toDateStr(new Date()); }
@@ -7734,6 +7764,7 @@
   function subscribeHustle(){
     if(unsubHustle) unsubHustle();
     if(!db){ renderHustleAll(); return; }
+    if(!hValueChecked) probeHustleValue().then(() => renderHustleAll());
     unsubHustle = hustleCol().onSnapshot(snap => {
       hustleOpportunities = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
       hustleOpportunities.sort((a,b) => (a.opportunity||'').localeCompare(b.opportunity||''));
@@ -7747,13 +7778,12 @@
     document.getElementById('hustleOppsView').hidden = hustleView !== 'opportunities';
     document.getElementById('hustleActionsView').hidden = hustleView !== 'actions';
     document.getElementById('hustleDashboardView').hidden = hustleView !== 'dashboard';
+    renderHustleSetup();
     document.querySelectorAll('#hustleViewTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-view') === hustleView));
     if(hustleView === 'actions'){ renderHustleActions(); return; }
     if(hustleView === 'dashboard'){ renderHustleDashboard(); return; }
     renderHustleOwnerCards();
-    renderHustleOwnerChip();
-    renderHustleStageTabs();
-    renderHustle();
+    renderHustleOpps();
   }
 
   function renderHustleOwnerCards(){
@@ -7779,64 +7809,16 @@
       btn.addEventListener('click', () => {
         const n = btn.getAttribute('data-owner-card');
         hustleOwnerFilter = hustleOwnerFilter === n ? null : n;
+        hoPage = 0;
         renderHustleAll();
       });
     });
   }
 
-  function renderHustleOwnerChip(){
-    const el = document.getElementById('hustleOwnerChip');
-    if(!hustleOwnerFilter){ el.innerHTML = ''; return; }
-    el.innerHTML = `<span class="hs-filter-chip">Showing: ${escapeHtml(hustleOwnerFilter)} <button type="button" aria-label="Clear owner filter" id="hustleOwnerClear">×</button></span>`;
-    document.getElementById('hustleOwnerClear').addEventListener('click', () => { hustleOwnerFilter = null; renderHustleAll(); });
-  }
-
-  function hustleRowHtml(op){
-    const stageMeta = HUSTLE_STAGE_META[op.stage] || HUSTLE_STAGE_META['1. Prospect'];
-    const metaBits = [op.division, op.service, (op.discipline||[]).join(', '), op.contact ? 'Contact: ' + op.contact : ''].filter(Boolean).join(' · ');
-    const windowBits = [op.start, op.end].filter(Boolean).join(' – ');
-    const today = hToday(), wk = hWeekEnd();
-    const open = hOpen(op);
-    let rowCls = '', dueChip = '';
-    if(op.nextActionDate){
-      const f = hFmtDate(op.nextActionDate);
-      if(hIsOverdue(op, today)){ rowCls = ' overdue'; dueChip = `<span class="hs-chip overdue">Overdue · due ${escapeHtml(f)}</span>`; }
-      else if(hIsDueWeek(op, today, wk)){ rowCls = ' dueweek'; dueChip = `<span class="hs-chip soon">Due ${escapeHtml(f)}</span>`; }
-      else dueChip = `<span class="hs-chip">Due ${escapeHtml(f)}</span>`;
-    } else if(open){
-      dueChip = `<span class="hs-chip warn">No next action set</span>`;
-    }
-    const days = hDaysSince(op.updated_at);
-    const touched = open && days !== null ? `<span class="hs-muted">Last touched ${escapeHtml(hAgo(days))}</span>${hIsStale(op) ? '<span class="hs-chip warn">Stale</span>' : ''}` : '';
-    const reason = (op.stage === '6. Lost' || op.stage === '7. Parked') && op.closedReason ? `<span class="hs-muted">Reason: ${escapeHtml(op.closedReason.toLowerCase())}</span>` : '';
-    return `<div class="hs-row${rowCls}" data-open-hustle="${op.id}">
-      <div class="hs-row-top">
-        <span class="hs-stage ${stageMeta.cls}">${escapeHtml(stageMeta.short)}</span>
-        ${canEdit ? (op.owner
-          ? `<span class="hs-owner assign-hit" data-assign-hustle="${escapeAttr(op.id)}" role="button" tabindex="0" title="Click to change the owner" style="color:${ownerColor(op.owner)}">${escapeHtml(initials(op.owner))}</span>`
-          : `<span class="assign-add assign-hit" data-assign-hustle="${escapeAttr(op.id)}" role="button" tabindex="0">+ Assign</span>`)
-          : (op.owner ? `<span class="hs-owner" style="color:${ownerColor(op.owner)}">${escapeHtml(initials(op.owner))}</span>` : '')}
-        ${op.clientType ? `<span class="hs-muted">${escapeHtml(op.clientType === 'Existing' ? 'Existing client' : 'New')}</span>` : ''}
-        <button class="hs-del-btn" data-delete-hustle="${op.id}" title="Delete this opportunity">×</button>
-      </div>
-      <div class="hs-title">${escapeHtml(op.opportunity||'(untitled)')}</div>
-      ${metaBits ? `<div class="hs-meta">${escapeHtml(metaBits)}</div>` : ''}
-      <div class="hs-row-bottom">
-        ${op.nextAction ? `<span class="hs-next"><b>Next:</b> ${escapeHtml(op.nextAction)}</span>` : ''}
-        ${dueChip}
-        ${touched}
-        ${reason}
-        ${windowBits ? `<span class="hs-window">${escapeHtml(windowBits)}</span>` : ''}
-        ${op.engage ? `<span class="hs-engage">Engage ${escapeHtml(op.engage)}</span>` : ''}
-        ${op.expectedClose && hOpen(op) ? `<span class="hs-muted">Expected close ${escapeHtml(hFmtMonth(op.expectedClose))}</span>` : ''}
-        ${hSafeUrl(op.proposalLink) ? `<a class="hs-link" href="${escapeAttr(hSafeUrl(op.proposalLink))}" target="_blank" rel="noopener noreferrer">Proposal ↗</a>` : ''}
-      </div>
-    </div>`;
-  }
   function bindHustleRowEvents(container, list){
     container.querySelectorAll('[data-open-hustle]').forEach(row => {
       row.addEventListener('click', (e) => {
-        if(e.target.closest('[data-delete-hustle], a')) return;
+        if(e.target.closest('[data-delete-hustle], [data-assign-hustle], a')) return;
         const op = list.find(x=>x.id===row.getAttribute('data-open-hustle'));
         if(op) openHustleModal(op);
       });
@@ -7854,81 +7836,235 @@
     });
   }
 
-  function renderHustleStageTabs(){
-    const tabsEl = document.getElementById('hustleStageTabs');
-    const base = hustleOwnerFilter ? hustleOpportunities.filter(o => o.owner === hustleOwnerFilter) : hustleOpportunities;
-    const counts = {};
-    base.forEach(op => { counts[op.stage] = (counts[op.stage]||0) + 1; });
-    const btns = ['<button data-stage="" class="' + (hustleStageFilter ? '' : 'active') + '">All (' + base.length + ')</button>']
-      .concat(HUSTLE_STAGES.map(s => {
-        const meta = HUSTLE_STAGE_META[s];
-        return `<button data-stage="${s}" class="${hustleStageFilter===s?'active':''}">${meta.short} (${counts[s]||0})</button>`;
-      }));
-    tabsEl.innerHTML = btns.join('');
-    tabsEl.querySelectorAll('button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        hustleStageFilter = btn.getAttribute('data-stage') || null;
-        renderHustleStageTabs();
-        renderHustle();
-      });
+  // ---- Opportunities: a spreadsheet-style table for one pipeline year ----
+  // Year switcher, name search and filters work together; headers sort; pages of 50 or 100 rows.
+  // Value (euro) and Pipeline year need two new columns: until those exist (hValueReady) the Value column is hidden
+  // and a pipeline year is worked out from Expected close.
+  const HUSTLE_SQL = 'alter table public."hustleOpportunities"\n  add column if not exists "value" numeric,\n  add column if not exists "pipelineYear" integer;\n\nupdate public."hustleOpportunities"\nset "pipelineYear" = least(\n  greatest(\n    coalesce(nullif(split_part("expectedClose", \'-\', 1), \'\')::int, extract(year from created_at)::int, extract(year from now())::int),\n    extract(year from now())::int),\n  extract(year from now())::int + 2)\nwhere "pipelineYear" is null;\n\nnotify pgrst, \'reload schema\';';
+  let hValueReady = false, hValueChecked = false;
+  function probeHustleValue(){
+    if(!db) return Promise.resolve(false);
+    return hustleCol().where('pipelineYear', '>=', 99999).get()
+      .then(() => { hValueReady = true; hValueChecked = true; return true; })
+      .catch(() => { hValueReady = false; hValueChecked = true; return false; });
+  }
+  function hVal(op){
+    if(op.value === null || op.value === undefined || op.value === '') return null;
+    const n = Number(op.value);
+    return isFinite(n) ? n : null;
+  }
+  function hSum(list){ return list.reduce((s, o) => s + (hVal(o) || 0), 0); }
+  function hEuroFull(n){ return '€' + Math.round(n).toLocaleString('en-IE'); }
+  function hEuro(n){
+    if(n === null || n === undefined) return '—';
+    const t = x => String(Math.round(x * 100) / 100);
+    const a = Math.abs(n);
+    if(a >= 1e6) return '€' + t(n / 1e6) + 'm';
+    if(a >= 1e5) return '€' + Math.round(n / 1e3) + 'k';
+    if(a >= 1e3) return '€' + String(Math.round(n / 100) / 10) + 'k';
+    return '€' + Math.round(n);
+  }
+  // The year a deal belongs to. Set by the Pipeline year field; until then, taken from Expected close, else when it was created.
+  // Kept between this year and two years ahead, so older leftovers sit in the current year.
+  function hYear(op){
+    const cy = new Date().getFullYear();
+    let y = parseInt(op.pipelineYear, 10);
+    if(!y){
+      y = parseInt(String(op.expectedClose || '').split('-')[0], 10);
+      if(!y) y = op.created_at ? new Date(op.created_at).getFullYear() : cy;
+    }
+    return Math.min(Math.max(y, cy), cy + 2);
+  }
+  function renderHustleSetup(){
+    const el = document.getElementById('hustleSetup');
+    const need = hValueChecked && !hValueReady && myRole !== 'member';
+    el.hidden = !need;
+    if(!need){ el.innerHTML = ''; return; }
+    el.innerHTML = `<div class="arc-setup">
+      <h3>One setup step before values and pipeline years work</h3>
+      Opportunities need two new columns (value and pipeline year). Add them once in Supabase:
+      <ol>
+        <li>Open your Scarlett project in Supabase and go to the SQL Editor.</li>
+        <li>Paste this in and press Run:<pre>${escapeHtml(HUSTLE_SQL)}</pre></li>
+        <li>Come back here and press Check again.</li>
+      </ol>
+      <div style="margin-top:10px; display:flex; gap:8px;"><button class="btn-ghost" id="hsCopySqlBtn">Copy SQL</button><button class="btn-ghost" id="hsRecheckBtn">Check again</button></div>
+    </div>`;
+    const btn = document.getElementById('hsCopySqlBtn');
+    btn.addEventListener('click', () => {
+      (navigator.clipboard ? navigator.clipboard.writeText(HUSTLE_SQL) : Promise.reject())
+        .then(() => { btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = 'Copy SQL'; }, 1800); })
+        .catch(() => { btn.textContent = 'Select the text above to copy'; });
+    });
+    document.getElementById('hsRecheckBtn').addEventListener('click', () => { probeHustleValue().then(() => renderHustleAll()); });
+  }
+
+  let hoYear = null, hoQ = '', hoDivision = '', hoService = '', hoClient = '', hoPage = 0, hoPageSize = 50;
+  let hoSort = {key:'due', dir:1};
+  const HO_DIVISIONS = ['HP & Risk', 'Sports Promo'];
+  function hoRows(skipYear){
+    const q = hoQ.trim().toLowerCase();
+    return hustleOpportunities.filter(op => {
+      if(!skipYear && hYear(op) !== hoYear) return false;
+      if(hustleOwnerFilter){
+        if(hustleOwnerFilter === '__none'){ if(op.owner) return false; }
+        else if(op.owner !== hustleOwnerFilter) return false;
+      }
+      if(hustleStageFilter){
+        if(hustleStageFilter === '__live'){ if(!hOpen(op)) return false; }
+        else if(op.stage !== hustleStageFilter) return false;
+      }
+      if(hoDivision && op.division !== hoDivision) return false;
+      if(hoService && op.service !== hoService) return false;
+      if(hoClient && (op.clientType || '') !== hoClient) return false;
+      if(q && !((op.opportunity || '').toLowerCase().includes(q) || (op.contact || '').toLowerCase().includes(q))) return false;
+      return true;
     });
   }
-
-  function hSortRows(rows){
-    const byName = (a,b) => (a.opportunity||'').localeCompare(b.opportunity||'');
-    if(hustleSortBy === 'due'){
-      return rows.slice().sort((a,b) => {
-        const ad = a.nextActionDate || '', bd = b.nextActionDate || '';
-        if(ad && bd && ad !== bd) return ad.localeCompare(bd);
-        if(ad && !bd) return -1;
-        if(!ad && bd) return 1;
-        return byName(a,b);
-      });
-    }
-    if(hustleSortBy === 'touched'){
-      const t = op => op.updated_at ? new Date(op.updated_at).getTime() : Infinity;
-      return rows.slice().sort((a,b) => {
-        const at = t(a), bt = t(b);
-        if(at !== bt) return at < bt ? -1 : 1;
-        return byName(a,b);
-      });
-    }
-    return rows.slice().sort(byName);
+  function hoCompare(){
+    const get = {
+      name: o => (o.opportunity || '').toLowerCase() || null,
+      owner: o => o.owner || null,
+      stage: o => o.stage || null,
+      division: o => o.division || null,
+      service: o => o.service || null,
+      value: o => hVal(o),
+      next: o => (o.nextAction || '').toLowerCase() || null,
+      due: o => o.nextActionDate || null,
+      close: o => o.expectedClose || null,
+    }[hoSort.key] || (o => null);
+    const byName = (a, b) => (a.opportunity || '').localeCompare(b.opportunity || '');
+    return (a, b) => {
+      const av = get(a), bv = get(b);
+      if(av === null && bv === null) return byName(a, b);
+      if(av === null) return 1;      // empty cells always sink to the bottom
+      if(bv === null) return -1;
+      const c = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
+      return c ? c * hoSort.dir : byName(a, b);
+    };
   }
-
-  function renderHustle(){
-    const resultsEl = document.getElementById('hustleResults');
+  function hoRowHtml(op, cols){
+    const meta = HUSTLE_STAGE_META[op.stage] || HUSTLE_STAGE_META['1. Prospect'];
+    const today = hToday(), wk = hWeekEnd();
+    let due = '';
+    if(op.nextActionDate){
+      const f = escapeHtml(hFmtDate(op.nextActionDate));
+      if(hIsOverdue(op, today)) due = `<span class="hs-chip overdue">${f}</span>`;
+      else if(hIsDueWeek(op, today, wk)) due = `<span class="hs-chip soon">${f}</span>`;
+      else due = `<span class="hs-chip">${f}</span>`;
+    } else if(hOpen(op)){
+      due = `<span class="hs-chip warn">None set</span>`;
+    }
+    const owner = canEdit
+      ? (op.owner
+        ? `<span class="hs-owner assign-hit" data-assign-hustle="${escapeAttr(op.id)}" role="button" tabindex="0" title="${escapeAttr(op.owner)} (click to change)" style="color:${ownerColor(op.owner)}">${escapeHtml(initials(op.owner))}</span>`
+        : `<span class="assign-add assign-hit" data-assign-hustle="${escapeAttr(op.id)}" role="button" tabindex="0">+ Assign</span>`)
+      : (op.owner ? `<span class="hs-owner" style="color:${ownerColor(op.owner)}" title="${escapeAttr(op.owner)}">${escapeHtml(initials(op.owner))}</span>` : '');
+    const v = hVal(op);
+    return `<tr data-open-hustle="${escapeAttr(op.id)}">
+      <td><div class="ho-name">${escapeHtml(op.opportunity || '(untitled)')}</div>${op.contact ? `<div class="ho-sub">${escapeHtml(op.contact)}</div>` : ''}</td>
+      <td>${owner}</td>
+      <td><span class="hs-stage ${meta.cls}">${escapeHtml(meta.short)}</span></td>
+      <td>${escapeHtml(op.division || '')}</td>
+      <td>${escapeHtml(op.service || '')}</td>
+      ${hValueReady ? `<td class="num">${v === null ? '<span class="hs-muted">—</span>' : escapeHtml(hEuroFull(v))}</td>` : ''}
+      <td class="ho-next" title="${escapeAttr(op.nextAction || '')}">${escapeHtml(op.nextAction || '')}</td>
+      <td>${due}</td>
+      <td>${escapeHtml(hFmtMonth(op.expectedClose))}</td>
+      <td class="ho-x">${canEdit ? `<button class="hs-del-btn" data-delete-hustle="${escapeAttr(op.id)}" title="Delete this opportunity" aria-label="Delete this opportunity">×</button>` : ''}</td>
+    </tr>`;
+  }
+  function renderHustleOpps(){
+    const cy = new Date().getFullYear();
+    if(hoYear === null) hoYear = cy;
+    const tableEl = document.getElementById('hoTable');
     if(!db){
-      resultsEl.innerHTML = '<div class="report-empty">Hustle pipeline needs the shared board connection — open this board from claude.ai to use it.</div>';
+      tableEl.innerHTML = '<div class="report-empty">Hustle pipeline needs the shared board connection. Open this board from claude.ai to use it.</div>';
       return;
     }
-    let rows = hustleOpportunities.slice();
-    if(hustleStageFilter) rows = rows.filter(op => op.stage === hustleStageFilter);
-    if(hustleOwnerFilter) rows = rows.filter(op => op.owner === hustleOwnerFilter);
+    // year switcher, with how many deals each year holds under the other filters
+    const base = hoRows(true);
+    const yearsEl = document.getElementById('hoYears');
+    yearsEl.innerHTML = [cy, cy + 1, cy + 2].map(y => {
+      const n = base.filter(o => hYear(o) === y).length;
+      return `<button type="button" data-y="${y}" class="${hoYear === y ? 'active' : ''}">${y} (${n})</button>`;
+    }).join('');
+    yearsEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { hoYear = Number(b.getAttribute('data-y')); hoPage = 0; renderHustleOpps(); }));
+    // filter dropdowns (the search box is left alone so typing never loses focus)
+    const fill = (id, html, val) => { const s = document.getElementById(id); s.innerHTML = html; s.value = val; if(s.value !== val) s.value = ''; };
+    const owners = hOwnerList();
+    const anyNone = hustleOpportunities.some(o => !o.owner);
+    fill('hoOwner', '<option value="">All owners</option>' + owners.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('') + (anyNone ? '<option value="__none">Unassigned</option>' : ''), hustleOwnerFilter || '');
+    document.getElementById('hoOwner').hidden = myRole === 'member';
+    fill('hoStage', '<option value="">All stages</option><option value="__live">Live (Qualify to Close)</option>' + HUSTLE_STAGES.map(s => `<option value="${s}">${escapeHtml(s)}</option>`).join(''), hustleStageFilter || '');
+    fill('hoDivision', '<option value="">All divisions</option>' + HO_DIVISIONS.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join(''), hoDivision);
+    fill('hoService', '<option value="">All services</option>' + HUSTLE_SERVICES.map(s => `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join(''), hoService);
+    fill('hoClient', '<option value="">New and existing</option><option value="New">New clients</option><option value="Existing">Existing clients</option>', hoClient);
+    const filtered = !!(hustleOwnerFilter || hustleStageFilter || hoDivision || hoService || hoClient || hoQ.trim());
+    document.getElementById('hoClear').hidden = !filtered;
+
+    const rows = hoRows(false).sort(hoCompare());
+    const pages = Math.max(1, Math.ceil(rows.length / hoPageSize));
+    if(hoPage >= pages) hoPage = pages - 1;
+    if(hoPage < 0) hoPage = 0;
+    const from = hoPage * hoPageSize;
+    const shown = rows.slice(from, from + hoPageSize);
+
+    const withVal = rows.filter(o => hVal(o) !== null).length;
+    document.getElementById('hoSummary').innerHTML = `${rows.length} opportunit${rows.length === 1 ? 'y' : 'ies'} in ${hoYear}`
+      + (hValueReady ? ` · <b>${escapeHtml(hEuroFull(hSum(rows)))}</b> total value${rows.length - withVal ? ` · ${rows.length - withVal} without a value` : ''}` : '');
+
     if(!rows.length){
-      resultsEl.innerHTML = '<div class="report-empty">No opportunities here yet — add one to get started.</div>';
+      tableEl.innerHTML = '<div class="report-empty">' + (filtered ? 'Nothing matches those filters in ' + hoYear + '.' : 'No opportunities in ' + hoYear + ' yet. Add one to get started.') + '</div>';
+      document.getElementById('hoPager').innerHTML = '';
       return;
     }
-    if(hustleSortBy === 'owner'){
-      const byOwner = new Map();
-      rows.forEach(op => { const k = op.owner || 'Unassigned'; if(!byOwner.has(k)) byOwner.set(k, []); byOwner.get(k).push(op); });
-      const ownerKeys = [...byOwner.keys()].sort((a,b) => {
-        if(a==='Unassigned') return 1;
-        if(b==='Unassigned') return -1;
-        return a.localeCompare(b);
-      });
-      resultsEl.innerHTML = ownerKeys.map(owner => {
-        const items = byOwner.get(owner).slice().sort((a,b) => (a.opportunity||'').localeCompare(b.opportunity||''));
-        return `<div class="report-group">
-          <div class="report-group-head"><span>${escapeHtml(owner)}</span><span>${items.length} opportunit${items.length===1?'y':'ies'}</span></div>
-          ${items.map(hustleRowHtml).join('')}
-        </div>`;
-      }).join('');
-    } else {
-      resultsEl.innerHTML = `<div class="report-group">` + hSortRows(rows).map(hustleRowHtml).join('') + `</div>`;
-    }
-    bindHustleRowEvents(resultsEl, hustleOpportunities);
+    const cols = [['name','Opportunity',''],['owner','Owner',''],['stage','Stage',''],['division','Division',''],['service','Service','']]
+      .concat(hValueReady ? [['value', 'Value (€)', 'num']] : [])
+      .concat([['next','Next action',''],['due','Due',''],['close','Expected close','']]);
+    const head = cols.map(c => {
+      const on = hoSort.key === c[0];
+      return `<th class="${c[2]}" data-sort-key="${c[0]}" aria-sort="${on ? (hoSort.dir > 0 ? 'ascending' : 'descending') : 'none'}" tabindex="0" title="Sort by ${escapeAttr(c[1].toLowerCase())}">${escapeHtml(c[1])}<span class="ho-arrow">${on ? (hoSort.dir > 0 ? ' ▲' : ' ▼') : ''}</span></th>`;
+    }).join('') + '<th class="ho-x"></th>';
+    tableEl.innerHTML = `<div class="ho-wrap"><table class="ho-table"><thead><tr>${head}</tr></thead><tbody>${shown.map(op => hoRowHtml(op, cols)).join('')}</tbody></table></div>`;
+    tableEl.querySelectorAll('th[data-sort-key]').forEach(th => {
+      const go = () => {
+        const k = th.getAttribute('data-sort-key');
+        if(hoSort.key === k) hoSort.dir = -hoSort.dir; else hoSort = {key: k, dir: k === 'value' ? -1 : 1};
+        hoPage = 0; renderHustleOpps();
+      };
+      th.addEventListener('click', go);
+      th.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } });
+    });
+    bindHustleRowEvents(tableEl, hustleOpportunities);
+
+    const pagerEl = document.getElementById('hoPager');
+    pagerEl.innerHTML = `<span>Showing ${from + 1} to ${from + shown.length} of ${rows.length}</span>
+      <span class="ho-pager-ctl">
+        <label>Rows per page <select id="hoPageSize"><option value="50">50</option><option value="100">100</option></select></label>
+        <button type="button" class="btn-ghost" id="hoPrev" ${hoPage === 0 ? 'disabled' : ''}>Previous</button>
+        <span>Page ${hoPage + 1} of ${pages}</span>
+        <button type="button" class="btn-ghost" id="hoNext" ${hoPage >= pages - 1 ? 'disabled' : ''}>Next</button>
+      </span>`;
+    document.getElementById('hoPageSize').value = String(hoPageSize);
+    document.getElementById('hoPageSize').addEventListener('change', e => { hoPageSize = Number(e.target.value) || 50; hoPage = 0; renderHustleOpps(); });
+    document.getElementById('hoPrev').addEventListener('click', () => { hoPage--; renderHustleOpps(); });
+    document.getElementById('hoNext').addEventListener('click', () => { hoPage++; renderHustleOpps(); });
   }
+  (function bindHoToolbar(){
+    const on = (id, ev, fn) => document.getElementById(id).addEventListener(ev, fn);
+    on('hoSearch', 'input', e => { hoQ = e.target.value; hoPage = 0; renderHustleOpps(); });
+    on('hoOwner', 'change', e => { hustleOwnerFilter = e.target.value || null; hoPage = 0; renderHustleAll(); });
+    on('hoStage', 'change', e => { hustleStageFilter = e.target.value || null; hoPage = 0; renderHustleOpps(); });
+    on('hoDivision', 'change', e => { hoDivision = e.target.value; hoPage = 0; renderHustleOpps(); });
+    on('hoService', 'change', e => { hoService = e.target.value; hoPage = 0; renderHustleOpps(); });
+    on('hoClient', 'change', e => { hoClient = e.target.value; hoPage = 0; renderHustleOpps(); });
+    on('hoClear', 'click', () => {
+      hustleOwnerFilter = null; hustleStageFilter = null; hoDivision = ''; hoService = ''; hoClient = ''; hoQ = ''; hoPage = 0;
+      document.getElementById('hoSearch').value = '';
+      renderHustleAll();
+    });
+  })();
 
   // ---- Actions: every outstanding next action, from any week, by owner and timeframe ----
   // One next action per live deal (Qualify, Present, Close). Owner and timeframe filters work together
@@ -8096,7 +8232,7 @@
     const owners = hOwnerList();
     const scoped = myRole === 'member';
     if(scoped) hrOwner = currentUserName || '';
-    const list = hrOwner ? hustleOpportunities.filter(o => o.owner === hrOwner) : hustleOpportunities;
+    const list = hustleOpportunities.filter(o => (!hrOwner || o.owner === hrOwner) && (!hrYear || hYear(o) === Number(hrYear)));
     const today = hToday();
     const live = list.filter(hOpen);
     const won = list.filter(o => o.stage === '5. Won' && hrInPeriod(o));
@@ -8149,21 +8285,47 @@
         + '<div class="hr-note">Rule of thumb: anything here either gets a next action this week or moves to Parked with a reason.</div>'
       : '<div class="hr-note">Nothing has gone quiet. Every live deal was touched in the last 30 days.</div>';
 
+    // ---- euro value panels (only once the value column exists). Each panel is {title, sub, html}; add more here later. ----
+    const valuePanels = [], valueTiles = [];
+    if(hValueReady){
+      const nv = o => hVal(o) !== null;
+      const liveVal = hSum(live), wonVal = hSum(won);
+      valueTiles.push(`<div class="hs-tile"><b>${escapeHtml(hEuro(liveVal))}</b><span>Live pipeline value · ${live.filter(nv).length} of ${live.length} live deals have a value</span></div>`);
+      valueTiles.push(`<div class="hs-tile"><b>${escapeHtml(hEuro(wonVal))}</b><span>Won value · ${won.filter(nv).length} of ${won.length} won deals · ${escapeHtml(periodLabel)}</span></div>`);
+      const stageRows = [['Prospect', list.filter(o => o.stage === '1. Prospect'), 'muted', ''], ['Qualify', list.filter(o => o.stage === '2. Qualify'), '', ''], ['Present', list.filter(o => o.stage === '3. Present'), '', ''], ['Close', list.filter(o => o.stage === '4. Close'), '', ''], ['Won', won, '', 'won'], ['Lost', lost, '', 'lost'], ['Parked', parked, '', 'parked']];
+      const smax = Math.max(1, ...stageRows.map(r => hSum(r[1])));
+      const stageHtml = stageRows.map(r => `<div class="hr-bar-row val ${r[2]}"><span class="lbl">${r[0]}<span class="cnt">${r[1].length}</span></span><span class="hr-bar ${r[3]}"><i style="width:${Math.round(100 * hSum(r[1]) / smax)}%"></i></span><span class="num">${escapeHtml(hEuro(hSum(r[1])))}</span></div>`).join('');
+      const noVal = live.length - live.filter(nv).length;
+      valuePanels.push({title: 'Value by stage', sub: 'Prospect to Close are as of today. Won, Lost and Parked follow the period.', html: stageHtml + (noVal ? `<div class="hr-note">${noVal} live deal${noVal === 1 ? ' has' : 's have'} no value yet, so the real total is higher.</div>` : '')});
+      const divs = HO_DIVISIONS.concat(['Unspecified']);
+      const divRows = divs.map(d => {
+        const m = o => d === 'Unspecified' ? !o.division : o.division === d;
+        return {d, live: hSum(live.filter(m)), won: hSum(won.filter(m)), lost: hSum(lost.filter(m)), n: live.filter(m).length + won.filter(m).length + lost.filter(m).length};
+      }).filter(r => r.n);
+      valuePanels.push({title: 'Value by division', sub: 'Live is as of today. Won and Lost follow the period.',
+        html: divRows.length ? `<table class="hr-table"><thead><tr><th>Division</th><th>Live</th><th>Won</th><th>Lost</th></tr></thead><tbody>`
+          + divRows.map(r => `<tr><td>${escapeHtml(r.d)}</td><td>${escapeHtml(hEuro(r.live))}</td><td>${escapeHtml(hEuro(r.won))}</td><td>${escapeHtml(hEuro(r.lost))}</td></tr>`).join('') + `</tbody></table>` : '<div class="hr-note">No deals match.</div>'});
+    }
+    const valuePanelsHtml = valuePanels.map(v => `<div class="hr-panel"><h3>${escapeHtml(v.title)}</h3><p class="hr-sub">${escapeHtml(v.sub)}</p>${v.html}</div>`).join('');
+
     el.innerHTML = `
       <div class="hr-filters">
         <label>Period <select id="hrPeriod">
           <option value="ytd">${new Date().getFullYear()} year to date</option><option value="quarter">This quarter</option>
           <option value="12m">Last 12 months</option><option value="all">All time</option></select></label>
+        <label>Pipeline year <select id="hrYear"><option value="">All years</option>${[0,1,2].map(i => { const y = new Date().getFullYear() + i; return `<option value="${y}">${y}</option>`; }).join('')}</select></label>
         <label${scoped ? ' style="display:none;"' : ''}>Owner <select id="hrOwner"><option value="">Everyone</option>${owners.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('')}</select></label>
         <span class="hs-muted">Won, Lost and Parked follow the period. Live counts are always as of today.</span>
       </div>
       <div class="hs-tiles">
+        ${valueTiles.join('')}
         <div class="hs-tile"><b>${live.length}</b><span>Live pipeline (Qualify to Close)</span></div>
         <div class="hs-tile"><b>${winRate === null ? '—' : winRate + '%'}</b><span>Win rate · ${won.length} won · ${lost.length} lost · parked excluded</span></div>
         <div class="hs-tile due"><b>${quarter.length}</b><span>Expected to close this quarter</span></div>
         <div class="hs-tile over"><b>${attn}</b><span>Needs attention · ${overdue.length} overdue · ${stale.length} stale 30d+</span></div>
       </div>
       <div class="hr-grid">
+        ${valuePanelsHtml}
         <div class="hr-panel"><h3>Where the pipeline sits</h3><p class="hr-sub">${escapeHtml(periodLabel)}. Prospect is shown for scale but kept out of the funnel.</p>${funnelHtml}</div>
         <div class="hr-panel"><h3>Why we lost or parked</h3><p class="hr-sub">From the Closed reason field. ${closedList.length} closed in this period.</p>${reasonsHtml}</div>
         <div class="hr-panel"><h3>Won and lost by service</h3><p class="hr-sub">Parked is excluded from win rate.</p>${svcHtml}</div>
@@ -8171,6 +8333,8 @@
       </div>`;
     document.getElementById('hrPeriod').value = hrPeriod;
     document.getElementById('hrOwner').value = hrOwner;
+    document.getElementById('hrYear').value = hrYear;
+    document.getElementById('hrYear').addEventListener('change', e => { hrYear = e.target.value; renderHustleDashboard(); });
     document.getElementById('hrPeriod').addEventListener('change', e => { hrPeriod = e.target.value; renderHustleDashboard(); });
     document.getElementById('hrOwner').addEventListener('change', e => { hrOwner = e.target.value; renderHustleDashboard(); });
     const tg = document.getElementById('hrStaleToggle');
@@ -8267,17 +8431,31 @@
   }
   document.getElementById('h_stage').addEventListener('change', applyHustleStageRules);
 
+  function hFillValueFields(op){
+    document.getElementById('h_valueWrap').hidden = !hValueReady;
+    if(!hValueReady) return;
+    const cy = new Date().getFullYear();
+    const y = op ? hYear(op) : (hoYear || cy);
+    const years = [cy, cy + 1, cy + 2];
+    if(!years.includes(y)) years.push(y);
+    const sel = document.getElementById('h_pipelineYear');
+    sel.innerHTML = years.map(v => `<option value="${v}">${v}</option>`).join('');
+    sel.value = String(y);
+    const v = op ? hVal(op) : null;
+    document.getElementById('h_value').value = v === null ? '' : String(v);
+  }
   function openHustleModal(op){
     editingHustleId = op ? op.id : null;
     document.getElementById('hustleModalTitle').textContent = op ? 'Edit opportunity' : 'Add opportunity';
     document.getElementById('h_opportunity').value = op ? (op.opportunity||'') : '';
-    document.getElementById('h_stage').value = op && op.stage ? op.stage : (hustleStageFilter || '1. Prospect');
+    document.getElementById('h_stage').value = op && op.stage ? op.stage : (hustleStageFilter && HUSTLE_STAGES.includes(hustleStageFilter) ? hustleStageFilter : '1. Prospect');
     hFillOwnerSelect();
-    document.getElementById('h_owner').value = op ? (op.owner||'') : (myRole === 'member' ? (currentUserName || '') : (hustleOwnerFilter || ''));
+    document.getElementById('h_owner').value = op ? (op.owner||'') : (myRole === 'member' ? (currentUserName || '') : (hustleOwnerFilter && hustleOwnerFilter !== '__none' ? hustleOwnerFilter : ''));
     document.getElementById('h_nextAction').value = op ? (op.nextAction||'') : '';
     document.getElementById('h_nextActionDate').value = op ? (op.nextActionDate||'') : '';
     document.getElementById('h_closedReason').value = op ? (op.closedReason||'') : '';
     hFillExpectedClose(op ? (op.expectedClose||'') : '');
+    hFillValueFields(op);
     hClientType = op ? (op.clientType||'') : ''; hPaintSeg('h_clientSeg', hClientType);
     document.getElementById('h_contact').value = op ? (op.contact||'') : '';
     document.getElementById('h_proposalLink').value = op ? (op.proposalLink||'') : '';
@@ -8330,6 +8508,12 @@
       engage: document.getElementById('h_engage').value,
     };
     if(!data.opportunity){ closeHustleModal(); return; }
+    if(hValueReady){
+      const vs = document.getElementById('h_value').value;
+      const vn = vs === '' ? null : Number(vs);
+      data.value = (vn !== null && isFinite(vn) && vn >= 0) ? vn : null;
+      data.pipelineYear = parseInt(document.getElementById('h_pipelineYear').value, 10) || null;
+    }
     const before = editingHustleId ? hustleOpportunities.find(x => x.id === editingHustleId) : null;
     // stageChangedAt feeds "Won / Lost this year": stamp it when a deal is created or its stage actually changes.
     if(!before || before.stage !== stage) data.stageChangedAt = new Date().toISOString();
@@ -8374,15 +8558,6 @@
     if(nextDate) document.getElementById('f_date').value = nextDate;
     document.getElementById('f_division').value = 'Business Development';
     if(owner){ selectedOwners = [owner]; updateOwnersBtnLabel(); }
-  });
-
-  // Sort toggle: alphabetical by opportunity name, or grouped by owner
-  document.querySelectorAll('#hustleSortTabs button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      hustleSortBy = btn.getAttribute('data-sort');
-      document.querySelectorAll('#hustleSortTabs button').forEach(b => b.classList.toggle('active', b===btn));
-      renderHustle();
-    });
   });
 
   // populate the Owner / Start / End / Engage selects once, up front
