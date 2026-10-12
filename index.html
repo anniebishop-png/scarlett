@@ -5234,8 +5234,25 @@
         subscribeMineBadge();
         try{ renderGroups(); }catch(_){}
       }
+      subscribeHustleNav();
       if(currentAppPage === 'hustle') renderHustleAll();
     }).catch(() => { myRole = null; });
+  }
+  // The Hustle button is hidden for members who own no opportunities (their page would be empty). It comes back
+  // as soon as a manager assigns them one, or they add their own from a different route. Managers always see it.
+  let unsubHustleNav = null, hustleNavHas = null;
+  function applyHustleNav(){
+    const hide = myRole === 'member' && hustleNavHas === false;
+    document.querySelectorAll('[data-nav="hustle"]').forEach(b => { b.style.display = hide ? 'none' : ''; });
+  }
+  function subscribeHustleNav(){
+    if(unsubHustleNav){ unsubHustleNav(); unsubHustleNav = null; }
+    hustleNavHas = null;
+    if(myRole !== 'member' || !currentUserName || !db){ applyHustleNav(); return; }
+    unsubHustleNav = hustleCol().where('owner','==', currentUserName).onSnapshot(snap => {
+      hustleNavHas = snap.docs.length > 0;
+      applyHustleNav();
+    }, () => {});
   }
   // Count badge on every "My tasks" button: how many open tasks are assigned to me across all
   // weeks, turning red when any are overdue. It is what tells people the page has something in it.
