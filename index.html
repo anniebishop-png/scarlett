@@ -552,6 +552,10 @@
   .checkbox-row{display:flex; align-items:center; gap:8px; margin-bottom:13px;}
   .checkbox-row input{width:auto;}
   .checkbox-row label{font-size:12.5px; font-weight:600; color:var(--ink); text-transform:none; letter-spacing:normal;}
+  .recur-days{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
+  .recur-days[hidden]{display:none;}
+  .rd-chip{border:1px solid var(--hairline-strong); background:var(--surface-2); color:var(--ink-2); border-radius:999px; padding:5px 12px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer;}
+  .rd-chip.on{background:var(--gold); border-color:var(--gold-deep); color:#11283C;}
   .recur-note{display:flex; align-items:center; gap:8px; color:var(--ink-muted); font-size:12px; margin:-4px 0 13px;}
   .extra-date-row{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
   .extra-date-row input{flex:1;}
@@ -1590,9 +1594,17 @@
         <label for="f_repeat">Repeat</label>
         <select id="f_repeat">
           <option value="none">Does not repeat</option>
+          <option value="weekdays" id="repeatWeekdaysOpt">Every weekday (Mon to Fri)</option>
           <option value="weekly" id="repeatWeeklyOpt">Weekly on this day</option>
+          <option value="biweekly" id="repeatBiweeklyOpt">Every 2 weeks on this day</option>
+          <option value="custom" id="repeatCustomOpt">Choose days of the week...</option>
           <option value="monthly" id="repeatMonthlyOpt">Monthly on this day</option>
+          <option value="nthday" id="repeatNthOpt">Monthly on the same weekday</option>
+          <option value="lastday" id="repeatLastOpt">Monthly on the last weekday</option>
         </select>
+        <div class="recur-days" id="recurDays" hidden>
+          <button type="button" class="rd-chip" data-d="0">Mon</button><button type="button" class="rd-chip" data-d="1">Tue</button><button type="button" class="rd-chip" data-d="2">Wed</button><button type="button" class="rd-chip" data-d="3">Thu</button><button type="button" class="rd-chip" data-d="4">Fri</button><button type="button" class="rd-chip" data-d="5">Sat</button><button type="button" class="rd-chip" data-d="6">Sun</button>
+        </div>
       </div>
       <div class="recur-note" id="recurNote" style="display:none;"></div>
       <div class="field"><label>Task title</label><input list="titleOptions" id="f_title" required placeholder="Pick a common one or type your own"></div>
@@ -4064,17 +4076,43 @@
   function updateRepeatLabels(){
     const wk = document.getElementById('repeatWeeklyOpt'), mo = document.getElementById('repeatMonthlyOpt');
     if(!wk || !mo) return;
+    const bw = document.getElementById('repeatBiweeklyOpt'), nth = document.getElementById('repeatNthOpt'), lst = document.getElementById('repeatLastOpt');
     const ds = document.getElementById('f_date').value;
     if(ds){
-      wk.textContent = 'Weekly on ' + new Date(ds + 'T00:00:00').toLocaleDateString('en-US', {weekday:'long'}) + 's';
+      const wkd = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', {weekday:'long'});
+      wk.textContent = 'Weekly on ' + wkd + 's';
+      bw.textContent = 'Every 2 weeks on ' + wkd + 's';
       const dom = Number(ds.slice(8, 10));
       mo.textContent = 'Monthly on the ' + ordinalDay(dom) + (dom > 28 ? ' (or the last day of shorter months)' : '');
+      const n = Math.ceil(dom / 7);
+      nth.textContent = 'Monthly on the ' + (['first','second','third','fourth','fifth'][n - 1]) + ' ' + wkd;
+      lst.textContent = 'Monthly on the last ' + wkd;
+      nth.hidden = nth.disabled = !recurStartCol || n > 4;   // a "fifth" weekday is not in every month; offer "last" instead
     } else {
       wk.textContent = 'Weekly on this day'; mo.textContent = 'Monthly on this day';
+      bw.textContent = 'Every 2 weeks on this day';
+      nth.textContent = 'Monthly on the same weekday'; lst.textContent = 'Monthly on the last weekday';
     }
-    // Monthly repeats need the startWeek column (see recurStartCol); without it, don't offer them.
-    mo.hidden = !recurStartCol; mo.disabled = !recurStartCol;
+    // Everything beyond plain weekly needs the startWeek column (see recurStartCol); without it, don't offer them.
+    [mo, bw, lst, document.getElementById('repeatWeekdaysOpt'), document.getElementById('repeatCustomOpt')].forEach(o => { o.hidden = !recurStartCol; o.disabled = !recurStartCol; });
+    if(!ds) nth.hidden = nth.disabled = !recurStartCol;
+    syncRecurDays();
   }
+  // "Choose days of the week": a row of day chips under the dropdown, the start date's day pre-ticked.
+  function syncRecurDays(){
+    const row = document.getElementById('recurDays'); if(!row) return;
+    const on = document.getElementById('f_repeat').value === 'custom';
+    if(on && row.hidden){
+      const ds = document.getElementById('f_date').value;
+      const di = ds ? dayOfWeekIndex(ds) : -1;
+      row.querySelectorAll('.rd-chip').forEach(b => b.classList.toggle('on', Number(b.dataset.d) === di));
+    }
+    row.hidden = !on;
+  }
+  document.getElementById('f_repeat').addEventListener('change', syncRecurDays);
+  document.getElementById('recurDays').addEventListener('click', e => {
+    const b = e.target.closest('.rd-chip'); if(b) b.classList.toggle('on');
+  });
   document.getElementById('f_date').addEventListener('input', updateRepeatLabels);
   document.getElementById('f_date').addEventListener('change', updateRepeatLabels);
   function updateRecurRowVisibility(){
@@ -4086,9 +4124,12 @@
       recurRow.style.display = 'none';
       recurNote.style.display = 'flex';
       const tpl = recurring.find(x => x.id === t.recurringId);
-      recurNote.textContent = (tpl && monthlyInfo(tpl))
+      const rk = recurKind(tpl);
+      recurNote.textContent = rk === 'monthly'
         ? '↻ Part of a monthly series — editing this only changes this month\'s task.'
-        : '↻ Part of a weekly series — editing this only changes this week\'s task.';
+        : rk === 'weekly'
+          ? '↻ Part of a weekly series — editing this only changes this week\'s task.'
+          : '↻ Part of a repeating series (' + recurSummary(tpl) + ') — editing this only changes this one task.';
       stopBtn.style.display = 'inline-block';
       return;
     }
@@ -4131,7 +4172,12 @@
       dateISO: row.querySelector('.extra-task-date').value,
     })).filter(r => r.title && r.dateISO) : [];
     const repeatMode = (!editingTaskId && !extraTasks.length) ? document.getElementById('f_repeat').value : 'none';
-    const makeRecurring = repeatMode === 'weekly' || repeatMode === 'monthly';
+    const makeRecurring = ['weekly','monthly','biweekly','weekdays','custom','nthday','lastday'].includes(repeatMode);
+    let recurPicked = [];
+    if(repeatMode === 'custom'){
+      recurPicked = Array.from(document.querySelectorAll('#recurDays .rd-chip.on')).map(b => Number(b.dataset.d));
+      if(!recurPicked.length){ alert('Pick at least one day for the repeat.'); return; }
+    }
 
     if(!editingTaskId && !dupMode && data.title === 'Graphics - Full'){
       spawnFullGraphicsPackage(data);
@@ -4166,9 +4212,18 @@
         // know about monthly repeats then skips this template instead of repeating it every week.
         template.type = 'monthly:' + Number(dateISO.slice(8, 10)) + ':' + data.weekId;
         template.startWeek = '9999-12-31';
+      } else if(repeatMode === 'biweekly' && recurStartCol){
+        template.type = 'biweekly:' + data.weekId;
+        template.startWeek = '9999-12-31';
+      } else if((repeatMode === 'weekdays' || repeatMode === 'custom') && recurStartCol){
+        template.type = 'days:' + (repeatMode === 'weekdays' ? '0,1,2,3,4' : recurPicked.slice().sort().join(',')) + ':' + dateISO;
+        template.startWeek = '9999-12-31';
+      } else if((repeatMode === 'nthday' || repeatMode === 'lastday') && recurStartCol){
+        template.type = 'nthday:' + (repeatMode === 'lastday' ? 'L' : Math.ceil(Number(dateISO.slice(8, 10)) / 7)) + ':' + dayOfWeekIndex(dateISO) + ':' + data.weekId;
+        template.startWeek = '9999-12-31';
       } else if(recurStartCol) template.startWeek = data.weekId;
       recurCol().add(template).then(ref => {
-        const occId = 'rt_' + ref.id + '_' + data.weekId;
+        const occId = recurOccId(Object.assign({id: ref.id}, template), data.weekId, dateISO);
         const occData = Object.assign({}, data, {recurringId: ref.id, order: tasks.length, calendarSynced:false});
         return tasksCol().doc(occId).set(occData).then(() => {
           if(data.weekId === currentWeekId){ occData.id = occId; tasks.push(occData); renderGroups(); }
@@ -5017,28 +5072,75 @@
     }
     return null;
   }
+  // Other repeat patterns are also stored in template.type (no new column), and every one parks startWeek in
+  // the far future so older open copies of Scarlett skip them:
+  //   biweekly:<first week>            every 2nd week, on template.dayOfWeek
+  //   days:<0-6,0-6..>:<first date>    several days each week (0 = Monday), from the first date on
+  //   nthday:<1-5|L>:<0-6>:<first week> the Nth (or last) weekday of each month
+  function recurKind(r){
+    const t = (r && r.type) || '';
+    if(/^monthly:/.test(t)) return 'monthly';
+    if(/^biweekly:/.test(t)) return 'biweekly';
+    if(/^days:/.test(t)) return 'days';
+    if(/^nthday:/.test(t)) return 'nthday';
+    return 'weekly';
+  }
+  function recurSummary(r){
+    const t = (r && r.type) || '', dn = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], full = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    let m;
+    if((m = /^biweekly:/.exec(t))) return 'every 2 weeks on ' + (full[r.dayOfWeek] || 'the same day') + 's';
+    if((m = /^days:([0-6](?:,[0-6])*):/.exec(t))){
+      const ix = m[1].split(',').map(Number);
+      return ix.join(',') === '0,1,2,3,4' ? 'every weekday' : ix.map(i => dn[i]).join(', ');
+    }
+    if((m = /^nthday:([1-5L]):([0-6]):/.exec(t))) return 'the ' + (m[1] === 'L' ? 'last' : ['first','second','third','fourth','fifth'][Number(m[1]) - 1]) + ' ' + full[Number(m[2])] + ' of each month';
+    return '';
+  }
+  // The dates in one week (Monday weekId) that this repeat lands on.
+  function recurDatesInWeek(r, weekId){
+    const t = (r && r.type) || '';
+    let m;
+    if((m = /^monthly:(\d{1,2}):(\d{4}-\d{2}-\d{2})$/.exec(t))){
+      if(weekId < m[2]) return [];
+      const d = monthlyDateInWeek(weekId, Number(m[1]));
+      return d ? [d] : [];
+    }
+    if((m = /^biweekly:(\d{4}-\d{2}-\d{2})$/.exec(t))){
+      if(weekId < m[1]) return [];
+      const diff = Math.round((new Date(weekId + 'T00:00:00') - new Date(m[1] + 'T00:00:00')) / 604800000);
+      return diff % 2 === 0 ? [addDays(weekId, r.dayOfWeek)] : [];
+    }
+    if((m = /^days:([0-6](?:,[0-6])*):(\d{4}-\d{2}-\d{2})$/.exec(t))){
+      return m[1].split(',').map(i => addDays(weekId, Number(i))).filter(d => d >= m[2]);
+    }
+    if((m = /^nthday:([1-5L]):([0-6]):(\d{4}-\d{2}-\d{2})$/.exec(t))){
+      if(weekId < m[3]) return [];
+      const d = addDays(weekId, Number(m[2]));
+      const y = Number(d.slice(0, 4)), mth = Number(d.slice(5, 7)), day = Number(d.slice(8, 10));
+      const ok = m[1] === 'L' ? (day + 7 > new Date(y, mth, 0).getDate()) : (Math.ceil(day / 7) === Number(m[1]));
+      return ok ? [d] : [];
+    }
+    if(r.startWeek && weekId < r.startWeek) return [];
+    return [addDays(weekId, r.dayOfWeek)];
+  }
+  // "days" repeats can land on several days of one week, so their copies are keyed by date; the rest by week.
+  function recurOccId(r, weekId, dateISO){
+    return 'rt_' + r.id + '_' + (recurKind(r) === 'days' ? dateISO : weekId);
+  }
   function ensureRecurringOccurrences(){
     if(!canEdit || !db) return;
     recurring.filter(r => r.active !== false).forEach(r => {
-      const mo = monthlyInfo(r);
-      let occDate;
-      if(mo){
-        if(currentWeekId < mo.start) return;                      // monthly repeat hasn't started yet
-        occDate = monthlyDateInWeek(currentWeekId, mo.dom);
-        if(!occDate) return;                                      // no matching day in this week
-      } else {
-        if(r.startWeek && currentWeekId < r.startWeek) return;   // repeat hasn't started yet
-        occDate = addDays(currentWeekId, r.dayOfWeek);
-      }
-      const occId = 'rt_' + r.id + '_' + currentWeekId;
-      if(tasks.some(t => t.id === occId)) return;
-      const occData = {
-        client: r.client, dateISO: occDate, title: r.title,
-        tag: r.tag||'', division: r.division||'', owners: (r.owners||[]).slice(),
-        status: r.status||'notstarted', notes: r.notes||'', weekId: currentWeekId,
-        recurringId: r.id, order: 90, calendarSynced: false,
-      };
-      tasksCol().doc(occId).create(occData).catch(()=>{});
+      recurDatesInWeek(r, currentWeekId).forEach(occDate => {
+        const occId = recurOccId(r, currentWeekId, occDate);
+        if(tasks.some(t => t.id === occId)) return;
+        const occData = {
+          client: r.client, dateISO: occDate, title: r.title,
+          tag: r.tag||'', division: r.division||'', owners: (r.owners||[]).slice(),
+          status: r.status||'notstarted', notes: r.notes||'', weekId: currentWeekId,
+          recurringId: r.id, order: 90, calendarSynced: false,
+        };
+        tasksCol().doc(occId).create(occData).catch(()=>{});
+      });
     });
   }
   function goToWeek(id){
