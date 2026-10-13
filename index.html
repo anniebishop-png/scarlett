@@ -998,6 +998,11 @@
   .notif-bell{position:relative; display:flex; align-items:center; justify-content:center; width:34px; height:34px;
     border-radius:9px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:#fff; cursor:pointer;}
   .notif-bell:hover{background:rgba(255,255,255,.12);}
+  .backup-btn{display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 10px; border-radius:8px; border:1px solid rgba(255,255,255,.25);
+    background:transparent; color:inherit; font:inherit; font-size:12px; font-weight:600; cursor:pointer;}
+  .backup-btn:hover{background:rgba(255,255,255,.12);}
+  .backup-btn[hidden]{display:none;}
+  .backup-btn:disabled{opacity:.6; cursor:progress;}
   .notif-badge{position:absolute; top:-6px; right:-6px; min-width:17px; height:17px; padding:0 4px; border-radius:9px;
     background:var(--overdue); color:#fff; font-size:10.5px; font-weight:700; line-height:17px; text-align:center;
     box-shadow:0 0 0 2px var(--navy);}
@@ -1221,6 +1226,10 @@
       <button type="button" class="wx-chip" id="wxChip" aria-haspopup="true" title="Weather"></button>
       <div class="tz-line" id="tzLine" aria-label="Local times"></div>
     </div>
+    <button type="button" class="backup-btn" id="backupBtn" hidden title="Download a backup of all Scarlett data">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Backup</span>
+    </button>
     <div class="notif-wrap" id="notifWrap">
       <button type="button" class="notif-bell" id="notifBellBtn" aria-label="Your due items" title="Your due items">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -10468,6 +10477,70 @@
 
   // Only @equiratings.com addresses get in. This is the friendly front door; the real lock is the
   // database rule in Supabase that refuses everyone else's reads and writes.
+  // ---- Backup (Annie and Geogs only) ----
+  // One click downloads every table as a single JSON file. The button is only shown for these two sign-ins;
+  // that is a convenience, not a lock, because every signed-in teammate can already read these tables.
+  const BACKUP_EMAILS = ['annie.bishop@equiratings.com', 'ruairi@equiratings.com'];
+  // pushSubscriptions (device push keys) is left out on purpose: it is not needed to rebuild Scarlett.
+  const BACKUP_TABLES = ['tasks','weeks','shows','recurringTasks','deliveryItems','contractClients','clientOps',
+    'clientProfiles','hustleOpportunities','podcastEpisodes','teamActivity','changeLog','appUsers'];
+  let backupRunning = false;
+  function applyBackupAccess(){
+    const btn = document.getElementById('backupBtn');
+    if(!btn) return;
+    btn.hidden = !(currentUserEmail && BACKUP_EMAILS.includes(String(currentUserEmail).toLowerCase()));
+  }
+  async function backupFetchTable(name){
+    const key = {contractClients:'client', appUsers:'email', clientProfiles:'name'}[name] || 'id';
+    const head = await supabaseClient.from(name).select(key, {count:'exact', head:true});
+    if(head.error) throw head.error;
+    const expected = head.count;
+    const rows = [];
+    for(let from = 0; ; from += 1000){
+      const r = await supabaseClient.from(name).select('*').order(key, {ascending:true}).range(from, from + 999);
+      if(r.error) throw r.error;
+      rows.push(...r.data);
+      if(r.data.length < 1000) break;
+    }
+    return {rows, expected};
+  }
+  async function runBackup(){
+    if(backupRunning) return;
+    const btn = document.getElementById('backupBtn');
+    backupRunning = true; btn.disabled = true;
+    const label = btn.querySelector('span');
+    const out = {app:'Scarlett', exportedAt:new Date().toISOString(), exportedBy:currentUserEmail, tables:{}, counts:{}, problems:[]};
+    try{
+      for(let i = 0; i < BACKUP_TABLES.length; i++){
+        const t = BACKUP_TABLES[i];
+        label.textContent = (i + 1) + '/' + BACKUP_TABLES.length;
+        try{
+          const {rows, expected} = await backupFetchTable(t);
+          out.tables[t] = rows; out.counts[t] = rows.length;
+          if(expected != null && expected !== rows.length) out.problems.push(t + ': expected ' + expected + ' rows but got ' + rows.length);
+        }catch(e){
+          out.problems.push(t + ': ' + ((e && e.message) || e));
+        }
+      }
+      const blob = new Blob([JSON.stringify(out)], {type:'application/json'});
+      const d = new Date(); const p = n => String(n).padStart(2, '0');
+      const fname = 'scarlett-backup-' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + '.json';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      const total = Object.values(out.counts).reduce((s, n) => s + n, 0);
+      showToast(out.problems.length
+        ? 'Backup saved, but ' + out.problems.length + ' table(s) had a problem: ' + out.problems[0]
+        : 'Backup saved: ' + total.toLocaleString() + ' records across ' + Object.keys(out.counts).length + ' tables');
+    }catch(e){
+      showToast('Backup failed: ' + ((e && e.message) || e));
+    }finally{
+      label.textContent = 'Backup'; btn.disabled = false; backupRunning = false;
+    }
+  }
+  document.getElementById('backupBtn').addEventListener('click', runBackup);
+
   function isTeamEmail(email){ return /^[^@\s]+@equiratings\.com$/i.test(String(email || '').trim()); }
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if(session && !isTeamEmail(session.user && session.user.email)){
@@ -10485,6 +10558,7 @@
       subscribeMineBadge();
       const email = session.user && session.user.email;
       currentUserEmail = email || null;
+      applyBackupAccess();
       if(email) loadMyRole(email);
       if(email && !notifSessionStarted){
         notifSessionStarted = true;
