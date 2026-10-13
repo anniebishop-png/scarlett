@@ -1191,6 +1191,11 @@
   .pr-cmp th{vertical-align:top; white-space:normal; min-width:150px;} .pr-cmp th:first-child{min-width:220px;}
   .pr-cmp tr.pr-diff td{background:color-mix(in srgb, var(--gold) 12%, var(--surface));}
   .pr-cmp tr.pr-tot td{font-weight:800; border-top:2px solid var(--hairline-strong);}
+  .pr-rpanel{background:var(--surface); border:1px solid var(--hairline); border-left:4px solid var(--st-inprogress-dot); border-radius:12px; padding:12px 16px; margin-bottom:12px; font-size:13px; display:flex; flex-direction:column; gap:6px;}
+  .pr-rpanel.ok{border-left-color:var(--st-done-dot);} .pr-rpanel.warn{border-left-color:var(--gold-deep);}
+  .pr-rform{display:flex; gap:8px; flex-wrap:wrap; align-items:center;} .pr-rform input, .pr-rform select{padding:8px 10px; border:1px solid var(--hairline-strong); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; font-size:13px; min-width:0;} .pr-rform input{flex:1 1 220px;}
+  .pr-rlog{margin:0 0 12px; line-height:1.7;}
+  .pr-reviewbar{display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--st-review-bg); color:var(--st-review-text); border-radius:10px; padding:10px 14px; font-size:13px; font-weight:700; margin-bottom:12px;}
 </style>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10685,6 +10690,7 @@
     const ok = prIsManager();
     document.querySelectorAll('[data-nav="pricing"]').forEach(b => { b.style.display = ok ? '' : 'none'; });
     if(!ok && currentAppPage === 'pricing') switchApp('board');
+    startPrBadge();
   }
   function subscribePricing(){
     unsubscribePricing();
@@ -10701,6 +10707,8 @@
       watch('pricingSettings', rows => { const r = rows.find(x => x.id === 'rates'); if(r) prRates = {stdRate: +r.stdRate || prRates.stdRate, seniorRate: +r.seniorRate || prRates.seniorRate}; })
     ];
     loadPrEvents();
+    db.collection('appUsers').where('role', '==', 'manager').get().then(snap => { prManagers = snap.docs.map(d => ({email: String(d.data().email || d.id), name: d.data().name || d.id})); }).catch(() => {});
+    prCol('pricingQuotes').where('reviewStatus', '==', 'pending').get().then(() => { prReviewReady = true; prRender(); }).catch(() => { prReviewReady = false; });
   }
   function unsubscribePricing(){ prUnsubs.forEach(u => { try{ u(); }catch(e){} }); prUnsubs = []; }
   function loadPrEvents(){
@@ -10711,6 +10719,60 @@
       prEvents = [...seen.values()].sort((a, b) => String(a.weekId).localeCompare(String(b.weekId)));
       const dl = prEl('prEventList'); if(dl) dl.innerHTML = prEvents.map(e => `<option value="${escapeAttr(e.name)}"></option>`).join('');
     }).catch(() => {});
+  }
+
+  // ----- review and approval -----
+  // Someone building a quote can send it to another manager. The reviewer approves it or asks for changes with a
+  // comment. An approved quote is locked (only its sales status can change); editing it means saving a new version.
+  let prManagers = [], prReviewReady = false, prBadgeUnsub = null, prBadgeRows = [];
+  const PR_REVIEW_ACT = {sent: 'sent it for review', approved: 'approved it', changes: 'asked for changes'};
+  function prMe(){ return String(currentUserEmail || '').toLowerCase(); }
+  function prLive(){ return (prQ && prQ.id) ? (prQuotes.find(r => r.id === prQ.id) || null) : null; }
+  function prLocked(){ const l = prLive(); return !!(l && l.reviewStatus === 'approved'); }
+  function prReviewPill(r){
+    const m = {pending: ['In review' + (r.reviewerName ? ': ' + r.reviewerName : ''), 'sent'], changes: ['Changes requested', 'lost'], approved: ['Approved' + (r.reviewedBy ? ' by ' + r.reviewedBy : ''), 'won']}[r.reviewStatus];
+    return m ? `<div style="margin-top:4px;"><span class="pr-pill ${m[1]}">${escapeHtml(m[0])}</span></div>` : '';
+  }
+  function startPrBadge(){
+    if(prBadgeUnsub){ prBadgeUnsub(); prBadgeUnsub = null; }
+    prBadgeRows = [];
+    if(!prIsManager() || !db){ updatePrBadge(); return; }
+    prBadgeUnsub = db.collection('pricingQuotes').where('reviewer', '==', prMe()).onSnapshot(snap => {
+      prBadgeRows = snap.docs.map(d => d.data()).filter(r => r.reviewStatus === 'pending'); updatePrBadge();
+    }, () => { prBadgeRows = []; updatePrBadge(); });
+  }
+  function updatePrBadge(){
+    document.querySelectorAll('[data-nav="pricing"]').forEach(b => {
+      let badge = b.querySelector('.nav-badge');
+      if(!prBadgeRows.length){ if(badge) badge.remove(); b.title = ''; return; }
+      if(!badge){ badge = document.createElement('span'); b.appendChild(badge); }
+      badge.className = 'nav-badge'; badge.textContent = prBadgeRows.length;
+      b.title = prBadgeRows.length + ' quote' + (prBadgeRows.length === 1 ? '' : 's') + ' waiting for your review';
+    });
+  }
+  function prReviewPanel(){
+    if(!prReviewReady) return '';
+    const live = prLive(), st = live && live.reviewStatus, me = prMe(), fmt = iso => (iso || '').slice(0, 10);
+    const isReviewer = !!(live && String(live.reviewer || '').toLowerCase() === me);
+    let h = '';
+    if(st === 'approved'){
+      h += `<div class="pr-rpanel ok"><b>Approved by ${escapeHtml(live.reviewedBy || 'a manager')}</b> on ${fmt(live.reviewedAt)}${live.reviewNote ? ': ' + escapeHtml(live.reviewNote) : ''}<div class="pr-sub">This quote is locked. You can still change its status. To edit it, save it as a new version, which needs a new review.</div></div>`;
+    } else if(st === 'pending' && isReviewer){
+      h += `<div class="pr-rpanel warn"><b>${escapeHtml(live.reviewRequestedBy || 'Someone')} asked you to review this quote</b> (${fmt(live.reviewRequestedAt)})${live.reviewNote ? `<div>${escapeHtml(live.reviewNote)}</div>` : ''}
+        <div class="pr-rform"><input id="prReviewNote" placeholder="Comment (needed if you ask for changes)"><button class="btn-primary" data-pr-act="approve">Approve</button><button class="btn-ghost" data-pr-act="reqchanges">Request changes</button></div></div>`;
+    } else if(st === 'pending'){
+      h += `<div class="pr-rpanel"><b>Waiting for review by ${escapeHtml(live.reviewerName || live.reviewer)}</b> (sent by ${escapeHtml(live.reviewRequestedBy || 'someone')} on ${fmt(live.reviewRequestedAt)}). You can keep editing until it is approved.</div>`;
+    } else if(st === 'changes'){
+      h += `<div class="pr-rpanel warn"><b>${escapeHtml(live.reviewedBy || 'The reviewer')} asked for changes</b> (${fmt(live.reviewedAt)})${live.reviewNote ? `<div>${escapeHtml(live.reviewNote)}</div>` : ''}<div class="pr-sub">Update the quote, then send it for review again.</div></div>`;
+    }
+    if(st !== 'approved' && !(st === 'pending' && isReviewer)){
+      const opts = prManagers.filter(m => m.email.toLowerCase() !== me);
+      h += `<div class="pr-rpanel"><b>${st === 'changes' ? 'Send for review again' : (st === 'pending' ? 'Send to someone else' : 'Send for review')}</b>
+        ${opts.length ? `<div class="pr-rform"><select id="prRvSel" aria-label="Reviewer"><option value="">Choose a reviewer</option>${opts.map(m => `<option value="${escapeAttr(m.email.toLowerCase())}" ${live && live.reviewer === m.email.toLowerCase() ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}</select><input id="prRvMsg" placeholder="Message for the reviewer (optional)"><button class="btn-primary" data-pr-act="sendreview">Send for review</button></div>` : '<div class="pr-sub">No other managers to send it to.</div>'}</div>`;
+    }
+    const log = (live && live.reviewLog) || [];
+    if(log.length) h += `<div class="pr-sub pr-rlog">${log.slice().reverse().map(e => `${fmt(e.at)} · <b>${escapeHtml(e.by || '')}</b> ${PR_REVIEW_ACT[e.action] || escapeHtml(e.action || '')}${e.to ? ' to ' + escapeHtml(e.to) : ''}${e.note ? ': ' + escapeHtml(e.note) : ''}`).join('<br>')}</div>`;
+    return h;
   }
 
   // ----- quote maths -----
@@ -10808,6 +10870,7 @@
     if(prCmp) return prRenderCompare(body);
     const q = prQuery.trim().toLowerCase();
     const match = r => {
+      if(prStatusF === 'review') return r.reviewStatus === 'pending' && String(r.reviewer || '').toLowerCase() === prMe();
       const st = r.status || 'draft';
       if(prStatusF === 'live' ? !(st === 'draft' || st === 'sent') : (prStatusF !== 'all' && st !== prStatusF)) return false;
       return !q || [r.title, r.client, r.event, r.packageName, r.createdBy].join(' ').toLowerCase().includes(q);
@@ -10816,6 +10879,7 @@
     prQuotes.forEach(r => { const k = prKeyOf(r); if(!seen.has(k)) seen.set(k, prGroupList(r)); });
     const groups = [...seen.values()].map(full => ({full, vis: full.filter(match)})).filter(g => g.vis.length)
       .sort((a, b) => String(b.full.reduce((m, r) => r.updatedAt > m ? r.updatedAt : m, '')).localeCompare(String(a.full.reduce((m, r) => r.updatedAt > m ? r.updatedAt : m, ''))));
+    const mineN = prQuotes.filter(r => r.reviewStatus === 'pending' && String(r.reviewer || '').toLowerCase() === prMe()).length;
     const sum = st => prQuotes.filter(r => st.includes(r.status || 'draft')).reduce((a, r) => a + (+r.total || 0), 0);
     let rows = '';
     groups.forEach(g => {
@@ -10828,7 +10892,7 @@
           <td class="c">${g.vis.length > 1 ? `<input type="checkbox" data-pr-cmp="${escapeAttr(r.id)}" ${prCmpPick.has(r.id) ? 'checked' : ''} aria-label="Pick ${escapeAttr(r.title)} to compare">` : ''}</td>
           <td><b>${prVersionOf(r)}</b></td>
           <td><b>${escapeHtml(r.title)}</b>${r.packageName ? `<div class="pr-sub">${escapeHtml(r.packageName)}</div>` : ''}</td>
-          <td><span class="pr-pill ${escapeAttr(r.status || 'draft')}">${escapeHtml(PR_STATUS[r.status] || 'Draft')}</span></td>
+          <td><span class="pr-pill ${escapeAttr(r.status || 'draft')}">${escapeHtml(PR_STATUS[r.status] || 'Draft')}</span>${prReviewPill(r)}</td>
           <td class="r"><b>${prMoney(r.total)}</b></td><td class="r">${(+r.totalStd || 0) + (+r.totalSenior || 0)}h</td>
           <td class="pr-sub">${escapeHtml((r.updatedAt || '').slice(0, 10))}${r.createdBy ? ' · ' + escapeHtml(r.createdBy) : ''}</td></tr>`;
       });
@@ -10837,10 +10901,11 @@
       <div class="report-controls">
         <input type="search" class="pc-search" id="prSearch" placeholder="Search quotes" value="${escapeAttr(prQuery)}" autocomplete="off" aria-label="Search quotes">
         <div class="segmented" id="prStatusTabs">
-          ${[['live', 'Open'], ['won', 'Won'], ['lost', 'Lost'], ['all', 'All']].map(([k, l]) => `<button type="button" data-prstatus="${k}" class="${prStatusF === k ? 'active' : ''}">${l}</button>`).join('')}
+          ${[['live', 'Open'], ['won', 'Won'], ['lost', 'Lost'], ['all', 'All']].concat(prReviewReady ? [['review', 'Needs my review' + (mineN ? ' (' + mineN + ')' : '')]] : []).map(([k, l]) => `<button type="button" data-prstatus="${k}" class="${prStatusF === k ? 'active' : ''}">${l}</button>`).join('')}
         </div>
         <button class="btn-primary" data-pr-act="new" style="margin-left:auto;">+ New quote</button>
       </div>
+      ${mineN && prStatusF !== 'review' ? `<div class="pr-reviewbar">${mineN} quote${mineN === 1 ? ' is' : 's are'} waiting for your review <button type="button" class="btn-ghost" data-prstatus="review">Show ${mineN === 1 ? 'it' : 'them'}</button></div>` : ''}
       <div class="pr-sums"><span>Open <b>${prMoney(sum(['draft', 'sent']))}</b></span><span>Won <b>${prMoney(sum(['won']))}</b></span><span>${prQuotes.length} quote${prQuotes.length === 1 ? '' : 's'} saved</span></div>
       ${rows ? `<div class="pr-scroll"><table class="pr-table"><thead><tr><th></th><th>Version</th><th>Quote</th><th>Status</th><th class="r">Total</th><th class="r">Hours</th><th>Updated</th></tr></thead><tbody>${rows}</tbody></table></div>
         <div class="pr-sub" style="margin-top:8px;">Quotes for the same client and event are grouped as versions. Tick two or more in a group and press Compare versions, or press it with none ticked to compare them all.</div>`
@@ -10884,13 +10949,14 @@
   function prRenderBuilder(body){
     if(!prQ) prQ = prNewQuote();
     if(!prQ.lines.length && prServices.length) prQ.lines = prLinesFor(null);
-    const q = prQ;
+    const q = prQ, locked = prLocked();
     let lastSec = null, rows = '';
     q.lines.forEach((l, i) => {
       if(l.section !== lastSec){ lastSec = l.section; rows += `<tr class="pr-sec"><td colspan="6">${escapeHtml(l.section || 'Other')}</td></tr>`; }
       rows += prLineRow(l, i);
     });
     body.innerHTML = `
+      ${prReviewPanel()}
       <div class="pr-bhead">
         <div class="field"><label for="prqTitle">Quote title</label><input id="prqTitle" data-pr-q="title" value="${escapeAttr(q.title)}" placeholder="e.g. Bramham 2027 Headline"></div>
         <div class="field-row">
@@ -10913,13 +10979,14 @@
         <div class="pr-warn" id="prWarn"></div>
       </div>
       <div class="pr-actions">
-        <button class="btn-primary" data-pr-act="save">${q.id ? 'Save changes' : 'Save quote'}</button>
-        ${q.id ? '<button class="btn-ghost" data-pr-act="saveas">Save as a new quote</button>' : ''}
+        ${locked ? '<button class="btn-primary" data-pr-act="savestatus">Update status</button><button class="btn-ghost" data-pr-act="saveas">Save as a new version</button>' : `<button class="btn-primary" data-pr-act="save">${q.id ? 'Save changes' : 'Save quote'}</button>
+        ${q.id ? '<button class="btn-ghost" data-pr-act="saveas">Save as a new quote</button>' : ''}`}
         <button class="btn-ghost" data-pr-act="copy">Copy summary</button>
-        <button class="btn-ghost" data-pr-act="clear">Clear</button>
+        ${locked ? '' : '<button class="btn-ghost" data-pr-act="clear">Clear</button>'}
         ${q.id ? '<button class="btn-ghost pr-danger" data-pr-act="delquote">Delete quote</button>' : ''}
       </div>`;
     prRefreshTotals();
+    if(locked){ body.querySelectorAll('.pr-bhead input, .pr-bhead select, .pr-lines input, .pr-custom input, .pr-custom button, #prqNotes, #prqDisc').forEach(el => { el.disabled = true; }); const st = prEl('prqStatus'); if(st) st.disabled = false; }
   }
   function prLineRow(l, i){
     const p = prNum(l.price);
@@ -10951,9 +11018,10 @@
   }
   function prSaveQuote(asNew){
     const q = prQ;
-    if(!q.title.trim()){ prNotice('Give the quote a title first.'); prEl('prqTitle').focus(); return; }
+    if(!asNew && prLocked()){ prNotice('This quote has been approved, so it is locked. Save it as a new version to change it.'); return Promise.resolve(false); }
+    if(!q.title.trim()){ prNotice('Give the quote a title first.'); prEl('prqTitle').focus(); return Promise.resolve(false); }
     const on = q.lines.filter(l => l.on);
-    if(!on.length){ prNotice('Tick at least one service.'); return; }
+    if(!on.length){ prNotice('Tick at least one service.'); return Promise.resolve(false); }
     const t = prTotals(q), now = new Date().toISOString();
     const id = (!asNew && q.id) ? q.id : 'q_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
     const who = currentUserName || currentUserEmail || null;
@@ -10962,11 +11030,12 @@
       createdBy: (!asNew && q.id) ? (q.createdBy || who) : who, createdAt: (!asNew && q.createdAt) || now, updatedAt: now, archivedAt: null,
       lines: on.map(l => ({serviceId: l.custom ? null : l.serviceId, name: l.name, section: l.section, team: l.team || null, qty: +l.qty || 1, price: prNum(l.price),
         std: l.std === undefined ? null : l.std, senior: l.senior === undefined ? null : l.senior, floor: l.floor === undefined ? null : l.floor, billing: l.billing || 'per event', custom: !!l.custom}))};
-    prCol('pricingQuotes').doc(id).set(doc).then(() => {
+    return prCol('pricingQuotes').doc(id).set(doc).then(() => {
       q.id = id; q.createdBy = doc.createdBy; q.createdAt = doc.createdAt;
       prNotice('Quote saved.', true);
       const body = prEl('pricingBody'); if(prTab === 'builder'){ body.dataset.rendered = ''; prRender(); }
-    }).catch(e => prNotice('Could not save the quote: ' + ((e && e.message) || e)));
+      return true;
+    }).catch(e => { prNotice('Could not save the quote: ' + ((e && e.message) || e)); return false; });
   }
   function prSummaryText(){
     const q = prQ, t = prTotals(q), on = q.lines.filter(l => l.on);
@@ -11114,6 +11183,31 @@
       const a = e.target.closest('[data-pr-act]'); if(!a) return;
       const act = a.getAttribute('data-pr-act');
       if(act === 'new'){ prLoadIntoBuilder(prNewQuote()); }
+      else if(act === 'sendreview'){
+        const to = (prEl('prRvSel') || {}).value, msg = ((prEl('prRvMsg') || {}).value || '').trim();
+        if(!to){ prNotice('Choose who should review it.'); return; }
+        prSaveQuote(false).then(ok => {
+          if(!ok) return;
+          const now = new Date().toISOString(), who = currentUserName || currentUserEmail, mgr = prManagers.find(m => m.email.toLowerCase() === to) || {name: to};
+          const live = prLive(), log = ((live && live.reviewLog) || []).concat([{at: now, by: who, action: 'sent', to: mgr.name, note: msg || null}]);
+          return prCol('pricingQuotes').doc(prQ.id).update({reviewStatus: 'pending', reviewer: to, reviewerName: mgr.name, reviewRequestedBy: who, reviewRequestedAt: now, reviewNote: msg || null, reviewLog: log})
+            .then(() => { prNotice('Sent to ' + mgr.name + ' for review.', true); body.dataset.rendered = ''; prRender(); });
+        }).catch(err => prNotice('Could not send it: ' + ((err && err.message) || err)));
+      }
+      else if(act === 'approve' || act === 'reqchanges'){
+        const live = prLive(); if(!live) return;
+        const note = ((prEl('prReviewNote') || {}).value || '').trim();
+        if(act === 'reqchanges' && !note){ prNotice('Add a comment so the sender knows what to change.'); prEl('prReviewNote').focus(); return; }
+        const now = new Date().toISOString(), who = currentUserName || currentUserEmail, appr = act === 'approve';
+        const log = (live.reviewLog || []).concat([{at: now, by: who, action: appr ? 'approved' : 'changes', note: note || null}]);
+        prCol('pricingQuotes').doc(live.id).update({reviewStatus: appr ? 'approved' : 'changes', reviewedBy: who, reviewedAt: now, reviewNote: note || null, reviewLog: log})
+          .then(() => { prNotice(appr ? 'Approved.' : 'Sent back with your comment.', true); body.dataset.rendered = ''; prRender(); })
+          .catch(err => prNotice('Could not save your decision: ' + ((err && err.message) || err)));
+      }
+      else if(act === 'savestatus'){
+        if(!prQ.id) return;
+        prCol('pricingQuotes').doc(prQ.id).update({status: prQ.status, updatedAt: new Date().toISOString()}).then(() => prNotice('Status updated.', true));
+      }
       else if(act === 'compare'){
         const ids = a.getAttribute('data-ids').split(','), picked = ids.filter(id => prCmpPick.has(id));
         prCmp = picked.length >= 2 ? picked : ids; body.dataset.rendered = ''; prRender(); window.scrollTo({top: 0});
