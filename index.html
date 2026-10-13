@@ -3292,9 +3292,20 @@
     const podcastish = names.filter(n => /podcast/i.test(n));
     return podcastish.length === 1 ? podcastish[0] : null;
   }
+  // An episode's Brand finds its client by exact name, or by a short form that fits exactly one contract client
+  // ("Aiken" finds "Aiken Horse Park Foundation"). More than one possible match is left alone rather than guessed.
+  function podcastClientFor(name){
+    const exact = activeDeliveryClientFor(name);
+    if(exact) return exact;
+    const t = (name || '').trim().toLowerCase();
+    if(!t) return null;
+    const pool = Object.keys(LEGACY_CONTRACT_CLIENTS).concat(Object.keys(contractClients).filter(c => contractClients[c] && contractClients[c].length));
+    const hits = [...new Set(pool)].filter(c => c.toLowerCase().indexOf(t + ' ') === 0);
+    return hits.length === 1 ? hits[0] : null;
+  }
   function syncEpisodeToDelivery(id, ep){
     const docId = 'sync_ep_' + id;
-    const client = activeDeliveryClientFor(ep.brand);
+    const client = podcastClientFor(ep.brand);
     const category = client ? podcastCategoryForDelivery(client, ep.platform) : null;
     if(!client || !category){ removeDeliverySync(docId); return; }
     upsertDeliverySync(docId, {
@@ -7926,8 +7937,10 @@
     const brand = document.getElementById('e_brand').value.trim();
     const platform = document.getElementById('e_platform').value;
     let msg = '';
-    if(brand && pcClientNames().some(n => n.toLowerCase() === brand.toLowerCase())){
-      const client = activeDeliveryClientFor(brand);
+    const known = brand && pcClientNames().some(n => n.toLowerCase() === brand.toLowerCase());
+    const resolved = brand ? podcastClientFor(brand) : null;
+    if(known || resolved){
+      const client = resolved;
       if(!client) msg = brand + ' has no contract lines in the Delivery Tracker yet, so this episode will not be counted there. Add them on the Clients page.';
       else {
         const cat = podcastCategoryForDelivery(client, platform);
