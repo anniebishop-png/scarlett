@@ -5,7 +5,7 @@ Every weekday at 9:00am (London time) Scarlett:
 - Posts a team summary in one channel (no quote details there).
 - Skips anyone with nothing due.
 
-The code is `netlify/functions/slack-digest.js`, scheduled in `netlify.toml`. It needs no new database tables.
+The code is `netlify/lib/slack-common.js`, run on a schedule by `netlify/functions/slack-digest.js` (see `netlify.toml`) and on demand by `netlify/functions/slack-send.js`. It needs no new database tables.
 
 ## One-time setup (about 10 minutes)
 1. Go to https://api.slack.com/apps, **Create New App**, **From a manifest**, pick the EquiRatings workspace and paste:
