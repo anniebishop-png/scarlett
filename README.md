@@ -38,7 +38,7 @@ Everything in this repo is publicly downloadable from the site, because Netlify 
 - Hiding a button in the page is a convenience. Any new restriction should be a database policy first.
 
 ## Data tables (Supabase, schema `public`)
-`tasks`, `weeks`, `recurringTasks`, `shows`, `deliveryItems`, `contractClients`, `clientProfiles`, `clientOps`, `podcastEpisodes`, `hustleOpportunities`, `teamActivity`, `changeLog`, `appUsers`, `pushSubscriptions`, `pricingServices`, `pricingPackages`, `pricingQuotes`, `pricingSettings`.
+`tasks`, `weeks`, `recurringTasks`, `shows`, `deliveryItems`, `contractClients`, `clientProfiles`, `clientOps`, `podcastEpisodes`, `hustleOpportunities`, `teamActivity`, `changeLog`, `appUsers`, `pushSubscriptions`, `pricingServices`, `pricingPackages`, `pricingQuotes`, `pricingSettings`, plus small reference tables `clients`, `divisions`, `deliverable_presets`, `shows_reference` and `team`.
 
 ## Environment variables (Netlify, Site configuration, Environment variables)
 | Name | Used for |
@@ -57,7 +57,8 @@ The public Supabase key that the page uses is not secret and is in `index.html`.
 5. Add users to `appUsers` and create their sign-ins in Supabase, Authentication.
 
 ## Database history
-Every database change since October 2026 is saved as a file in `sql/`. The original core tables (tasks, shows, delivery items, podcast and so on) were created before that and are captured in `sql/schema-snapshot.sql` once it has been generated from the live database with `sql/export-schema.sql`. Rule going forward: any time SQL is run in Supabase, the same SQL is saved as a new file in `sql/` and committed.
+`sql/schema-snapshot.sql` is the full table structure exported from the live database on 2026-10-14 (tables, columns, defaults, keys). Running it creates every table. Row-level security policies are defined in the dated files in `sql/` (appUsers and `is_manager()` in `2026-10-hustle-permissions.sql`, pricing in `2026-10-pricing*.sql`). The policies on the older tables are not captured in the repo yet. `sql/export-schema.sql` has the queries to export them.
+Rule going forward: any time SQL is run in Supabase, the same SQL is saved as a new dated file in `sql/` and committed.
 
 ## Backups and other people
 - Data is backed up by the Backup button (Annie and Geogs) and a nightly job, see `ops/BACKUP.md`.
