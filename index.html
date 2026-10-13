@@ -7907,7 +7907,7 @@
     document.querySelectorAll('#episodeForm .pick-chips').forEach(b => { b.hidden = true; });
     loadPcProfileNames();
     // new episode: ticks itself when possible; existing one: ticked if it is already in the tracker
-    epDeliverTouched = !!ep;
+    epReady = !ep; epLastKey = '';
     const dcb = document.getElementById('e_toDelivery'); dcb.checked = false; dcb.disabled = true;
     updateEpisodeHint();
     if(ep && canEdit){
@@ -7916,6 +7916,7 @@
         if(editingEpisodeId !== openId) return;
         const t = episodeDeliveryTarget();
         dcb.disabled = !t.client; dcb.checked = !!(snap.exists && t.client);
+        epLastKey = t.client ? t.client + '|' + t.cat : ''; epReady = true;
         updateEpisodeHint();
       }).catch(() => {});
     }
@@ -7949,7 +7950,7 @@
   // The "Deliver to the Delivery Tracker" tick at the bottom of the episode form. It can only be ticked when the
   // Brand is a client with a contract line for this channel; it ticks itself when that first becomes true (until
   // you touch it), and an unticked episode is kept out of the tracker.
-  let epDeliverTouched = false;
+  let epLastKey = '', epReady = true;   // epReady: false while an existing episode's tracker state is still loading
   function episodeDeliveryTarget(){
     const brand = document.getElementById('e_brand').value.trim();
     const platform = document.getElementById('e_platform').value;
@@ -7968,8 +7969,9 @@
     const cb = document.getElementById('e_toDelivery'), el = document.getElementById('e_brandHint');
     if(!cb || !el) return;
     const t = episodeDeliveryTarget();
-    if(!t.client){ cb.checked = false; cb.disabled = true; el.textContent = t.why; return; }
-    if(cb.disabled && !epDeliverTouched) cb.checked = true;
+    if(!t.client){ cb.checked = false; cb.disabled = true; epLastKey = ''; el.textContent = t.why; return; }
+    const key = t.client + '|' + t.cat;
+    if(key !== epLastKey){ epLastKey = key; if(epReady) cb.checked = true; }   // a newly possible target ticks itself; you can untick it
     cb.disabled = false;
     el.textContent = cb.checked ? 'Will be added to the Delivery Tracker: ' + t.client + ', ' + t.cat + '.' : 'Will not be added to the Delivery Tracker.';
   }
@@ -8033,7 +8035,6 @@
     });
   }
   setupPickList('e_brand', 'brandOptions');
-  document.getElementById('e_toDelivery').addEventListener('change', () => { epDeliverTouched = true; });
   ['click', 'input', 'change'].forEach(ev => document.getElementById('episodeForm').addEventListener(ev, () => setTimeout(updateEpisodeHint, 0)));
   setupPickList('e_ads', 'adsOptions', true);
 
