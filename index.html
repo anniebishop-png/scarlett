@@ -536,6 +536,9 @@
   .pick-chip{border:1px solid var(--hairline-strong); background:var(--surface-2); color:var(--ink); border-radius:999px; padding:7px 12px; font:inherit; font-size:13px; font-weight:600; cursor:pointer;}
   .pick-chip:hover{border-color:var(--navy);}
   .pick-chip.on{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .pick-chip.is-client{border-color:var(--navy); font-weight:700;}
+  .ep-hint{font-size:12px; color:var(--ink-muted); margin:-2px 0 12px;}
+  .ep-hint[hidden]{display:none;}
   :root[data-theme="dark"] .pick-chip.on{background:var(--gold); color:var(--navy-deep); border-color:var(--gold);}
   @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pick-chip.on{background:var(--gold); color:var(--navy-deep); border-color:var(--gold);}}
   .owners-pop{position:absolute; top:100%; left:0; right:0; margin-top:4px; background:var(--surface); border:1px solid var(--hairline-strong); border-radius:10px; box-shadow:var(--shadow); z-index:30; max-height:220px; overflow-y:auto; padding:6px;}
@@ -2028,6 +2031,7 @@
         <option value="Strawmax"><option value="Diary Brands"><option value="Burghley TV"><option value="Dubarry">
         <option value="Aiken"><option value="Carr Day Martin"><option value="Flair"><option value="Equilume">
       </datalist>
+      <div class="ep-hint" id="e_brandHint" hidden></div>
       <div class="field-row">
         <div class="field"><label>Lead</label>
           <select id="e_lead">
@@ -7886,6 +7890,8 @@
     document.getElementById('episodeExtraDatesField').style.display = ep ? 'none' : 'flex';
     document.getElementById('episodeRepeatRow').style.display = ep ? 'none' : 'flex';
     document.querySelectorAll('#episodeForm .pick-chips').forEach(b => { b.hidden = true; });
+    loadPcProfileNames();
+    updateEpisodeHint();
     document.getElementById('episodeOverlay').hidden = false;
   }
   function closeEpisodeModal(){
@@ -7896,10 +7902,53 @@
 
   // Brand / Ads: the phone's built-in suggestion strip only shows three options, so these two fields show
   // every option as tappable chips instead (still free-type for anything not on the list).
+  // Every client Scarlett knows about: Clients page records, contract clients, and the built-in client lists.
+  let pcProfileNames = [];
+  function pcClientNames(){
+    const seen = new Map();
+    const add = n => { n = String(n || '').trim(); if(n && !/^(test|new)$/i.test(n) && !seen.has(n.toLowerCase())) seen.set(n.toLowerCase(), n); };
+    (clients || []).forEach(c => add(c.name));
+    pcProfileNames.forEach(add);
+    Object.keys(contractClients).forEach(c => { if(contractClients[c] && contractClients[c].length) add(c); });
+    Object.keys(LEGACY_CONTRACT_CLIENTS).forEach(add);
+    CLIENT_ORDER.concat(CLIENT_ROSTER).forEach(add);
+    return [...seen.values()];
+  }
+  // The Clients page only loads its list when opened, so read it once here for the pick lists.
+  function loadPcProfileNames(){
+    if(!db) return;
+    db.collection('clientProfiles').get().then(snap => { pcProfileNames = snap.docs.map(d => (d.data() || {}).name || d.id); }).catch(() => {});
+  }
+  // Says up front whether this episode will be counted in a client's Delivery Tracker, so a mismatch is seen before saving.
+  function updateEpisodeHint(){
+    const el = document.getElementById('e_brandHint');
+    if(!el) return;
+    const brand = document.getElementById('e_brand').value.trim();
+    const platform = document.getElementById('e_platform').value;
+    let msg = '';
+    if(brand && pcClientNames().some(n => n.toLowerCase() === brand.toLowerCase())){
+      const client = activeDeliveryClientFor(brand);
+      if(!client) msg = brand + ' has no contract lines in the Delivery Tracker yet, so this episode will not be counted there. Add them on the Clients page.';
+      else {
+        const cat = podcastCategoryForDelivery(client, platform);
+        msg = cat ? 'Counts in the Delivery Tracker: ' + client + ', ' + cat + '.'
+                  : client + ' has no podcast line that matches ' + platform + ' in its contract, so this episode will not be counted in the Delivery Tracker.';
+      }
+    }
+    el.textContent = msg; el.hidden = !msg;
+  }
   function setupPickList(inputId, listId, multi){
     const input = document.getElementById(inputId), dl = document.getElementById(listId);
     if(!input || !dl) return;
-    const options = Array.from(dl.querySelectorAll('option')).map(o => o.value).filter(Boolean).sort((a, b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
+    const base = Array.from(dl.querySelectorAll('option')).map(o => o.value).filter(Boolean);
+    // the typed-in sponsors above plus every client Scarlett knows, so a name picked here matches the client exactly
+    const getOptions = () => {
+      const seen = new Set(), out = [];
+      pcClientNames().concat(base).forEach(v => { const k = v.toLowerCase(); if(!seen.has(k)){ seen.add(k); out.push(v); } });
+      return out.sort((a, b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
+    };
+    let options = [];   // filled on first draw: the client list is not loaded yet when this runs at page start
+    const clientKeys = () => new Set(pcClientNames().map(n => n.toLowerCase()));
     const box = document.createElement('div');
     box.className = 'pick-chips'; box.hidden = true;
     input.insertAdjacentElement('afterend', box);
@@ -7907,12 +7956,14 @@
     // panel stays open so several can be picked in a row. Typing after the last comma filters the chips.
     const tokens = () => input.value.split(',').map(t => t.trim()).filter(Boolean);
     function draw(){
+      options = getOptions();
+      const ck = clientKeys();
       const toks = multi ? tokens().map(t => t.toLowerCase()) : [input.value.trim().toLowerCase()];
       const q = multi ? ((input.value.lastIndexOf(',') >= 0 ? input.value.slice(input.value.lastIndexOf(',') + 1) : input.value).trim().toLowerCase()) : toks[0];
       const exact = options.some(o => o.toLowerCase() === q);
       const shown = (!q || exact) ? options : options.filter(o => o.toLowerCase().includes(q));
       if(!shown.length){ box.hidden = true; return; }
-      box.innerHTML = shown.map(o => '<button type="button" class="pick-chip' + (toks.includes(o.toLowerCase()) ? ' on' : '') + '" data-v="' + escapeAttr(o) + '">' + escapeHtml(o) + '</button>').join('');
+      box.innerHTML = shown.map(o => '<button type="button" class="pick-chip' + (toks.includes(o.toLowerCase()) ? ' on' : '') + (ck.has(o.toLowerCase()) ? ' is-client' : '') + '" data-v="' + escapeAttr(o) + '">' + escapeHtml(o) + '</button>').join('');
       box.hidden = false;
     }
     input.addEventListener('focus', draw);
@@ -7946,6 +7997,7 @@
     });
   }
   setupPickList('e_brand', 'brandOptions');
+  ['click', 'input', 'change'].forEach(ev => document.getElementById('episodeForm').addEventListener(ev, () => setTimeout(updateEpisodeHint, 0)));
   setupPickList('e_ads', 'adsOptions', true);
 
   document.getElementById('episodeForm').addEventListener('submit', e => {
