@@ -11388,5 +11388,33 @@
   });
 })();
 </script>
+<script>
+/* "Scarlett has been updated" banner. On deploy, scripts/stamp-build.js replaces 'dev' below with the build id and writes
+   version.json. An open copy checks that file now and then; if it differs, it offers a refresh. */
+(function(){
+  var SCARLETT_BUILD = 'dev';
+  if(SCARLETT_BUILD === 'dev') return;
+  var dismissed = false, shown = false;
+  var css = document.createElement('style');
+  css.textContent = '.upd-banner{position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:100000; display:flex; align-items:center; gap:12px; padding:10px 14px; background:#1a3852; color:#fff; border-radius:12px; box-shadow:0 8px 28px rgba(0,0,0,.28); font:600 13px/1.3 system-ui,sans-serif; max-width:calc(100vw - 24px);} .upd-banner button{font:700 12.5px system-ui,sans-serif; border:0; border-radius:8px; padding:6px 12px; cursor:pointer;} .upd-banner .upd-go{background:#f5b942; color:#1a3852;} .upd-banner .upd-x{background:transparent; color:#fff; opacity:.75; padding:6px 8px;}';
+  document.head.appendChild(css);
+  function show(){
+    if(shown || dismissed) return; shown = true;
+    var b = document.createElement('div'); b.className = 'upd-banner'; b.setAttribute('role', 'status');
+    b.innerHTML = '<span>Scarlett has been updated. Refresh to get the latest.</span><button type="button" class="upd-go">Refresh</button><button type="button" class="upd-x" aria-label="Dismiss">Later</button>';
+    b.querySelector('.upd-go').addEventListener('click', function(){ location.reload(); });
+    b.querySelector('.upd-x').addEventListener('click', function(){ dismissed = true; b.remove(); });
+    document.body.appendChild(b);
+  }
+  function check(){
+    if(shown || document.hidden) return;
+    fetch('/version.json?t=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ if(j && j.v && j.v !== SCARLETT_BUILD) show(); }).catch(function(){});
+  }
+  setInterval(check, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) check(); });
+  setTimeout(check, 20000);
+})();
+</script>
 </body>
 </html>

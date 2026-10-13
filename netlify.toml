@@ -1,3 +1,7 @@
+[build]
+  publish = "."
+  command = "node scripts/stamp-build.js"
+
 [build.environment]
   NODE_VERSION = "20"
 
