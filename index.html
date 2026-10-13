@@ -10753,6 +10753,10 @@
   }
 
   // ----- shell -----
+  // The price list tab (prices, hours, tiers, hourly rates) is for Annie and Geogs only. Everyone else who is a manager still
+  // reads the prices through the quote builder; the database lets only these two change them.
+  const PR_LIST_EMAILS = ['annie.bishop@equiratings.com', 'ruairi@equiratings.com'];
+  function prCanEditList(){ return PR_LIST_EMAILS.includes(String(currentUserEmail || '').toLowerCase()); }
   function prRender(){
     if(currentAppPage !== 'pricing') return;
     const setup = prEl('pricingSetup'), body = prEl('pricingBody'), tabs = prEl('pricingTabsWrap');
@@ -10780,6 +10784,9 @@
       return;
     }
     setup.hidden = true; tabs.hidden = false;
+    const listBtn = document.querySelector('#pricingTabs [data-prtab="list"]');
+    if(listBtn) listBtn.style.display = prCanEditList() ? '' : 'none';
+    if(prTab === 'list' && !prCanEditList()) prTab = 'quotes';
     document.querySelectorAll('#pricingTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-prtab') === prTab));
     const ae = document.activeElement;
     if(ae && body.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && body.dataset.tab === prTab && body.dataset.rendered) return; // never clobber typing
@@ -11061,6 +11068,7 @@
     const body = document.getElementById('pricingBody'); if(!body) return;
     document.getElementById('pricingTabs').addEventListener('click', e => {
       const b = e.target.closest('[data-prtab]'); if(!b) return;
+      if(b.getAttribute('data-prtab') === 'list' && !prCanEditList()) return;
       prTab = b.getAttribute('data-prtab'); prCmp = null; body.dataset.rendered = ''; prRender();
     });
     body.addEventListener('input', e => {
