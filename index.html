@@ -1159,7 +1159,8 @@
   .pr-table tr.pr-click{cursor:pointer;} .pr-table tr.pr-click:hover td{background:var(--surface-2);}
   .pr-table input:not([type=checkbox]), .pr-table select, .pr-custom input, .pr-addrow input, .pr-rates input, .pr-totals input{padding:7px 9px; border:1px solid var(--hairline-strong); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; font-size:13px; min-width:0;}
   .pr-table input.pr-n, .pr-custom input.pr-n, .pr-rates input, .pr-totals input{width:84px; text-align:right;}
-  .pr-table input.pr-wide{min-width:240px; width:100%;}
+  .pr-table.pr-edit td input.pr-wide{min-width:300px; width:100%;}
+  .pr-table.pr-edit td:nth-last-child(2) input{min-width:280px;}
   .pr-edit td input:not([type=checkbox]):not(.pr-n){min-width:120px; width:100%;}
   .pr-edit .pr-fl{white-space:nowrap;} .pr-edit .pr-fl input{width:72px;}
   .pr-table input.below{border-color:var(--st-blocked-dot); background:var(--st-blocked-bg); color:var(--st-blocked-text);}
