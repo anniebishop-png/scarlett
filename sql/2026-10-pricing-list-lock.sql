@@ -1,4 +1,4 @@
--- Scarlett: Pricing price list and rates can be changed only by Annie and Geogs.
+-- Scarlett: Pricing price list and rates can be changed only by Annie, Geogs and Diarm.
 -- Every manager can still read them (the quote builder needs the prices). Quotes and packages are unchanged.
 
 do $$
@@ -10,7 +10,7 @@ begin
       execute format('drop policy %I on public.%I', r.policyname, t);
     end loop;
     execute format('create policy pricing_read on public.%I for select to authenticated using (public.is_manager())', t);
-    execute format($f$create policy pricing_edit on public.%I for all to authenticated using (public.is_manager() and lower(coalesce(auth.jwt()->>'email','')) in ('annie.bishop@equiratings.com','ruairi@equiratings.com')) with check (public.is_manager() and lower(coalesce(auth.jwt()->>'email','')) in ('annie.bishop@equiratings.com','ruairi@equiratings.com'))$f$, t);
+    execute format($f$create policy pricing_edit on public.%I for all to authenticated using (public.is_manager() and lower(coalesce(auth.jwt()->>'email','')) in ('annie.bishop@equiratings.com','ruairi@equiratings.com','diarm@equiratings.com')) with check (public.is_manager() and lower(coalesce(auth.jwt()->>'email','')) in ('annie.bishop@equiratings.com','ruairi@equiratings.com','diarm@equiratings.com'))$f$, t);
   end loop;
 end $$;
 
