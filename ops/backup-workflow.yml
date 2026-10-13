@@ -1,0 +1,34 @@
+# Copy this file to .github/workflows/backup.yml in the GitHub repo (see ops/BACKUP.md).
+name: Nightly Scarlett backup
+
+on:
+  schedule:
+    - cron: '23 3 * * *'      # every night at 03:23 UTC
+  workflow_dispatch:          # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Back up Supabase
+        run: node scripts/backup.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      - name: Date stamp
+        run: echo "STAMP=$(date -u +%F)" >> "$GITHUB_ENV"
+      - name: Keep the file for 90 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: scarlett-backup-${{ env.STAMP }}
+          path: backup/
+          retention-days: 90
+          if-no-files-found: error
