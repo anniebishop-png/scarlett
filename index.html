@@ -10841,8 +10841,6 @@
         <div class="pr-tcol"><span class="pr-tl">Discount (€)</span><input id="prqDisc" class="pr-n" inputmode="decimal" data-pr-q="discount" value="${q.discount || ''}" placeholder="0"></div>
         <div class="pr-tcol"><span class="pr-tl">Quote total</span><b class="pr-big" id="prTot"></b></div>
         <div class="pr-tcol"><span class="pr-tl">Delivery hours</span><b id="prHrs"></b></div>
-        <div class="pr-tcol"><span class="pr-tl">Cost floor</span><b id="prFloor"></b></div>
-        <div class="pr-tcol"><span class="pr-tl">Staff time at rates</span><b id="prStaff"></b></div>
         <div class="pr-warn" id="prWarn"></div>
       </div>
       <div class="pr-actions">
@@ -10855,12 +10853,12 @@
     prRefreshTotals();
   }
   function prLineRow(l, i){
-    const p = prNum(l.price), below = l.on && p !== null && l.floor !== null && l.floor !== undefined && p < +l.floor;
+    const p = prNum(l.price);
     return `<tr class="pr-line ${l.on ? 'on' : ''}" data-i="${i}">
       <td class="c"><input type="checkbox" data-pr-l="on" ${l.on ? 'checked' : ''} aria-label="Include ${escapeAttr(l.name)}"></td>
       <td><div class="pr-name">${escapeHtml(l.name)}</div>${(l.team || l.billing) ? `<div class="pr-sub">${escapeHtml([l.billing, l.team].filter(Boolean).join(' · '))}</div>` : ''}</td>
       <td><input class="pr-n" type="number" min="0" step="1" data-pr-l="qty" value="${l.qty}"></td>
-      <td><input class="pr-n ${below ? 'below' : ''}" inputmode="decimal" data-pr-l="price" placeholder="TBD" value="${p === null ? '' : p}"${below ? ` title="Below the cost floor of ${prMoney(l.floor)}"` : ''}></td>
+      <td><input class="pr-n" inputmode="decimal" data-pr-l="price" placeholder="TBD" value="${p === null ? '' : p}"></td>
       <td class="r pr-lt">${l.on ? prMoney(p === null ? null : p * (+l.qty || 0)) : ''}</td>
       <td class="r pr-sub">${l.on ? ((+l.qty || 0) * ((+l.std || 0) + (+l.senior || 0))) + 'h' : ''}</td></tr>`;
   }
@@ -10870,13 +10868,9 @@
     prEl('prSub').textContent = prMoney(t.sub);
     prEl('prTot').textContent = prMoney(t.total);
     prEl('prHrs').textContent = (t.std + t.sen) + 'h (' + t.std + ' std, ' + t.sen + ' senior)';
-    prEl('prFloor').textContent = prMoney(t.floor);
-    prEl('prStaff').textContent = prMoney(t.staff);
     const w = [];
     if(t.n === 0) w.push('Tick the services to include.');
     if(t.unpriced) w.push(t.unpriced + ' ticked line' + (t.unpriced === 1 ? ' has' : 's have') + ' no price yet and ' + (t.unpriced === 1 ? 'is' : 'are') + ' not in the total.');
-    if(t.below) w.push(t.below + ' line' + (t.below === 1 ? ' is' : 's are') + ' priced below its cost floor.');
-    if(t.n && t.total < t.floor && !t.unpriced) w.push('The quote total is below the combined cost floor of ' + prMoney(t.floor) + '.');
     prEl('prWarn').innerHTML = w.map(x => '<span>' + escapeHtml(x) + '</span>').join('');
     document.querySelectorAll('#prLines tr.pr-line').forEach(tr => {
       const l = prQ.lines[+tr.dataset.i]; if(!l) return;
@@ -10884,8 +10878,6 @@
       tr.classList.toggle('on', !!l.on);
       tr.children[4].textContent = l.on ? prMoney(p === null ? null : p * (+l.qty || 0)) : '';
       tr.children[5].textContent = l.on ? ((+l.qty || 0) * ((+l.std || 0) + (+l.senior || 0))) + 'h' : '';
-      const inp = tr.querySelector('[data-pr-l="price"]');
-      if(inp) inp.classList.toggle('below', !!(l.on && p !== null && l.floor !== null && l.floor !== undefined && p < +l.floor));
     });
   }
   function prSaveQuote(asNew){
