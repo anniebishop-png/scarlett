@@ -2031,7 +2031,6 @@
         <option value="Strawmax"><option value="Diary Brands"><option value="Burghley TV"><option value="Dubarry">
         <option value="Aiken"><option value="Carr Day Martin"><option value="Flair"><option value="Equilume">
       </datalist>
-      <div class="ep-hint" id="e_brandHint" hidden></div>
       <div class="field-row">
         <div class="field"><label>Lead</label>
           <select id="e_lead">
@@ -2065,6 +2064,11 @@
         <label for="e_repeat_weekly">Repeat weekly, for</label>
         <input type="number" id="e_repeat_weeks" min="2" max="52" value="8" style="width:52px;margin:0 6px;">
         <label for="e_repeat_weeks" style="text-transform:none;font-weight:500;">weeks</label>
+      </div>
+      <div class="checkbox-row" id="episodeDeliveryRow" style="flex-wrap:wrap;">
+        <input type="checkbox" id="e_toDelivery" disabled>
+        <label for="e_toDelivery">Deliver to the Delivery Tracker</label>
+        <div class="ep-hint" id="e_brandHint" style="flex-basis:100%;margin:2px 0 0 26px;"></div>
       </div>
       <div class="modal-actions">
         <div class="left">
@@ -3303,9 +3307,9 @@
     const hits = [...new Set(pool)].filter(c => c.toLowerCase().indexOf(t + ' ') === 0);
     return hits.length === 1 ? hits[0] : null;
   }
-  function syncEpisodeToDelivery(id, ep){
+  function syncEpisodeToDelivery(id, ep, want){
     const docId = 'sync_ep_' + id;
-    const client = podcastClientFor(ep.brand);
+    const client = want === false ? null : podcastClientFor(ep.brand);   // want === false: left unticked on the form
     const category = client ? podcastCategoryForDelivery(client, ep.platform) : null;
     if(!client || !category){ removeDeliverySync(docId); return; }
     upsertDeliverySync(docId, {
@@ -7902,7 +7906,19 @@
     document.getElementById('episodeRepeatRow').style.display = ep ? 'none' : 'flex';
     document.querySelectorAll('#episodeForm .pick-chips').forEach(b => { b.hidden = true; });
     loadPcProfileNames();
+    // new episode: ticks itself when possible; existing one: ticked if it is already in the tracker
+    epDeliverTouched = !!ep;
+    const dcb = document.getElementById('e_toDelivery'); dcb.checked = false; dcb.disabled = true;
     updateEpisodeHint();
+    if(ep && canEdit){
+      const openId = ep.id;
+      deliveryCol().doc('sync_ep_' + openId).get().then(snap => {
+        if(editingEpisodeId !== openId) return;
+        const t = episodeDeliveryTarget();
+        dcb.disabled = !t.client; dcb.checked = !!(snap.exists && t.client);
+        updateEpisodeHint();
+      }).catch(() => {});
+    }
     document.getElementById('episodeOverlay').hidden = false;
   }
   function closeEpisodeModal(){
@@ -7930,25 +7946,32 @@
     if(!db) return;
     db.collection('clientProfiles').get().then(snap => { pcProfileNames = snap.docs.map(d => (d.data() || {}).name || d.id); }).catch(() => {});
   }
-  // Says up front whether this episode will be counted in a client's Delivery Tracker, so a mismatch is seen before saving.
-  function updateEpisodeHint(){
-    const el = document.getElementById('e_brandHint');
-    if(!el) return;
+  // The "Deliver to the Delivery Tracker" tick at the bottom of the episode form. It can only be ticked when the
+  // Brand is a client with a contract line for this channel; it ticks itself when that first becomes true (until
+  // you touch it), and an unticked episode is kept out of the tracker.
+  let epDeliverTouched = false;
+  function episodeDeliveryTarget(){
     const brand = document.getElementById('e_brand').value.trim();
     const platform = document.getElementById('e_platform').value;
-    let msg = '';
-    const known = brand && pcClientNames().some(n => n.toLowerCase() === brand.toLowerCase());
-    const resolved = brand ? podcastClientFor(brand) : null;
-    if(known || resolved){
-      const client = resolved;
-      if(!client) msg = brand + ' has no contract lines in the Delivery Tracker yet, so this episode will not be counted there. Add them on the Clients page.';
-      else {
-        const cat = podcastCategoryForDelivery(client, platform);
-        msg = cat ? 'Counts in the Delivery Tracker: ' + client + ', ' + cat + '.'
-                  : client + ' has no podcast line that matches ' + platform + ' in its contract, so this episode will not be counted in the Delivery Tracker.';
-      }
+    if(!brand) return {why: 'Pick a client as the Brand to put this episode in the Delivery Tracker.'};
+    const client = podcastClientFor(brand);
+    if(!client){
+      const known = pcClientNames().some(n => n.toLowerCase() === brand.toLowerCase());
+      return {why: known ? brand + ' has no contract lines in the Delivery Tracker yet. Add them on the Clients page first.'
+                         : brand + ' is not a client with a contract, so this episode cannot go in the Delivery Tracker.'};
     }
-    el.textContent = msg; el.hidden = !msg;
+    const cat = podcastCategoryForDelivery(client, platform);
+    if(!cat) return {why: client + ' has no podcast line that matches ' + platform + ' in its contract.'};
+    return {client, cat};
+  }
+  function updateEpisodeHint(){
+    const cb = document.getElementById('e_toDelivery'), el = document.getElementById('e_brandHint');
+    if(!cb || !el) return;
+    const t = episodeDeliveryTarget();
+    if(!t.client){ cb.checked = false; cb.disabled = true; el.textContent = t.why; return; }
+    if(cb.disabled && !epDeliverTouched) cb.checked = true;
+    cb.disabled = false;
+    el.textContent = cb.checked ? 'Will be added to the Delivery Tracker: ' + t.client + ', ' + t.cat + '.' : 'Will not be added to the Delivery Tracker.';
   }
   function setupPickList(inputId, listId, multi){
     const input = document.getElementById(inputId), dl = document.getElementById(listId);
@@ -8010,6 +8033,7 @@
     });
   }
   setupPickList('e_brand', 'brandOptions');
+  document.getElementById('e_toDelivery').addEventListener('change', () => { epDeliverTouched = true; });
   ['click', 'input', 'change'].forEach(ev => document.getElementById('episodeForm').addEventListener(ev, () => setTimeout(updateEpisodeHint, 0)));
   setupPickList('e_ads', 'adsOptions', true);
 
@@ -8029,9 +8053,11 @@
     };
     if(podcastRecCols) data.recordDate = document.getElementById('e_recordDate').value || '';
     if(!data.date){ closeEpisodeModal(); return; }
+    const delTarget = episodeDeliveryTarget();
+    const wantDelivery = !!(document.getElementById('e_toDelivery').checked && delTarget.client);
     if(editingEpisodeId){
       podcastCol().doc(editingEpisodeId).update(data).catch(()=>{});
-      syncEpisodeToDelivery(editingEpisodeId, data);
+      syncEpisodeToDelivery(editingEpisodeId, data, wantDelivery);
     } else {
       // extra dates: any manually added ones, plus a weekly-repeat run if checked —
       // each becomes its own episode, sharing everything except the date
@@ -8046,13 +8072,13 @@
           if(d !== data.date) extraDates.add(d);
         }
       }
-      podcastCol().add(data).then(ref => syncEpisodeToDelivery(ref.id, data)).catch(()=>{});
+      podcastCol().add(data).then(ref => syncEpisodeToDelivery(ref.id, data, wantDelivery)).catch(()=>{});
       pcRevealDate(data.date);
-      podcastNotice('Added "' + (data.title || (data.platform + ' episode')) + '" on ' + hFmtDate(data.date) + (extraDates.size ? ' and ' + extraDates.size + ' more date' + (extraDates.size === 1 ? '' : 's') : '') + '.', true);
+      podcastNotice('Added "' + (data.title || (data.platform + ' episode')) + '" on ' + hFmtDate(data.date) + (extraDates.size ? ' and ' + extraDates.size + ' more date' + (extraDates.size === 1 ? '' : 's') : '') + '.' + (wantDelivery ? ' Added to the Delivery Tracker (' + delTarget.client + ').' : ''), true);
       extraDates.forEach(d => {
         const epData = Object.assign({}, data, {date: d});
         if(podcastRecCols) epData.recordDate = '';   // a repeat/extra episode has its own recording day
-        podcastCol().add(epData).then(ref => syncEpisodeToDelivery(ref.id, epData)).catch(()=>{});
+        podcastCol().add(epData).then(ref => syncEpisodeToDelivery(ref.id, epData, wantDelivery)).catch(()=>{});
       });
     }
     closeEpisodeModal();
