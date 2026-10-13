@@ -1149,6 +1149,42 @@
   .img-lightbox{position:fixed; inset:0; z-index:100002; background:rgba(8,16,26,.88); display:flex; align-items:center; justify-content:center; padding:20px; cursor:zoom-out;}
   .img-lightbox[hidden]{display:none;}
   .img-lightbox img{max-width:96vw; max-height:92vh; border-radius:8px; box-shadow:0 20px 60px rgba(0,0,0,.6); background:#fff;}
+  /* Pricing (managers only) */
+  .pr-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:12px;}
+  .pr-table{width:100%; border-collapse:collapse; font-size:13px; background:var(--surface); border:1px solid var(--hairline); border-radius:12px; overflow:hidden;}
+  .pr-table th{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-2); text-align:left; padding:9px 10px; background:var(--surface-2); border-bottom:1px solid var(--hairline); white-space:nowrap;}
+  .pr-table td{padding:7px 10px; border-bottom:1px solid var(--hairline); vertical-align:middle;}
+  .pr-table .r{text-align:right;} .pr-table .c{text-align:center;}
+  .pr-table tr.pr-sec td{background:var(--surface-2); font-family:var(--font-display); font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--navy); padding:8px 10px;}
+  .pr-table tr.pr-click{cursor:pointer;} .pr-table tr.pr-click:hover td{background:var(--surface-2);}
+  .pr-table input:not([type=checkbox]), .pr-table select, .pr-custom input, .pr-addrow input, .pr-rates input, .pr-totals input{padding:7px 9px; border:1px solid var(--hairline-strong); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; font-size:13px; min-width:0;}
+  .pr-table input.pr-n, .pr-custom input.pr-n, .pr-rates input, .pr-totals input{width:84px; text-align:right;}
+  .pr-table input.pr-wide{min-width:240px; width:100%;}
+  .pr-edit td input:not([type=checkbox]):not(.pr-n){min-width:120px; width:100%;}
+  .pr-edit .pr-fl{white-space:nowrap;} .pr-edit .pr-fl input{width:72px;}
+  .pr-table input.below{border-color:var(--st-blocked-dot); background:var(--st-blocked-bg); color:var(--st-blocked-text);}
+  .pr-line:not(.on) .pr-name{color:var(--ink-muted);} .pr-line.on td{background:color-mix(in srgb, var(--gold) 8%, var(--surface));}
+  .pr-off td{opacity:.55;}
+  .pr-name{font-weight:700;} .pr-sub{font-size:11.5px; color:var(--ink-muted);} .pr-lt{font-weight:700;}
+  .pr-pill{font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; padding:3px 8px; border-radius:999px; background:var(--st-notstarted-bg); color:var(--st-notstarted-text);}
+  .pr-pill.sent{background:var(--st-inprogress-bg); color:var(--st-inprogress-text);} .pr-pill.won{background:var(--st-done-bg); color:var(--st-done-text);} .pr-pill.lost{background:var(--st-blocked-bg); color:var(--st-blocked-text);}
+  .pr-tick{color:var(--st-done-text); font-weight:800;}
+  .pr-sums{display:flex; gap:18px; flex-wrap:wrap; font-size:13px; color:var(--ink-2); margin:2px 0 12px;} .pr-sums b{color:var(--ink); font-family:var(--font-display);}
+  .pr-bhead{background:var(--surface); border:1px solid var(--hairline); border-radius:14px; padding:16px 18px 6px; margin-bottom:14px;}
+  .pr-custom, .pr-addrow{display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;} .pr-custom input:first-child, .pr-addrow input:first-child{flex:1 1 220px;}
+  .pr-totals{display:flex; flex-wrap:wrap; gap:10px 26px; align-items:flex-end; position:sticky; bottom:0; z-index:5; background:var(--surface); border:1px solid var(--hairline-strong); border-radius:14px; padding:14px 18px; margin-top:14px; box-shadow:var(--shadow);}
+  .pr-tcol{display:flex; flex-direction:column; gap:3px;} .pr-tl{font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-2);}
+  .pr-big{font-family:var(--font-display); font-size:22px; font-weight:800; color:var(--navy);}
+  .pr-warn{flex:1 1 100%; display:flex; flex-direction:column; gap:3px; font-size:12px; font-weight:700; color:var(--st-blocked-text);} .pr-warn:empty{display:none;}
+  .pr-actions{display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;}
+  .pr-danger{color:var(--st-blocked-text) !important;}
+  .pr-mini{border:1px solid var(--hairline-strong); background:var(--surface-2); color:var(--ink-2); border-radius:7px; font-size:11px; padding:5px 8px; cursor:pointer; margin-left:4px;}
+  .pr-rates{display:flex; align-items:center; gap:12px; margin-left:auto; font-size:12.5px; color:var(--ink-2); flex-wrap:wrap;} .pr-rates label{display:flex; align-items:center; gap:5px;}
+  .pr-tierinfo{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:14px; font-size:13px;}
+  .pr-tierinfo > div{background:var(--surface); border:1px solid var(--hairline); border-radius:12px; padding:12px 14px;}
+  .pr-pkg{cursor:default; display:flex; flex-direction:column; gap:8px; text-align:left;}
+  .pr-pkg .pr-pname{font-family:var(--font-display); font-weight:800; font-size:16px; padding:6px 8px; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--ink);} .pr-pkg .pr-pname:hover, .pr-pkg .pr-pname:focus{border-color:var(--hairline-strong); background:var(--surface);}
+  .pr-pkg textarea{padding:7px 9px; border:1px solid var(--hairline-strong); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; font-size:12.5px; resize:vertical;}
 </style>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1219,6 +1255,7 @@
       <button class="header-btn" id="hustleBtn" data-nav="hustle">Hustle</button>
       <button class="header-btn" id="podcastBtn" data-nav="podcast">Podcast</button>
       <button class="header-btn" id="reportsBtn" data-nav="reports">Reports</button>
+      <button class="header-btn" id="pricingBtn" data-nav="pricing" style="display:none;">Pricing</button>
     </div>
     <div class="header-tools">
     <div class="theme-toggle" id="themeToggle" role="group" aria-label="Theme">
@@ -1336,6 +1373,7 @@
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="pricing" style="display:none;">Pricing</button>
     </div>
     <h2 id="rpTitle">Delivered report</h2>
   </div>
@@ -1383,6 +1421,7 @@
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="pricing" style="display:none;">Pricing</button>
     </div>
     <h2>Client Ops</h2>
   </div>
@@ -1408,6 +1447,7 @@
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="pricing" style="display:none;">Pricing</button>
     </div>
     <h2>Show Calendar</h2>
   </div>
@@ -1437,6 +1477,7 @@
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="pricing" style="display:none;">Pricing</button>
     </div>
     <h2 id="mtTitle">My tasks</h2>
   </div>
@@ -1467,6 +1508,7 @@
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="pricing" style="display:none;">Pricing</button>
     </div>
     <h2>Archive</h2>
   </div>
@@ -1506,6 +1548,7 @@
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="pricing" style="display:none;">Pricing</button>
     </div>
     <h2>Podcast Schedule</h2>
   </div>
@@ -1548,6 +1591,7 @@
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="pricing" style="display:none;">Pricing</button>
     </div>
     <h2 id="clientsTitle">Clients</h2>
   </div>
@@ -1570,6 +1614,38 @@
   <footer class="note">One record per client. A client's name is what ties its tasks, shows and deliverables together, so it can't be changed once the client exists.</footer>
 </div>
 
+<div class="app" id="pricingApp" style="display:none;">
+  <div class="report-header">
+    <div class="global-nav">
+      <button class="global-nav-btn" data-nav="board">Home</button>
+      <button class="global-nav-btn" data-nav="mytasks">My tasks</button>
+      <button class="global-nav-btn" data-nav="archive">Archive</button>
+      <button class="global-nav-btn" data-nav="calendar">Calendar</button>
+      <button class="global-nav-btn" data-nav="clients">Clients</button>
+      <button class="global-nav-btn" data-nav="ops">Client Ops</button>
+      <button class="global-nav-btn" data-nav="delivery">Delivery Tracker</button>
+      <button class="global-nav-btn" data-nav="hustle">Hustle</button>
+      <button class="global-nav-btn" data-nav="podcast">Podcast</button>
+      <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="pricing">Pricing</button>
+    </div>
+    <h2 id="pricingTitle">Pricing</h2>
+  </div>
+  <div class="hs-notice" id="pricingNotice" hidden></div>
+  <div id="pricingSetup" hidden></div>
+  <div class="report-controls" id="pricingTabsWrap" hidden>
+    <div class="segmented" id="pricingTabs">
+      <button type="button" data-prtab="quotes" class="active">Quotes</button>
+      <button type="button" data-prtab="builder">Builder</button>
+      <button type="button" data-prtab="list">Price list and tiers</button>
+      <button type="button" data-prtab="packages">Packages</button>
+    </div>
+  </div>
+  <div id="pricingBody"></div>
+  <datalist id="prClientList"></datalist><datalist id="prEventList"></datalist>
+  <footer class="note">Managers only. Prices, hours and quotes in this section can be read and changed only by managers. Staff costs here are hourly rates and cost floors, never salaries.</footer>
+</div>
+
 <div class="app" id="hustleApp" style="display:none;">
   <div class="report-header">
     <div class="global-nav">
@@ -1583,6 +1659,7 @@
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="pricing" style="display:none;">Pricing</button>
     </div>
     <h2>Hustle Pipeline</h2>
   </div>
@@ -1631,6 +1708,7 @@
       <button class="global-nav-btn" data-nav="hustle">Hustle</button>
       <button class="global-nav-btn" data-nav="podcast">Podcast</button>
       <button class="global-nav-btn" data-nav="reports">Reports</button>
+      <button class="global-nav-btn" data-nav="pricing" style="display:none;">Pricing</button>
     </div>
     <h2>Delivery Tracker</h2>
   </div>
@@ -5606,8 +5684,9 @@
         try{ renderGroups(); }catch(_){}
       }
       subscribeHustleNav();
+      applyPricingNav();
       if(currentAppPage === 'hustle') renderHustleAll();
-    }).catch(() => { myRole = null; });
+    }).catch(() => { myRole = null; applyPricingNav(); });
   }
   // The Hustle button is hidden for members who own no opportunities (their page would be empty). It comes back
   // as soon as a manager assigns them one, or they add their own from a different route. Managers always see it.
@@ -7003,12 +7082,14 @@
     // page is open — syncEpisodeToDelivery/syncTaskToDelivery (podcast/task saves, which can
     // happen from any page) need it to know which clients are set up, not only visits to this page.
     delivery: { el: 'deliveryApp', onEnter: subscribeDelivery, onLeave: unsubscribeDelivery },
+    pricing:  { el: 'pricingApp',  onEnter: subscribePricing,  onLeave: unsubscribePricing },
     archive:  { el: 'archiveApp',  onEnter: enterArchive },
     mytasks:  { el: 'myTasksApp',  onEnter: enterMyTasks, onLeave: leaveMyTasks },
   };
   let currentAppPage = 'board';
   function switchApp(target){
     if(!APP_PAGES[target] || target === currentAppPage) return;
+    if(target === 'pricing' && myRole !== 'manager') return; // managers only (the database enforces it too)
     const leaving = APP_PAGES[currentAppPage];
     if(leaving && leaving.onLeave) leaving.onLeave();
     Object.values(APP_PAGES).forEach(p => { document.getElementById(p.el).style.display = 'none'; });
@@ -10568,6 +10649,463 @@
     }catch(e){}
   }
 
+  // ---------------- pricing (managers only) ----------------
+  // The price list, package templates, saved quotes and hourly rates live in four tables that only managers
+  // can read or write (the database enforces that with is_manager(); this page is just the front end for it).
+  // No prices are kept in this file. Staff costs are derived hourly rates and per-service cost floors only.
+  const PRICING_SQL = "-- Scarlett: Pricing (managers only)\n-- Four tables, all locked to managers by the database itself (public.is_manager()), so other people\n-- cannot read the prices even through the API. Run once in the Supabase SQL Editor.\n-- The price list itself is loaded separately (not stored in the code), after this has been run.\n-- Staff costs are derived hourly rates and cost floors only. No salaries, no margins.\n\ncreate table if not exists public.\"pricingServices\" (\n  id text primary key,\n  name text not null,\n  section text not null default 'Other',\n  \"sortOrder\" integer not null default 0,\n  team text,\n  \"stdHours\" numeric,\n  \"seniorHours\" numeric,\n  \"costFloor\" numeric,\n  price numeric,\n  billing text not null default 'per event',\n  tiers text[] not null default '{}',\n  notes text,\n  active boolean not null default true,\n  created_at timestamptz not null default now()\n);\ncreate table if not exists public.\"pricingPackages\" (\n  id text primary key,\n  name text not null,\n  blurb text,\n  \"sortOrder\" integer not null default 0,\n  lines jsonb not null default '[]'::jsonb,\n  created_at timestamptz not null default now()\n);\ncreate table if not exists public.\"pricingQuotes\" (\n  id text primary key,\n  title text not null,\n  client text,\n  event text,\n  \"showId\" text,\n  \"packageName\" text,\n  status text not null default 'draft',\n  lines jsonb not null default '[]'::jsonb,\n  discount numeric not null default 0,\n  total numeric not null default 0,\n  \"totalStd\" numeric not null default 0,\n  \"totalSenior\" numeric not null default 0,\n  notes text,\n  \"createdBy\" text,\n  \"createdAt\" text,\n  \"updatedAt\" text,\n  \"archivedAt\" text\n);\ncreate table if not exists public.\"pricingSettings\" (\n  id text primary key,\n  \"stdRate\" numeric,\n  \"seniorRate\" numeric\n);\n\ndo $$\ndeclare t text; r record;\nbegin\n  foreach t in array array['pricingServices','pricingPackages','pricingQuotes','pricingSettings'] loop\n    execute format('alter table public.%I enable row level security', t);\n    for r in select policyname from pg_policies where schemaname = 'public' and tablename = t loop\n      execute format('drop policy %I on public.%I', r.policyname, t);\n    end loop;\n    execute format('create policy pricing_managers on public.%I for all to authenticated using (public.is_manager()) with check (public.is_manager())', t);\n    execute format($f$create policy equiratings_only on public.%I as restrictive for all to authenticated using (lower(coalesce(auth.jwt()->>'email','')) like '%%@equiratings.com') with check (lower(coalesce(auth.jwt()->>'email','')) like '%%@equiratings.com')$f$, t);\n    execute format('revoke all on public.%I from anon', t);\n    execute format('grant select, insert, update, delete on public.%I to authenticated', t);\n    begin\n      execute format('alter publication supabase_realtime add table public.%I', t);\n    exception when duplicate_object then null; when undefined_object then null;\n    end;\n  end loop;\nend $$;\n\nnotify pgrst, 'reload schema';\n";
+  const PR_TIERS = [
+    {k:'p4p', label:'Product for Prospects', blurb:'Entry level. Get in the door with something good enough that they cannot ignore it.'},
+    {k:'core', label:'Core Package', blurb:'The bread and butter. Podcast, graphics and form guide.'},
+    {k:'full', label:'Full Event Partner', blurb:'End-to-end delivery: data, content, broadcast support, social and reporting.'},
+    {k:'bespoke', label:'Bespoke', blurb:'Custom scope. Onsite team, CMH delivery, sponsor activation, multi-episode series.'}
+  ];
+  const PR_BILLING = ['per event', 'per episode', 'per article', 'per series', 'per month', 'one-off'];
+  const PR_STATUS = {draft:'Draft', sent:'Sent', won:'Won', lost:'Lost'};
+  let prServices = [], prPackages = [], prQuotes = [], prRates = {stdRate: 51, seniorRate: 97};
+  let prChecked = false, prFailed = false, prUnsubs = [], prTab = 'quotes', prListView = 'edit', prQuery = '', prStatusF = 'live';
+  let prQ = null, prEvents = [];
+  function prCol(n){ return db.collection(n); }
+  function prIsManager(){ return myRole === 'manager'; }
+  function prEl(id){ return document.getElementById(id); }
+  function prMoney(n){ return (n === null || n === undefined || n === '' || isNaN(n)) ? 'TBD' : '€' + Math.round(+n).toLocaleString('en-IE'); }
+  function prNum(v){ if(v === '' || v === null || v === undefined) return null; const n = parseFloat(String(v).replace(/[€,\s]/g, '')); return isNaN(n) ? null : n; }
+  function prNotice(msg, ok){
+    const el = prEl('pricingNotice'); if(!el) return;
+    el.textContent = msg; el.classList.toggle('ok', !!ok); el.hidden = !msg;
+    if(msg) setTimeout(() => { if(el.textContent === msg) el.hidden = true; }, 8000);
+  }
+  function applyPricingNav(){
+    const ok = prIsManager();
+    document.querySelectorAll('[data-nav="pricing"]').forEach(b => { b.style.display = ok ? '' : 'none'; });
+    if(!ok && currentAppPage === 'pricing') switchApp('board');
+  }
+  function subscribePricing(){
+    unsubscribePricing();
+    prFailed = false; prChecked = false;
+    if(!db || !prIsManager()){ prRender(); return; }
+    const watch = (name, apply) => prCol(name).onSnapshot(snap => {
+      apply(snap.docs.map(d => Object.assign({}, d.data(), {id: d.id})));
+      prChecked = true; prRender();
+    }, () => { prFailed = true; prChecked = true; prRender(); });
+    prUnsubs = [
+      watch('pricingServices', rows => { prServices = rows.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)); }),
+      watch('pricingPackages', rows => { prPackages = rows.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)); }),
+      watch('pricingQuotes', rows => { prQuotes = rows.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))); }),
+      watch('pricingSettings', rows => { const r = rows.find(x => x.id === 'rates'); if(r) prRates = {stdRate: +r.stdRate || prRates.stdRate, seniorRate: +r.seniorRate || prRates.seniorRate}; })
+    ];
+    loadPrEvents();
+  }
+  function unsubscribePricing(){ prUnsubs.forEach(u => { try{ u(); }catch(e){} }); prUnsubs = []; }
+  function loadPrEvents(){
+    if(!db) return;
+    showsCol().where('weekId', '>=', '2026-09-01').get().then(snap => {
+      const seen = new Map();
+      snap.docs.forEach(d => { const s = d.data(); if(s.eventName && !s.archivedAt && !seen.has(s.eventName)) seen.set(s.eventName, {id: d.id, name: s.eventName, weekId: s.weekId}); });
+      prEvents = [...seen.values()].sort((a, b) => String(a.weekId).localeCompare(String(b.weekId)));
+      const dl = prEl('prEventList'); if(dl) dl.innerHTML = prEvents.map(e => `<option value="${escapeAttr(e.name)}"></option>`).join('');
+    }).catch(() => {});
+  }
+
+  // ----- quote maths -----
+  function prLineFor(s, hit){
+    return {serviceId: s.id, name: s.name, section: s.section, team: s.team || '', on: !!hit, qty: (hit && hit.qty) || 1,
+      price: (hit && hit.price !== undefined && hit.price !== null) ? hit.price : (s.price === undefined ? null : s.price),
+      std: s.stdHours, senior: s.seniorHours, floor: s.costFloor, billing: s.billing || 'per event', custom: false};
+  }
+  function prLinesFor(pkgLines){
+    return prServices.filter(s => s.active !== false).map(s => prLineFor(s, pkgLines && pkgLines.find(l => l.serviceId === s.id)));
+  }
+  function prNewQuote(){
+    return {id: null, title: '', client: '', event: '', showId: '', packageName: '', status: 'draft', notes: '', discount: 0, createdBy: null, createdAt: null, lines: prLinesFor(null)};
+  }
+  function prQuoteFromDoc(d){
+    const saved = d.lines || [], used = new Set();
+    const lines = prServices.filter(s => s.active !== false).map(s => {
+      const hit = saved.find(l => l.serviceId === s.id);
+      if(!hit) return prLineFor(s, null);
+      used.add(hit);
+      return {serviceId: s.id, name: hit.name || s.name, section: hit.section || s.section, team: hit.team || s.team || '', on: true, qty: hit.qty || 1,
+        price: hit.price === undefined ? null : hit.price, std: hit.std, senior: hit.senior, floor: hit.floor, billing: hit.billing || s.billing, custom: false};
+    });
+    saved.forEach(l => { if(used.has(l)) return; lines.push({serviceId: l.serviceId || null, name: l.name, section: l.section || 'Custom', team: l.team || '', on: true, qty: l.qty || 1,
+      price: l.price === undefined ? null : l.price, std: l.std, senior: l.senior, floor: l.floor, billing: l.billing || 'per event', custom: true}); });
+    return {id: d.id, title: d.title || '', client: d.client || '', event: d.event || '', showId: d.showId || '', packageName: d.packageName || '', status: d.status || 'draft',
+      notes: d.notes || '', discount: +d.discount || 0, createdBy: d.createdBy || null, createdAt: d.createdAt || null, lines};
+  }
+  function prTotals(q){
+    let sub = 0, std = 0, sen = 0, floor = 0, unpriced = 0, below = 0, n = 0;
+    q.lines.forEach(l => {
+      if(!l.on) return;
+      n++;
+      const qty = +l.qty || 0, p = prNum(l.price);
+      if(p === null) unpriced++; else { sub += qty * p; if(l.floor !== null && l.floor !== undefined && p < +l.floor) below++; }
+      std += qty * (+l.std || 0); sen += qty * (+l.senior || 0); floor += qty * (+l.floor || 0);
+    });
+    const disc = +q.discount || 0;
+    return {n, sub, disc, total: Math.max(0, sub - disc), std, sen, floor, unpriced, below, staff: std * prRates.stdRate + sen * prRates.seniorRate};
+  }
+
+  // ----- shell -----
+  function prRender(){
+    if(currentAppPage !== 'pricing') return;
+    const setup = prEl('pricingSetup'), body = prEl('pricingBody'), tabs = prEl('pricingTabsWrap');
+    if(!prIsManager()){ setup.hidden = true; tabs.hidden = true; body.innerHTML = '<div class="report-empty">Pricing is only available to managers.</div>'; return; }
+    if(prChecked && prFailed){
+      tabs.hidden = true; body.innerHTML = ''; body.dataset.rendered = '';
+      setup.hidden = false;
+      setup.innerHTML = `<div class="arc-setup">
+        <h3>One setup step before Pricing works</h3>
+        Pricing lives in four new tables that only managers can open. Add them once in Supabase:
+        <ol>
+          <li>Open your Scarlett project in Supabase and go to the SQL Editor.</li>
+          <li>Paste this in and press Run:<pre>${escapeHtml(PRICING_SQL)}</pre></li>
+          <li>Tell Claude it has run, so the price list can be loaded in. Then press Check again.</li>
+        </ol>
+        <div style="margin-top:10px; display:flex; gap:8px;"><button class="btn-ghost" id="prCopySqlBtn">Copy SQL</button><button class="btn-ghost" id="prRecheckBtn">Check again</button></div>
+      </div>`;
+      prEl('prCopySqlBtn').addEventListener('click', () => {
+        const cb = prEl('prCopySqlBtn');
+        (navigator.clipboard ? navigator.clipboard.writeText(PRICING_SQL) : Promise.reject())
+          .then(() => { cb.textContent = 'Copied'; setTimeout(() => { cb.textContent = 'Copy SQL'; }, 1800); })
+          .catch(() => { cb.textContent = 'Select the text above to copy'; });
+      });
+      prEl('prRecheckBtn').addEventListener('click', () => subscribePricing());
+      return;
+    }
+    setup.hidden = true; tabs.hidden = false;
+    document.querySelectorAll('#pricingTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-prtab') === prTab));
+    const ae = document.activeElement;
+    if(ae && body.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && body.dataset.tab === prTab && body.dataset.rendered) return; // never clobber typing
+    body.dataset.tab = prTab; body.dataset.rendered = '1';
+    const cl = prEl('prClientList');
+    if(cl) cl.innerHTML = pcClientNames().map(n => `<option value="${escapeAttr(n)}"></option>`).join('');
+    if(prTab === 'builder') prRenderBuilder(body);
+    else if(prTab === 'list') prRenderList(body);
+    else if(prTab === 'packages') prRenderPackages(body);
+    else prRenderQuotes(body);
+  }
+
+  // ----- Quotes tab -----
+  function prRenderQuotes(body){
+    const q = prQuery.trim().toLowerCase();
+    const rows = prQuotes.filter(r => {
+      const st = r.status || 'draft';
+      if(prStatusF === 'live' ? !(st === 'draft' || st === 'sent') : (prStatusF !== 'all' && st !== prStatusF)) return false;
+      return !q || [r.title, r.client, r.event, r.packageName, r.createdBy].join(' ').toLowerCase().includes(q);
+    });
+    const sum = st => prQuotes.filter(r => st.includes(r.status || 'draft')).reduce((a, r) => a + (+r.total || 0), 0);
+    body.innerHTML = `
+      <div class="report-controls">
+        <input type="search" class="pc-search" id="prSearch" placeholder="Search quotes" value="${escapeAttr(prQuery)}" autocomplete="off" aria-label="Search quotes">
+        <div class="segmented" id="prStatusTabs">
+          ${[['live', 'Open'], ['won', 'Won'], ['lost', 'Lost'], ['all', 'All']].map(([k, l]) => `<button type="button" data-prstatus="${k}" class="${prStatusF === k ? 'active' : ''}">${l}</button>`).join('')}
+        </div>
+        <button class="btn-primary" data-pr-act="new" style="margin-left:auto;">+ New quote</button>
+      </div>
+      <div class="pr-sums"><span>Open <b>${prMoney(sum(['draft', 'sent']))}</b></span><span>Won <b>${prMoney(sum(['won']))}</b></span><span>${prQuotes.length} quote${prQuotes.length === 1 ? '' : 's'} saved</span></div>
+      ${rows.length ? `<div class="pr-scroll"><table class="pr-table"><thead><tr><th>Quote</th><th>Client</th><th>Event</th><th>Status</th><th class="r">Total</th><th class="r">Hours</th><th>Updated</th></tr></thead><tbody>
+        ${rows.map(r => `<tr class="pr-click" data-pr-open="${escapeAttr(r.id)}"><td><b>${escapeHtml(r.title)}</b>${r.packageName ? `<div class="pr-sub">${escapeHtml(r.packageName)}</div>` : ''}</td><td>${escapeHtml(r.client || '')}</td><td>${escapeHtml(r.event || '')}</td><td><span class="pr-pill ${escapeAttr(r.status || 'draft')}">${escapeHtml(PR_STATUS[r.status] || 'Draft')}</span></td><td class="r"><b>${prMoney(r.total)}</b></td><td class="r">${(+r.totalStd || 0) + (+r.totalSenior || 0)}h</td><td class="pr-sub">${escapeHtml((r.updatedAt || '').slice(0, 10))}${r.createdBy ? ' · ' + escapeHtml(r.createdBy) : ''}</td></tr>`).join('')}
+        </tbody></table></div>`
+        : `<div class="report-empty">${prQuotes.length ? 'No quotes match.' : 'No quotes yet. Press New quote to build one from a package or from the price list.'}</div>`}`;
+  }
+
+  // ----- Builder tab -----
+  function prRenderBuilder(body){
+    if(!prQ) prQ = prNewQuote();
+    if(!prQ.lines.length && prServices.length) prQ.lines = prLinesFor(null);
+    const q = prQ;
+    let lastSec = null, rows = '';
+    q.lines.forEach((l, i) => {
+      if(l.section !== lastSec){ lastSec = l.section; rows += `<tr class="pr-sec"><td colspan="6">${escapeHtml(l.section || 'Other')}</td></tr>`; }
+      rows += prLineRow(l, i);
+    });
+    body.innerHTML = `
+      <div class="pr-bhead">
+        <div class="field"><label for="prqTitle">Quote title</label><input id="prqTitle" data-pr-q="title" value="${escapeAttr(q.title)}" placeholder="e.g. Bramham 2027 Headline"></div>
+        <div class="field-row">
+          <div class="field"><label for="prqClient">Client</label><input id="prqClient" list="prClientList" data-pr-q="client" value="${escapeAttr(q.client)}" autocomplete="off"></div>
+          <div class="field"><label for="prqEvent">Event</label><input id="prqEvent" list="prEventList" data-pr-q="event" value="${escapeAttr(q.event)}" autocomplete="off"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="prqStatus">Status</label><select id="prqStatus" data-pr-q="status">${Object.keys(PR_STATUS).map(k => `<option value="${k}" ${q.status === k ? 'selected' : ''}>${PR_STATUS[k]}</option>`).join('')}</select></div>
+          <div class="field"><label for="prqPkg">Start from a package</label><select id="prqPkg"><option value="">Choose a package to tick its services</option>${prPackages.map(p => `<option value="${escapeAttr(p.id)}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
+        </div>
+      </div>
+      <div class="pr-scroll"><table class="pr-table pr-lines"><thead><tr><th></th><th>Service</th><th>Qty</th><th>Price each (€)</th><th class="r">Line total</th><th class="r">Hours</th></tr></thead><tbody id="prLines">${rows || '<tr><td colspan="6" class="pr-sub">The price list is empty.</td></tr>'}</tbody></table></div>
+      <div class="pr-custom"><input id="prCName" placeholder="Custom line (not on the price list)"><input id="prCPrice" class="pr-n" inputmode="decimal" placeholder="Price €"><button class="btn-ghost" data-pr-act="addcustom">Add line</button></div>
+      <div class="field" style="margin-top:12px;"><label for="prqNotes">Notes</label><textarea id="prqNotes" data-pr-q="notes" placeholder="Scope, assumptions, what is excluded">${escapeHtml(q.notes)}</textarea></div>
+      <div class="pr-totals" id="prTotalsBar">
+        <div class="pr-tcol"><span class="pr-tl">Subtotal</span><b id="prSub"></b></div>
+        <div class="pr-tcol"><span class="pr-tl">Discount (€)</span><input id="prqDisc" class="pr-n" inputmode="decimal" data-pr-q="discount" value="${q.discount || ''}" placeholder="0"></div>
+        <div class="pr-tcol"><span class="pr-tl">Quote total</span><b class="pr-big" id="prTot"></b></div>
+        <div class="pr-tcol"><span class="pr-tl">Delivery hours</span><b id="prHrs"></b></div>
+        <div class="pr-tcol"><span class="pr-tl">Cost floor</span><b id="prFloor"></b></div>
+        <div class="pr-tcol"><span class="pr-tl">Staff time at rates</span><b id="prStaff"></b></div>
+        <div class="pr-warn" id="prWarn"></div>
+      </div>
+      <div class="pr-actions">
+        <button class="btn-primary" data-pr-act="save">${q.id ? 'Save changes' : 'Save quote'}</button>
+        ${q.id ? '<button class="btn-ghost" data-pr-act="saveas">Save as a new quote</button>' : ''}
+        <button class="btn-ghost" data-pr-act="copy">Copy summary</button>
+        <button class="btn-ghost" data-pr-act="clear">Clear</button>
+        ${q.id ? '<button class="btn-ghost pr-danger" data-pr-act="delquote">Delete quote</button>' : ''}
+      </div>`;
+    prRefreshTotals();
+  }
+  function prLineRow(l, i){
+    const p = prNum(l.price), below = l.on && p !== null && l.floor !== null && l.floor !== undefined && p < +l.floor;
+    return `<tr class="pr-line ${l.on ? 'on' : ''}" data-i="${i}">
+      <td class="c"><input type="checkbox" data-pr-l="on" ${l.on ? 'checked' : ''} aria-label="Include ${escapeAttr(l.name)}"></td>
+      <td><div class="pr-name">${escapeHtml(l.name)}</div>${(l.team || l.billing) ? `<div class="pr-sub">${escapeHtml([l.billing, l.team].filter(Boolean).join(' · '))}</div>` : ''}</td>
+      <td><input class="pr-n" type="number" min="0" step="1" data-pr-l="qty" value="${l.qty}"></td>
+      <td><input class="pr-n ${below ? 'below' : ''}" inputmode="decimal" data-pr-l="price" placeholder="TBD" value="${p === null ? '' : p}"${below ? ` title="Below the cost floor of ${prMoney(l.floor)}"` : ''}></td>
+      <td class="r pr-lt">${l.on ? prMoney(p === null ? null : p * (+l.qty || 0)) : ''}</td>
+      <td class="r pr-sub">${l.on ? ((+l.qty || 0) * ((+l.std || 0) + (+l.senior || 0))) + 'h' : ''}</td></tr>`;
+  }
+  function prRefreshTotals(){
+    if(!prQ || !prEl('prSub')) return;
+    const t = prTotals(prQ);
+    prEl('prSub').textContent = prMoney(t.sub);
+    prEl('prTot').textContent = prMoney(t.total);
+    prEl('prHrs').textContent = (t.std + t.sen) + 'h (' + t.std + ' std, ' + t.sen + ' senior)';
+    prEl('prFloor').textContent = prMoney(t.floor);
+    prEl('prStaff').textContent = prMoney(t.staff);
+    const w = [];
+    if(t.n === 0) w.push('Tick the services to include.');
+    if(t.unpriced) w.push(t.unpriced + ' ticked line' + (t.unpriced === 1 ? ' has' : 's have') + ' no price yet and ' + (t.unpriced === 1 ? 'is' : 'are') + ' not in the total.');
+    if(t.below) w.push(t.below + ' line' + (t.below === 1 ? ' is' : 's are') + ' priced below its cost floor.');
+    if(t.n && t.total < t.floor && !t.unpriced) w.push('The quote total is below the combined cost floor of ' + prMoney(t.floor) + '.');
+    prEl('prWarn').innerHTML = w.map(x => '<span>' + escapeHtml(x) + '</span>').join('');
+    document.querySelectorAll('#prLines tr.pr-line').forEach(tr => {
+      const l = prQ.lines[+tr.dataset.i]; if(!l) return;
+      const p = prNum(l.price);
+      tr.classList.toggle('on', !!l.on);
+      tr.children[4].textContent = l.on ? prMoney(p === null ? null : p * (+l.qty || 0)) : '';
+      tr.children[5].textContent = l.on ? ((+l.qty || 0) * ((+l.std || 0) + (+l.senior || 0))) + 'h' : '';
+      const inp = tr.querySelector('[data-pr-l="price"]');
+      if(inp) inp.classList.toggle('below', !!(l.on && p !== null && l.floor !== null && l.floor !== undefined && p < +l.floor));
+    });
+  }
+  function prSaveQuote(asNew){
+    const q = prQ;
+    if(!q.title.trim()){ prNotice('Give the quote a title first.'); prEl('prqTitle').focus(); return; }
+    const on = q.lines.filter(l => l.on);
+    if(!on.length){ prNotice('Tick at least one service.'); return; }
+    const t = prTotals(q), now = new Date().toISOString();
+    const id = (!asNew && q.id) ? q.id : 'q_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    const who = currentUserName || currentUserEmail || null;
+    const doc = {id, title: q.title.trim(), client: q.client.trim() || null, event: q.event.trim() || null, showId: q.showId || null, packageName: q.packageName || null,
+      status: q.status, discount: +q.discount || 0, total: t.total, totalStd: t.std, totalSenior: t.sen, notes: q.notes || null,
+      createdBy: (!asNew && q.id) ? (q.createdBy || who) : who, createdAt: (!asNew && q.createdAt) || now, updatedAt: now, archivedAt: null,
+      lines: on.map(l => ({serviceId: l.custom ? null : l.serviceId, name: l.name, section: l.section, team: l.team || null, qty: +l.qty || 1, price: prNum(l.price),
+        std: l.std === undefined ? null : l.std, senior: l.senior === undefined ? null : l.senior, floor: l.floor === undefined ? null : l.floor, billing: l.billing || 'per event', custom: !!l.custom}))};
+    prCol('pricingQuotes').doc(id).set(doc).then(() => {
+      q.id = id; q.createdBy = doc.createdBy; q.createdAt = doc.createdAt;
+      prNotice('Quote saved.', true);
+      const body = prEl('pricingBody'); if(prTab === 'builder'){ body.dataset.rendered = ''; prRender(); }
+    }).catch(e => prNotice('Could not save the quote: ' + ((e && e.message) || e)));
+  }
+  function prSummaryText(){
+    const q = prQ, t = prTotals(q), on = q.lines.filter(l => l.on);
+    const lines = [q.title || 'Quote', [q.client, q.event].filter(Boolean).join(' · '), ''];
+    on.forEach(l => { const p = prNum(l.price); lines.push('- ' + l.name + ((+l.qty || 1) > 1 ? ' x' + l.qty : '') + ': ' + (p === null ? 'price to be confirmed' : prMoney(p * (+l.qty || 1)))); });
+    lines.push('');
+    if(t.disc) lines.push('Subtotal: ' + prMoney(t.sub), 'Discount: -' + prMoney(t.disc));
+    lines.push('Total: ' + prMoney(t.total));
+    if(q.notes) lines.push('', q.notes);
+    return lines.join('\n');
+  }
+
+  // ----- Price list tab -----
+  function prRenderList(body){
+    const sections = [...new Set(prServices.map(s => s.section))];
+    const edit = prListView === 'edit';
+    let rows = '', last = null;
+    const nv = v => (v === null || v === undefined) ? '' : v;
+    prServices.forEach(s => {
+      if(s.section !== last){ last = s.section; rows += `<tr class="pr-sec"><td colspan="${edit ? 14 : 7}">${escapeHtml(s.section || 'Other')}</td></tr>`; }
+      const t = s.tiers || [];
+      if(edit){
+        rows += `<tr data-sid="${escapeAttr(s.id)}" class="${s.active === false ? 'pr-off' : ''}">
+          <td><input class="pr-wide" data-pr-s="name" value="${escapeAttr(s.name)}"></td>
+          <td><input data-pr-s="team" value="${escapeAttr(s.team || '')}"></td>
+          <td><input class="pr-n" data-pr-s="stdHours" inputmode="decimal" value="${nv(s.stdHours)}" placeholder="TBD"></td>
+          <td><input class="pr-n" data-pr-s="seniorHours" inputmode="decimal" value="${nv(s.seniorHours)}" placeholder="TBD"></td>
+          <td class="pr-fl"><input class="pr-n" data-pr-s="costFloor" inputmode="decimal" value="${nv(s.costFloor)}" placeholder="TBD"><button type="button" class="pr-mini" data-pr-act="calcfloor" title="Work the floor out from the hours and the hourly rates">calc</button></td>
+          <td><input class="pr-n" data-pr-s="price" inputmode="decimal" value="${nv(s.price)}" placeholder="TBD"></td>
+          <td><select data-pr-s="billing">${PR_BILLING.concat(PR_BILLING.includes(s.billing) ? [] : [s.billing]).map(b => `<option ${b === s.billing ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('')}</select></td>
+          ${PR_TIERS.map(tr => `<td class="c"><input type="checkbox" data-pr-s="tier" data-tier="${tr.k}" ${t.includes(tr.k) ? 'checked' : ''} title="${escapeAttr(tr.label)}"></td>`).join('')}
+          <td class="c"><input type="checkbox" data-pr-s="active" ${s.active === false ? '' : 'checked'} title="Show in the builder"></td>
+          <td><input data-pr-s="notes" value="${escapeAttr(s.notes || '')}"></td>
+          <td><button type="button" class="pr-mini pr-danger" data-pr-act="delsvc" title="Delete this service">✕</button></td></tr>`;
+      } else {
+        rows += `<tr class="${s.active === false ? 'pr-off' : ''}"><td><div class="pr-name">${escapeHtml(s.name)}</div><div class="pr-sub">${escapeHtml(s.team || '')}</div></td>${PR_TIERS.map(tr => `<td class="c">${t.includes(tr.k) ? '<span class="pr-tick">✓</span>' : '<span class="pr-sub">-</span>'}</td>`).join('')}<td class="r"><b>${prMoney(s.price)}</b></td><td class="pr-sub">${escapeHtml(s.billing || '')}</td></tr>`;
+      }
+    });
+    const ini = tr => tr.label.split(' ').map(w => w[0]).join('');
+    body.innerHTML = `
+      <div class="report-controls">
+        <div class="segmented" id="prListTabs"><button type="button" data-prlist="edit" class="${edit ? 'active' : ''}">Price list</button><button type="button" data-prlist="tiers" class="${edit ? '' : 'active'}">Tiers</button></div>
+        <div class="pr-rates"><span>Hourly rates</span><label>Standard €<input class="pr-n" data-pr-rate="stdRate" inputmode="decimal" value="${prRates.stdRate}"></label><label>Senior €<input class="pr-n" data-pr-rate="seniorRate" inputmode="decimal" value="${prRates.seniorRate}"></label></div>
+      </div>
+      ${edit ? `<div class="pr-addrow"><input id="prNewName" placeholder="New service name"><input id="prNewSec" list="prSecList" placeholder="Section"><datalist id="prSecList">${sections.map(s => `<option value="${escapeAttr(s)}"></option>`).join('')}</datalist><button class="btn-ghost" data-pr-act="addsvc">+ Add service</button></div>
+        <div class="pr-scroll"><table class="pr-table pr-edit"><thead><tr><th>Service</th><th>Team</th><th>Std h</th><th>Senior h</th><th>Cost floor €</th><th>Price €</th><th>Billing</th>${PR_TIERS.map(tr => `<th class="c" title="${escapeAttr(tr.label)}">${escapeHtml(ini(tr))}</th>`).join('')}<th class="c">On</th><th>Notes</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="pr-sub" style="margin-top:8px;">Tier columns: ${PR_TIERS.map(tr => `<b>${escapeHtml(ini(tr))}</b> ${escapeHtml(tr.label)}`).join(', ')}. Cost floor is the least a service should be sold for. Untick On to hide a service from the builder without deleting it. Edits save as you leave each box.</div>`
+      : `<div class="pr-tierinfo">${PR_TIERS.map(tr => `<div><b>${escapeHtml(tr.label)}</b><div class="pr-sub">${escapeHtml(tr.blurb)}</div></div>`).join('')}</div>
+        <div class="pr-scroll"><table class="pr-table"><thead><tr><th>Service</th>${PR_TIERS.map(tr => `<th class="c">${escapeHtml(tr.label)}</th>`).join('')}<th class="r">Price</th><th>Billing</th></tr></thead><tbody>${rows}</tbody></table></div>`}`;
+  }
+  function prSaveService(tr, input){
+    const s = prServices.find(x => x.id === tr.dataset.sid); if(!s) return;
+    const f = input.getAttribute('data-pr-s'); const patch = {};
+    if(f === 'tier'){ patch.tiers = [...tr.querySelectorAll('[data-pr-s="tier"]')].filter(c => c.checked).map(c => c.dataset.tier); }
+    else if(f === 'active'){ patch.active = input.checked; tr.classList.toggle('pr-off', !input.checked); }
+    else if(['stdHours', 'seniorHours', 'costFloor', 'price'].includes(f)){ patch[f] = prNum(input.value); }
+    else if(f === 'name'){ if(!input.value.trim()){ input.value = s.name; return; } patch.name = input.value.trim(); }
+    else patch[f] = input.value.trim() || (f === 'billing' ? 'per event' : null);
+    Object.assign(s, patch);
+    prCol('pricingServices').doc(s.id).update(patch).catch(e => prNotice('Could not save: ' + ((e && e.message) || e)));
+  }
+  function prSaveRates(){
+    const std = prNum(document.querySelector('[data-pr-rate="stdRate"]').value), sen = prNum(document.querySelector('[data-pr-rate="seniorRate"]').value);
+    if(std === null || sen === null) return;
+    prRates = {stdRate: std, seniorRate: sen};
+    prCol('pricingSettings').doc('rates').set({id: 'rates', stdRate: std, seniorRate: sen}).then(() => prNotice('Hourly rates saved.', true)).catch(e => prNotice('Could not save: ' + ((e && e.message) || e)));
+  }
+
+  // ----- Packages tab -----
+  function prRenderPackages(body){
+    const sumFor = p => {
+      let tot = 0, hrs = 0, tbd = 0;
+      (p.lines || []).forEach(l => {
+        const s = prServices.find(x => x.id === l.serviceId); if(!s) return;
+        const pr = prNum(l.price !== undefined && l.price !== null ? l.price : s.price);
+        if(pr === null) tbd++; else tot += pr * (l.qty || 1);
+        hrs += (l.qty || 1) * ((+s.stdHours || 0) + (+s.seniorHours || 0));
+      });
+      return {tot, hrs, tbd};
+    };
+    body.innerHTML = `
+      <div class="pr-sub" style="margin-bottom:10px;">Packages are templates. Choose one in the builder to tick its services, then adjust prices for the event.</div>
+      <div class="cl-grid">${prPackages.map(p => {
+        const s = sumFor(p), names = (p.lines || []).map(l => (prServices.find(x => x.id === l.serviceId) || {}).name).filter(Boolean);
+        return `<div class="cl-card pr-pkg" data-pid="${escapeAttr(p.id)}">
+          <input class="pr-pname" data-pr-p="name" value="${escapeAttr(p.name)}" aria-label="Package name">
+          <div class="pr-big">${prMoney(s.tot)}</div><div class="pr-sub">${s.hrs}h delivery${s.tbd ? ' · ' + s.tbd + ' item' + (s.tbd === 1 ? '' : 's') + ' unpriced' : ''}</div>
+          <textarea data-pr-p="blurb" rows="2" aria-label="Description">${escapeHtml(p.blurb || '')}</textarea>
+          <div class="pr-sub">${escapeHtml(names.join(', '))}</div>
+          <div class="pr-actions"><button class="btn-primary" data-pr-act="usepkg">Use in builder</button><button class="btn-ghost" data-pr-act="overwritepkg" title="Replace this package's services with what is ticked in the builder">Update from builder</button><button class="btn-ghost pr-danger" data-pr-act="delpkg">Delete</button></div>
+        </div>`; }).join('') || '<div class="report-empty">No packages yet.</div>'}</div>
+      <div class="pr-addrow"><input id="prNewPkg" placeholder="New package name"><button class="btn-ghost" data-pr-act="newpkg">Save the builder's ticked services as a new package</button></div>`;
+  }
+  function prTickedLines(){ return prQ ? prQ.lines.filter(l => l.on && !l.custom && l.serviceId).map(l => ({serviceId: l.serviceId, qty: +l.qty || 1})) : []; }
+
+  // ----- events -----
+  function prLoadIntoBuilder(q){ prQ = q; prTab = 'builder'; prEl('pricingBody').dataset.rendered = ''; prRender(); window.scrollTo({top: 0}); }
+  (function wirePricing(){
+    const body = document.getElementById('pricingBody'); if(!body) return;
+    document.getElementById('pricingTabs').addEventListener('click', e => {
+      const b = e.target.closest('[data-prtab]'); if(!b) return;
+      prTab = b.getAttribute('data-prtab'); body.dataset.rendered = ''; prRender();
+    });
+    body.addEventListener('input', e => {
+      const t = e.target;
+      if(t.id === 'prSearch'){ prQuery = t.value; const pos = t.selectionStart; body.dataset.rendered = ''; prRender(); const n = prEl('prSearch'); if(n){ n.focus(); try{ n.setSelectionRange(pos, pos); }catch(_){} } return; }
+      if(t.hasAttribute('data-pr-q')){
+        const f = t.getAttribute('data-pr-q');
+        prQ[f] = f === 'discount' ? (prNum(t.value) || 0) : t.value;
+        if(f === 'event'){ const hit = prEvents.find(x => x.name === t.value); prQ.showId = hit ? hit.id : ''; }
+        if(f === 'discount') prRefreshTotals();
+        return;
+      }
+      if(t.hasAttribute('data-pr-l')){
+        const tr = t.closest('tr'), l = prQ.lines[+tr.dataset.i], f = t.getAttribute('data-pr-l');
+        if(f === 'on') l.on = t.checked; else if(f === 'qty') l.qty = t.value === '' ? '' : Math.max(0, parseFloat(t.value) || 0); else l.price = t.value;
+        prRefreshTotals();
+      }
+    });
+    body.addEventListener('change', e => {
+      const t = e.target;
+      if(t.hasAttribute('data-pr-s')){ prSaveService(t.closest('tr'), t); return; }
+      if(t.hasAttribute('data-pr-rate')){ prSaveRates(); return; }
+      if(t.hasAttribute('data-pr-p')){
+        const id = t.closest('[data-pid]').dataset.pid, f = t.getAttribute('data-pr-p'), p = prPackages.find(x => x.id === id); if(!p) return;
+        if(f === 'name' && !t.value.trim()){ t.value = p.name; return; }
+        p[f] = t.value.trim(); prCol('pricingPackages').doc(id).update({[f]: p[f]}).catch(err => prNotice('Could not save: ' + ((err && err.message) || err)));
+        return;
+      }
+      if(t.id === 'prqPkg' && t.value){
+        const p = prPackages.find(x => x.id === t.value); if(!p) return;
+        prQ.lines = prLinesFor(p.lines); prQ.packageName = p.name;
+        if(!prQ.title && (prQ.event || prQ.client)) prQ.title = (prQ.event || prQ.client) + ' ' + p.name;
+        body.dataset.rendered = ''; prRender();
+      }
+    });
+    body.addEventListener('click', e => {
+      const seg = e.target.closest('[data-prstatus]'); if(seg){ prStatusF = seg.getAttribute('data-prstatus'); body.dataset.rendered = ''; prRender(); return; }
+      const lv = e.target.closest('[data-prlist]'); if(lv){ prListView = lv.getAttribute('data-prlist'); body.dataset.rendered = ''; prRender(); return; }
+      const op = e.target.closest('[data-pr-open]');
+      if(op){ const d = prQuotes.find(x => x.id === op.getAttribute('data-pr-open')); if(d) prLoadIntoBuilder(prQuoteFromDoc(d)); return; }
+      const a = e.target.closest('[data-pr-act]'); if(!a) return;
+      const act = a.getAttribute('data-pr-act');
+      if(act === 'new'){ prLoadIntoBuilder(prNewQuote()); }
+      else if(act === 'save'){ prSaveQuote(false); }
+      else if(act === 'saveas'){ prSaveQuote(true); }
+      else if(act === 'clear'){ prQ = prNewQuote(); body.dataset.rendered = ''; prRender(); }
+      else if(act === 'copy'){
+        const txt = prSummaryText();
+        (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => prNotice('Summary copied.', true)).catch(() => prNotice('Could not copy. Select the figures and copy by hand.'));
+      }
+      else if(act === 'delquote'){
+        if(!prQ.id || !window.confirm('Delete this quote for good?')) return;
+        prCol('pricingQuotes').doc(prQ.id).delete().then(() => { prQ = null; prTab = 'quotes'; body.dataset.rendered = ''; prRender(); prNotice('Quote deleted.', true); });
+      }
+      else if(act === 'addcustom'){
+        const name = prEl('prCName').value.trim(); if(!name){ prEl('prCName').focus(); return; }
+        prQ.lines.push({serviceId: null, name, section: 'Custom', team: '', on: true, qty: 1, price: prNum(prEl('prCPrice').value), std: null, senior: null, floor: null, billing: 'per event', custom: true});
+        body.dataset.rendered = ''; prRender();
+      }
+      else if(act === 'addsvc'){
+        const name = prEl('prNewName').value.trim(), sec = prEl('prNewSec').value.trim() || 'Other'; if(!name){ prEl('prNewName').focus(); return; }
+        const order = prServices.reduce((m, s) => Math.max(m, s.sortOrder || 0), 0) + 10;
+        const s = {id: 'svc_' + Date.now().toString(36), name, section: sec, sortOrder: order, team: null, stdHours: null, seniorHours: null, costFloor: null, price: null, billing: 'per event', tiers: [], notes: null, active: true};
+        prCol('pricingServices').doc(s.id).set(s).then(() => { prNotice('Service added.', true); }).catch(err => prNotice('Could not add: ' + ((err && err.message) || err)));
+      }
+      else if(act === 'delsvc'){
+        const tr = a.closest('tr'), s = prServices.find(x => x.id === tr.dataset.sid); if(!s) return;
+        if(!window.confirm('Delete "' + s.name + '" from the price list? Saved quotes keep their own copy. (Untick On instead to just hide it.)')) return;
+        prCol('pricingServices').doc(s.id).delete().then(() => prNotice('Service deleted.', true));
+      }
+      else if(act === 'calcfloor'){
+        const tr = a.closest('tr'), s = prServices.find(x => x.id === tr.dataset.sid); if(!s) return;
+        const v = Math.round((+s.stdHours || 0) * prRates.stdRate + (+s.seniorHours || 0) * prRates.seniorRate);
+        const inp = tr.querySelector('[data-pr-s="costFloor"]'); inp.value = v; prSaveService(tr, inp);
+      }
+      else if(act === 'usepkg'){
+        const p = prPackages.find(x => x.id === a.closest('[data-pid]').dataset.pid); if(!p) return;
+        const q = prNewQuote(); q.lines = prLinesFor(p.lines); q.packageName = p.name; prLoadIntoBuilder(q);
+      }
+      else if(act === 'overwritepkg'){
+        const p = prPackages.find(x => x.id === a.closest('[data-pid]').dataset.pid), lines = prTickedLines();
+        if(!p || !lines.length){ prNotice('Tick services in the builder first, then update the package from them.'); return; }
+        if(!window.confirm('Replace the services in "' + p.name + '" with the ' + lines.length + ' ticked in the builder?')) return;
+        prCol('pricingPackages').doc(p.id).update({lines}).then(() => prNotice('Package updated.', true));
+      }
+      else if(act === 'newpkg'){
+        const name = prEl('prNewPkg').value.trim(), lines = prTickedLines();
+        if(!name){ prEl('prNewPkg').focus(); return; }
+        if(!lines.length){ prNotice('Tick services in the builder first, then save them as a package.'); return; }
+        const order = prPackages.reduce((m, s) => Math.max(m, s.sortOrder || 0), 0) + 10;
+        const id = 'pkg_' + Date.now().toString(36);
+        prCol('pricingPackages').doc(id).set({id, name, blurb: null, sortOrder: order, lines}).then(() => prNotice('Package saved.', true));
+      }
+      else if(act === 'delpkg'){
+        const p = prPackages.find(x => x.id === a.closest('[data-pid]').dataset.pid); if(!p || !window.confirm('Delete the package "' + p.name + '"? Saved quotes are not affected.')) return;
+        prCol('pricingPackages').doc(p.id).delete().then(() => prNotice('Package deleted.', true));
+      }
+    });
+  })();
+
   // Only @equiratings.com addresses get in. This is the friendly front door; the real lock is the
   // database rule in Supabase that refuses everyone else's reads and writes.
   // ---- Backup (Annie and Geogs only) ----
@@ -10576,7 +11114,8 @@
   const BACKUP_EMAILS = ['annie.bishop@equiratings.com', 'ruairi@equiratings.com'];
   // pushSubscriptions (device push keys) is left out on purpose: it is not needed to rebuild Scarlett.
   const BACKUP_TABLES = ['tasks','weeks','shows','recurringTasks','deliveryItems','contractClients','clientOps',
-    'clientProfiles','hustleOpportunities','podcastEpisodes','teamActivity','changeLog','appUsers'];
+    'clientProfiles','hustleOpportunities','podcastEpisodes','teamActivity','changeLog','appUsers',
+    'pricingServices','pricingPackages','pricingQuotes','pricingSettings'];
   let backupRunning = false;
   function applyBackupAccess(){
     const btn = document.getElementById('backupBtn');
