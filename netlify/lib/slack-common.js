@@ -189,4 +189,4 @@ async function notifyAssigned(names, title, sender, senderEmail){
   return out;
 }
 
-module.exports = { localParts, runAll, notifyAssigned };
+module.exports = { localParts, runAll, notifyAssigned, slack, loadData, loadModes, modeOf, channelMessage, SITE, esc, dayLabel };

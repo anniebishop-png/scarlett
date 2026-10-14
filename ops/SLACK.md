@@ -14,7 +14,7 @@ The code is `netlify/lib/slack-common.js`, run on a schedule by `netlify/functio
 {
   "display_information": { "name": "Scarlett", "description": "Daily to-dos from Scarlett" },
   "features": { "bot_user": { "display_name": "Scarlett", "always_online": true } },
-  "oauth_config": { "scopes": { "bot": ["chat:write", "chat:write.public", "users:read", "users:read.email", "im:write"] } },
+  "oauth_config": { "scopes": { "bot": ["chat:write", "chat:write.public", "users:read", "users:read.email", "im:write", "channels:read", "groups:read"] } },
   "settings": { "org_deploy_enabled": false, "socket_mode_enabled": false, "token_rotation_enabled": false }
 }
 ```
@@ -43,3 +43,7 @@ The team channel post is separate: it only goes out when `SLACK_CHANNEL_POST` is
 When someone assigns a task to another person, `push-assign.js` sends the phone/desktop push as before and also a Slack DM ("Sam assigned you a task: ..."). The sender never gets one for their own assignment. These go to the whole team unless they chose Off. If Slack is not set up the Slack part is silently skipped.
 
 The token variable can be called either `SLACK_BOT_TOKEN` or `SLACK_OAUTH_TOKEN`.
+
+## Send to Slack (owners only)
+Annie and Ruairi see a **Slack** button in the top bar. It opens a window to pick a channel and send either the team summary right now or a card for one task, quote or show (with an optional note). Quote cards never show prices. Posting needs two confirmations (Send, then Confirm). It runs through `netlify/functions/slack-post.js`, which checks the caller is one of the two owners, and each post is written to the change log.
+The channel list needs the `channels:read` and `groups:read` scopes (add them under OAuth & Permissions, then Reinstall to Workspace). Without them the window still works if you paste a channel ID. For a private channel, invite Scarlett first with `/invite @Scarlett`.

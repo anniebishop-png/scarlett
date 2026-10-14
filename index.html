@@ -1289,6 +1289,10 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span>Backup</span>
     </button>
+    <button type="button" class="backup-btn" id="slackBtn" hidden title="Send a team summary or an update on one task, quote or show to a Slack channel">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Slack</span>
+    </button>
     <button type="button" class="backup-btn" id="accessBtn" hidden title="See who has access to Scarlett, and remove access when someone leaves">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span>Access</span>
@@ -1851,6 +1855,16 @@
     <h3>Team access</h3>
     <div id="accessBody" style="font-size:13.5px;">Loading...</div>
     <div style="display:flex; justify-content:flex-end; margin-top:14px;"><button type="button" class="btn-ghost" id="accessClose">Close</button></div>
+  </div>
+</div>
+<div class="overlay" id="slackOverlay" hidden>
+  <div class="modal" style="max-width:560px;" role="dialog" aria-label="Send to Slack">
+    <h3>Send to Slack</h3>
+    <div id="slackSendBody" style="font-size:13.5px;"></div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+      <button type="button" class="btn-ghost" id="slackSendClose">Close</button>
+      <button type="button" class="btn-primary" id="slackSendGo">Send</button>
+    </div>
   </div>
 </div>
 <div class="overlay" id="bulkOverlay" hidden>
@@ -11346,6 +11360,7 @@
     if(!btn) return;
     btn.hidden = !(currentUserEmail && BACKUP_EMAILS.includes(String(currentUserEmail).toLowerCase()));
     const ab = document.getElementById('accessBtn'); if(ab) ab.hidden = btn.hidden;
+    const sb2 = document.getElementById('slackBtn'); if(sb2) sb2.hidden = btn.hidden;
   }
   async function backupFetchTable(name){
     const key = {contractClients:'client', appUsers:'email', clientProfiles:'name'}[name] || 'id';
@@ -11448,6 +11463,91 @@
       accessMsg = act === 'deactivate' ? ((r.plan && r.plan.name) || email) + ' no longer has access.' : ((r.name) || email) + ' has access again.';
       return loadAccess();
     }).catch(err => { accessArm = null; accessMsg = 'That did not work: ' + ((err && err.message) || err); renderAccess(); });
+  });
+
+  // ---- Send to Slack (Annie and Geogs only): post a team summary or a card for one task, quote or show when you choose ----
+  // The slack-post server function checks who is asking, looks the item up itself, and never includes quote prices.
+  function slpCall(payload){
+    return supabaseClient.auth.getSession().then(({data}) => {
+      const tok = data && data.session && data.session.access_token;
+      if(!tok) throw new Error('not signed in');
+      return fetch('/.netlify/functions/slack-post', {method: 'POST', headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + tok}, body: JSON.stringify(payload)});
+    }).then(r => r.json().then(j => { if(!r.ok) throw new Error(j.error || 'Server error'); return j; }));
+  }
+  let slpChannels = [], slpChanError = '', slpPicked = null, slpArmed = false, slpBusy = false, slpTimer = null;
+  const SLP_TYPE = {task: 'Task', quote: 'Quote', show: 'Show'};
+  function slpEl(id){ return document.getElementById(id); }
+  function slpMode(){ const r = document.querySelector('input[name="slpWhat"]:checked'); return r ? r.value : 'summary'; }
+  function slpChannelId(){ const el = slpEl('slpChan'); return el ? el.value.trim() : ''; }
+  function slpChannelLabel(){
+    const el = slpEl('slpChan'); if(!el) return 'the channel';
+    if(el.tagName === 'SELECT') return '#' + ((el.options[el.selectedIndex] || {}).text || '').replace(/^[^#\w]*/, '').replace(/ \(.*\)$/, '');
+    return el.value.trim();
+  }
+  function slpMsg(text, bad){ const m = slpEl('slpMsg'); if(m){ m.textContent = text || ''; m.style.color = bad ? '#c4342f' : 'var(--ink-2)'; } }
+  function slpDisarm(){ slpArmed = false; const g = slpEl('slackSendGo'); if(g){ g.textContent = 'Send'; g.disabled = false; } }
+  function slpRenderBody(){
+    const lab = 'display:block; font-size:12px; font-weight:700; margin:12px 0 4px; color:var(--ink-2);';
+    const fld = 'width:100%; font:inherit; font-size:13px; padding:8px 10px; border:1px solid var(--hairline-strong, var(--hairline)); border-radius:9px; background:var(--surface-2); color:var(--ink);';
+    const chan = slpChanError
+      ? '<input id="slpChan" style="' + fld + '" placeholder="Paste a channel ID, e.g. C0123456789"><div style="font-size:11.5px; color:var(--ink-2); margin-top:4px;">The channel list needs two extra Slack permissions (' + escapeHtml(slpChanError) + '). Until then, paste the channel ID.</div>'
+      : '<select id="slpChan" style="' + fld + '">' + (slpChannels.length ? slpChannels.map(c => '<option value="' + escapeAttr(c.id) + '"' + (c.id === (slpChannels.defaultChannel || '') ? ' selected' : '') + '>' + (c.isPrivate ? '🔒 ' : '#') + escapeHtml(c.name) + (c.isMember ? '' : ' (Scarlett not in it yet)') + '</option>').join('') : '<option value="">Loading channels...</option>') + '</select>';
+    slpEl('slackSendBody').innerHTML =
+      '<label style="' + lab + 'margin-top:0;">Channel</label>' + chan
+      + '<label style="' + lab + '">What to send</label>'
+      + '<label style="display:block; margin:3px 0; cursor:pointer;"><input type="radio" name="slpWhat" value="summary" checked> Team summary now (who has what due today and overdue)</label>'
+      + '<label style="display:block; margin:3px 0; cursor:pointer;"><input type="radio" name="slpWhat" value="item"> An update on one task, quote or show</label>'
+      + '<div id="slpItemBox" hidden><input id="slpQ" style="' + fld + ' margin-top:6px;" placeholder="Search by name" autocomplete="off"><div id="slpRes" style="margin-top:6px; max-height:180px; overflow:auto;"></div><div id="slpPicked" style="margin-top:6px; font-weight:700;"></div></div>'
+      + '<label style="' + lab + '" for="slpNote">Add a note (optional)</label><textarea id="slpNote" rows="2" maxlength="500" style="' + fld + ' resize:vertical;"></textarea>'
+      + '<div id="slpMsg" style="margin-top:10px; font-size:12.5px;"></div>';
+    slpEl('slackSendBody').querySelectorAll('input[name="slpWhat"]').forEach(r => r.addEventListener('change', () => { slpEl('slpItemBox').hidden = slpMode() !== 'item'; slpDisarm(); slpMsg(''); }));
+    slpEl('slpChan').addEventListener('change', slpDisarm);
+    slpEl('slpNote').addEventListener('input', slpDisarm);
+    slpEl('slpQ').addEventListener('input', () => {
+      clearTimeout(slpTimer); slpDisarm();
+      const q = slpEl('slpQ').value.trim();
+      if(q.length < 2){ slpEl('slpRes').innerHTML = ''; return; }
+      slpTimer = setTimeout(() => {
+        slpCall({action: 'search', q}).then(r => {
+          const res = r.results || [];
+          slpEl('slpRes').innerHTML = res.length ? res.map((x, i) => '<button type="button" data-slp-i="' + i + '" style="display:block; width:100%; text-align:left; padding:7px 9px; margin:2px 0; border:1px solid var(--hairline); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; font-size:12.5px; cursor:pointer;"><b>' + escapeHtml(SLP_TYPE[x.type]) + ':</b> ' + escapeHtml(x.title) + '<div style="font-size:11.5px; color:var(--ink-2);">' + escapeHtml(x.sub || '') + '</div></button>').join('') : '<div style="font-size:12px; color:var(--ink-2);">Nothing found.</div>';
+          slpEl('slpRes').querySelectorAll('[data-slp-i]').forEach(b => b.addEventListener('click', () => {
+            slpPicked = res[Number(b.getAttribute('data-slp-i'))];
+            slpEl('slpPicked').textContent = 'Sending: ' + SLP_TYPE[slpPicked.type] + ' - ' + slpPicked.title;
+            slpEl('slpRes').innerHTML = ''; slpDisarm();
+          }));
+        }).catch(e => { slpEl('slpRes').textContent = 'Search failed: ' + ((e && e.message) || e); });
+      }, 300);
+    });
+  }
+  function slpOpen(){
+    slpPicked = null; slpArmed = false; slpBusy = false; slpChanError = '';
+    slpEl('slackOverlay').hidden = false;
+    slpRenderBody(); slpDisarm();
+    slpCall({action: 'channels'}).then(r => {
+      if(r.error){ slpChanError = r.error; slpChannels = []; }
+      else { slpChannels = r.channels || []; slpChannels.defaultChannel = r.defaultChannel || ''; }
+      slpRenderBody();
+    }).catch(e => { slpChanError = (e && e.message) || 'unavailable'; slpRenderBody(); });
+  }
+  slpEl('slackBtn').addEventListener('click', slpOpen);
+  slpEl('slackSendClose').addEventListener('click', () => { slpEl('slackOverlay').hidden = true; });
+  slpEl('slackOverlay').addEventListener('click', e => { if(e.target.id === 'slackOverlay') e.target.hidden = true; });
+  slpEl('slackSendGo').addEventListener('click', () => {
+    if(slpBusy) return;
+    const channel = slpChannelId();
+    if(!channel){ slpMsg('Pick a channel first.', true); return; }
+    const summary = slpMode() === 'summary';
+    if(!summary && !slpPicked){ slpMsg('Search for the task, quote or show to send.', true); return; }
+    if(!slpArmed){ slpArmed = true; slpEl('slackSendGo').textContent = 'Confirm: post to ' + slpChannelLabel(); slpMsg(''); return; }
+    slpBusy = true; slpEl('slackSendGo').disabled = true; slpEl('slackSendGo').textContent = 'Sending...';
+    const payload = {action: 'post', channel, note: slpEl('slpNote').value.trim()};
+    if(summary) payload.summary = true; else payload.item = {type: slpPicked.type, id: slpPicked.id};
+    slpCall(payload).then(r => {
+      slpBusy = false; slpDisarm();
+      if(r.ok){ slpMsg('Posted to ' + slpChannelLabel() + '.'); slpPicked = null; const pk = slpEl('slpPicked'); if(pk) pk.textContent = ''; slpEl('slpNote').value = ''; }
+      else slpMsg('Slack said: ' + (r.error || 'something went wrong'), true);
+    }).catch(e => { slpBusy = false; slpDisarm(); slpMsg('That did not work: ' + ((e && e.message) || e), true); });
   });
 
   function isTeamEmail(email){ return /^[^@\s]+@equiratings\.com$/i.test(String(email || '').trim()); }
