@@ -72,7 +72,11 @@ exports.handler = async (event) => {
       const row = ((await sb('appUsers?select=email,name,role&email=ilike.' + encodeURIComponent(target))) || [])[0];
       const au = (await allAuthUsers()).find(u => String(u.email || '').toLowerCase() === target);
       const plan = { email: target, name: row ? row.name : null, role: row ? row.role : null, hasSignIn: !!au, alreadyDeactivated: isBanned(au), inTeamList: !!row };
-      if(body.dryRun) return json(200, { dryRun: true, plan });
+      if(body.dryRun){
+        // checkWrite proves the server can change a sign-in without changing anything: it sets "no ban" on someone who is not banned.
+        if(body.checkWrite && au && !isBanned(au)){ await authAdmin('users/' + au.id, { method: 'PUT', body: JSON.stringify({ ban_duration: 'none' }) }); plan.writeCheck = 'ok'; }
+        return json(200, { dryRun: true, plan });
+      }
       if(!row && !au) return json(404, { error: 'No one with that email is in Scarlett', plan });
       if(au && !isBanned(au)) await authAdmin('users/' + au.id, { method: 'PUT', body: JSON.stringify({ ban_duration: '876000h' }) });
       if(row) await sb('appUsers?email=ilike.' + encodeURIComponent(target), { method: 'DELETE' });
