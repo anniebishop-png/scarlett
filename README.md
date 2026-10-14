@@ -57,7 +57,11 @@ The public Supabase key that the page uses is not secret and is in `index.html`.
 5. Add users to `appUsers` and create their sign-ins in Supabase, Authentication.
 
 ## Database history
-`sql/schema-snapshot.sql` is the full table structure exported from the live database on 2026-10-14 (tables, columns, defaults, keys). Running it creates every table. Row-level security policies are defined in the dated files in `sql/` (appUsers and `is_manager()` in `2026-10-hustle-permissions.sql`, pricing in `2026-10-pricing*.sql`). The policies on the older tables are not captured in the repo yet. `sql/export-schema.sql` has the queries to export them.
+- `sql/schema-snapshot.sql`: the full table structure exported from the live database on 2026-10-14 (tables, columns, defaults, keys). Running it creates every table.
+- `sql/policies-snapshot.sql`: every row-level security policy as it stands on 2026-10-14. These are the real access rules.
+- The helper functions the policies use, `is_manager()` and `my_name()`, are in `sql/2026-10-hustle-permissions.sql`.
+- The dated files in `sql/` are the individual changes, in the order they were made.
+- `sql/export-schema.sql` has the queries to re-export all of this if the database drifts from the files.
 Rule going forward: any time SQL is run in Supabase, the same SQL is saved as a new dated file in `sql/` and committed.
 
 ## Backups and other people
