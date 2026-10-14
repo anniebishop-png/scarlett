@@ -28,8 +28,10 @@ async function slack(method, args, httpGet){
   if(res.status === 429){ await new Promise(r => setTimeout(r, 1500)); return slack(method, args, httpGet); }
   return res.json();
 }
+let lastLookupError = null;
 const slackIdFor = async email => {
   const r = await slack('users.lookupByEmail', { email }, true);
+  if(!r.ok) lastLookupError = r.error + (r.needed ? ' (needs ' + r.needed + ')' : '');
   return r.ok ? r.user.id : null;
 };
 
@@ -119,7 +121,7 @@ async function runAll(today, onlyEmail){
     if(onlyEmail && p.email !== onlyEmail) continue;
     if(!onlyEmail && !hasWork(p)){ out.skipped++; continue; }
     const uid = await slackIdFor(p.email);
-    if(!uid){ out.noSlackUser.push(p.email); continue; }
+    if(!uid){ out.noSlackUser.push(p.email); out.slackError = lastLookupError; continue; }
     const r = await slack('chat.postMessage', Object.assign({ channel: uid, unfurl_links: false }, dmMessage(p, today)));
     if(r.ok) out.dms++; else out.failed.push(p.name + ': ' + r.error);
   }
