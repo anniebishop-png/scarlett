@@ -21,7 +21,7 @@ const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g,
 
 // ----- Slack -----
 async function slack(method, args, httpGet){
-  const token = env('SLACK_BOT_TOKEN');
+  const token = process.env.SLACK_BOT_TOKEN || process.env.SLACK_OAUTH_TOKEN || env('SLACK_BOT_TOKEN');   // either name works
   const res = httpGet
     ? await fetch('https://slack.com/api/' + method + '?' + new URLSearchParams(args), { headers: { Authorization: 'Bearer ' + token } })
     : await fetch('https://slack.com/api/' + method, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(args) });
@@ -135,7 +135,7 @@ async function runAll(today, onlyEmail){
 async function notifyAssigned(names, title, sender, senderEmail){
   const out = { dms: 0, skipped: 0, failed: [] };
   try{
-    if(!process.env.SLACK_BOT_TOKEN) return Object.assign(out, { note: 'Slack not set up' });
+    if(!(process.env.SLACK_BOT_TOKEN || process.env.SLACK_OAUTH_TOKEN)) return Object.assign(out, { note: 'Slack not set up' });
     const users = (await sb('appUsers?select=email,name')) || [];
     const want = new Set((names || []).map(n => String(n).trim().toLowerCase()));
     for(const u of users){
