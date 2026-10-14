@@ -3,6 +3,7 @@
 // Verifies the caller is a signed-in @equiratings.com user, then pushes "<Caller> assigned you: <title>" to every
 // device registered by the people in "to". The caller never gets a push for their own assignment.
 const { env, sb, sendToSubs, inList } = require('../lib/push-common');
+const { notifyAssigned } = require('../lib/slack-common');
 
 const json = (statusCode, obj) => ({ statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
 
@@ -36,11 +37,13 @@ exports.handler = async (event) => {
     const title = String(body.title || 'an item').replace(/\s+/g, ' ').trim().slice(0, 120);
     if(!to.length) return json(400, { error: 'No recipients' });
 
+    const slackP = notifyAssigned(to, title, sender, email);   // Slack DM alongside the push; never throws
     const subs = (await sb('pushSubscriptions?select=*&userName=' + encodeURIComponent(inList(to)))) || [];
     const targets = subs.filter(s => String(s.email || '').toLowerCase() !== email);
-    if(!targets.length) return json(200, { sent: 0, note: 'No registered devices' });
-    const r = await sendToSubs(targets, { title: 'Assigned to you', body: sender + ' assigned you: ' + title, url: '/', tag: 'assign-' + Date.now() });
-    return json(200, r);
+    let r = { sent: 0, note: 'No registered devices' };
+    if(targets.length) r = await sendToSubs(targets, { title: 'Assigned to you', body: sender + ' assigned you: ' + title, url: '/', tag: 'assign-' + Date.now() });
+    const sl = await slackP;
+    return json(200, Object.assign({}, r, { slack: sl }));
   }catch(e){
     console.error(e);
     return json(500, { error: String(e && e.message || e) });

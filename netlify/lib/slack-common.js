@@ -131,4 +131,32 @@ async function runAll(today, onlyEmail){
 }
 
 
-module.exports = { localParts, runAll };
+// DM people when someone assigns them a task. Never throws; returns a small summary. Respects pilot mode.
+async function notifyAssigned(names, title, sender, senderEmail){
+  const out = { dms: 0, skipped: 0, failed: [] };
+  try{
+    if(!process.env.SLACK_BOT_TOKEN) return Object.assign(out, { note: 'Slack not set up' });
+    const users = (await sb('appUsers?select=email,name')) || [];
+    const want = new Set((names || []).map(n => String(n).trim().toLowerCase()));
+    for(const u of users){
+      if(!u.email || !u.name || !want.has(String(u.name).trim().toLowerCase())) continue;
+      const email = String(u.email).toLowerCase();
+      if(email === String(senderEmail || '').toLowerCase()) continue;
+      if(pilotOn() && !PILOT.includes(email)){ out.skipped++; continue; }
+      const uid = await slackIdFor(email);
+      if(!uid){ out.skipped++; continue; }
+      const head = esc(sender) + ' assigned you a task: *' + esc(title) + '*';
+      const r = await slack('chat.postMessage', {
+        channel: uid, unfurl_links: false, text: sender + ' assigned you a task: ' + title,
+        blocks: [
+          { type: 'section', text: { type: 'mrkdwn', text: head } },
+          { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'Open Scarlett' }, url: SITE }] },
+        ],
+      });
+      if(r.ok) out.dms++; else out.failed.push(u.name + ': ' + r.error);
+    }
+  }catch(e){ out.failed.push(String(e && e.message || e)); }
+  return out;
+}
+
+module.exports = { localParts, runAll, notifyAssigned };
