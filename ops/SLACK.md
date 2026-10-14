@@ -30,10 +30,16 @@ The code is `netlify/lib/slack-common.js`, run on a schedule by `netlify/functio
 Scarlett matches each person to Slack by their `@equiratings.com` email (the one in the Scarlett users list). If someone uses a
 different email in Slack they are skipped; the function log lists them under `noSlackUser`.
 
-## Pilot mode (current)
-Until the Netlify variable `SLACK_ALL_TEAM` is set to `true`, only Annie and Ruairi get DMs and the team channel post is skipped. `{test:true}` still DMs whoever runs it. To roll out to everyone, add `SLACK_ALL_TEAM` = `true` in Netlify and trigger a deploy.
+## Who gets what (each person chooses)
+In the bell panel in Scarlett, under **Slack messages**, each person picks one:
+- **Every weekday**: the 9am DM with tasks due today and overdue, plus assignment DMs.
+- **Only when something is overdue**: a 9am DM only on days they have overdue tasks, plus assignment DMs.
+- **Only when I'm added to a task** (the default for everyone who has not chosen): assignment DMs only.
+- **Off**: nothing from Slack.
+Managers also get quotes waiting for their review in the first two. The choice is stored in the `notifyPrefs` table (`sql/2026-10-notify-prefs.sql`). Until that SQL is run, only Annie and Ruairi get the 9am digest.
+The team channel post is separate: it only goes out when `SLACK_CHANNEL_POST` is `true` and `SLACK_TEAM_CHANNEL` is set, and it leaves out anyone who chose Off.
 
 ## Assignment DMs
-When someone assigns a task to another person, `push-assign.js` sends the phone/desktop push as before and also a Slack DM ("Sam assigned you a task: ..."). The sender never gets one for their own assignment. These go to the whole team straight away; pilot mode only limits the daily 9am digest. If Slack is not set up the Slack part is silently skipped.
+When someone assigns a task to another person, `push-assign.js` sends the phone/desktop push as before and also a Slack DM ("Sam assigned you a task: ..."). The sender never gets one for their own assignment. These go to the whole team unless they chose Off. If Slack is not set up the Slack part is silently skipped.
 
 The token variable can be called either `SLACK_BOT_TOKEN` or `SLACK_OAUTH_TOKEN`.

@@ -1034,6 +1034,10 @@
   .notif-push button{border:none; background:none; font:inherit; font-size:12px; font-weight:700; padding:0; cursor:pointer; text-decoration:underline; color:var(--ink-2);}
   .notif-push button.primary{display:block; text-decoration:none; background:var(--navy); color:#fff; padding:8px 12px; border-radius:9px; margin:6px 0 2px; width:100%;}
   .notif-push .push-links{display:flex; gap:12px; margin-top:4px;}
+  .notif-slack{margin-top:6px; padding:10px 8px 6px; border-top:1px solid var(--hairline); font-size:12px; color:var(--ink-2); line-height:1.4;}
+  .notif-slack b{display:block; color:var(--ink); margin-bottom:4px;}
+  .notif-slack select{width:100%; font:inherit; font-size:12px; padding:6px 8px; border:1px solid var(--hairline); border-radius:8px; background:#fff; color:var(--ink);}
+  .notif-slack .slack-note{margin-top:4px; font-size:11px; color:var(--ink-3, var(--ink-2));}
   .due-banner{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px;
     padding:12px 16px 12px 14px; border-radius:12px; background:var(--surface);
     border:1px solid var(--hairline); border-left:4px solid var(--gold); box-shadow:var(--shadow);}
@@ -5855,13 +5859,52 @@
     else if(st === 'noname') body = "Your sign-in isn't matched to a team name yet, so notifications can't be switched on.";
     else if(st === 'off') body = `Get a buzz when something is assigned to you, plus a weekday 9:30am summary.<button type="button" class="primary" data-push="on"${pushBusy ? ' disabled' : ''}>${pushBusy ? 'Turning on...' : 'Turn on notifications'}</button>`;
     else body = `Notifications are on for this device.<div class="push-links"><button type="button" data-push="test">Send me a test</button><button type="button" data-push="off">Turn off</button></div>`;
-    return `<div class="notif-push" id="notifPush">${body}${note}</div>`;
+    return `<div class="notif-push" id="notifPush">${body}${note}</div>` + slackPrefHtml();
+  }
+  // ---------- Slack message preference (stored per person in notifyPrefs; read by the Netlify Slack functions) ----------
+  const SLACK_MODES = [
+    ['daily', 'Every weekday: what is due today and overdue'],
+    ['overdue', 'Only when something is overdue'],
+    ['assigned', "Only when I'm added to a task"],
+    ['off', 'Off: no Slack messages'],
+  ];
+  let slackMode = null;        // null until loaded
+  let slackAvail = true;       // false if the notifyPrefs table has not been created yet
+  let slackLoading = false;
+  let slackMsg = '';
+  function slackPrefId(){ return (currentUserEmail || '').toLowerCase(); }
+  function loadSlackPref(){
+    if(slackLoading || slackMode !== null || !slackPrefId() || !db) return;
+    slackLoading = true;
+    db.collection('notifyPrefs').doc(slackPrefId()).get().then(snap => {
+      const d = snap && snap.exists ? (snap.data() || {}) : {};
+      slackMode = SLACK_MODES.some(m => m[0] === d.slackMode) ? d.slackMode : 'assigned';
+    }).catch(() => { slackAvail = false; slackMode = 'assigned'; })
+      .finally(() => { slackLoading = false; renderNotifPanel(); });
+  }
+  function slackPrefHtml(){
+    if(!slackPrefId() || !slackAvail) return '';
+    if(slackMode === null){ loadSlackPref(); return ''; }
+    const opts = SLACK_MODES.map(m => `<option value="${m[0]}"${m[0] === slackMode ? ' selected' : ''}>${escapeHtml(m[1])}</option>`).join('');
+    return `<div class="notif-slack"><b>Slack messages</b><select id="slackModeSel" aria-label="Slack messages">${opts}</select>`
+      + `<div class="slack-note">${slackMsg ? escapeHtml(slackMsg) : 'Managers also get quotes waiting for their review.'}</div></div>`;
+  }
+  function saveSlackPref(mode){
+    const prev = slackMode;
+    slackMode = mode; slackMsg = 'Saving...'; renderNotifPanel();
+    db.collection('notifyPrefs').doc(slackPrefId()).set({
+      email: slackPrefId(), slackMode: mode, updated_at: new Date().toISOString(),
+    }).then(() => { slackMsg = 'Saved.'; })
+      .catch(() => { slackMode = prev; slackMsg = "Couldn't save that. Try again."; })
+      .finally(() => { renderNotifPanel(); });
   }
   function bindPushFooter(root){
     root.querySelectorAll('[data-push]').forEach(b => b.addEventListener('click', () => {
       const a = b.getAttribute('data-push');
       if(a === 'on') pushEnable(); else if(a === 'off') pushDisable(); else if(a === 'test') pushTest();
     }));
+    const sel = root.querySelector('#slackModeSel');
+    if(sel) sel.addEventListener('change', () => saveSlackPref(sel.value));
   }
   function pushB64ToBytes(b64){
     const pad = '='.repeat((4 - b64.length % 4) % 4);

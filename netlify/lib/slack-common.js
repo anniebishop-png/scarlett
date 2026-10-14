@@ -109,29 +109,56 @@ function channelMessage(people, today){
 }
 
 // ----- run -----
-// Pilot: until SLACK_ALL_TEAM=true is set in Netlify, only these people get DMs and the team channel post is skipped.
+// Each person chooses what Slack sends them (notifyPrefs.slackMode, set from the bell panel in Scarlett):
+//   daily    = weekday digest of tasks due today and overdue (plus quotes waiting for review), and assignment DMs
+//   overdue  = digest only when something is overdue (or a quote is waiting), and assignment DMs
+//   assigned = assignment DMs only (the default for anyone who has not chosen)
+//   off      = nothing
+// If the notifyPrefs table has not been created yet, only the pilot people (Annie, Ruairi) get the digest.
 const PILOT = ['annie.bishop@equiratings.com', 'ruairi@equiratings.com'];
-const pilotOn = () => String(process.env.SLACK_ALL_TEAM || '').toLowerCase() !== 'true';
+async function loadModes(){
+  try{
+    const rows = (await sb('notifyPrefs?select=email,slackMode')) || [];
+    const m = {};
+    rows.forEach(r => { m[String(r.email || '').toLowerCase()] = r.slackMode; });
+    return { map: m, ok: true };
+  }catch(_){ return { map: {}, ok: false }; }
+}
+function modeOf(modes, email){
+  const e = String(email || '').toLowerCase();
+  if(!modes.ok) return PILOT.includes(e) ? 'daily' : 'assigned';
+  const v = modes.map[e];
+  return ['daily', 'overdue', 'assigned', 'off'].includes(v) ? v : 'assigned';
+}
 
 async function runAll(today, onlyEmail){
-  let people = await loadData(today);
-  if(pilotOn() && !onlyEmail) people = people.filter(p => PILOT.includes(String(p.email || '').toLowerCase()));
+  const [people, modes] = await Promise.all([loadData(today), loadModes()]);
   const out = { people: people.length, dms: 0, skipped: 0, noSlackUser: [], failed: [], channel: null };
   for(const p of people){
-    if(onlyEmail && p.email !== onlyEmail) continue;
-    if(!onlyEmail && !hasWork(p)){ out.skipped++; continue; }
+    let msgP = p;
+    if(onlyEmail){
+      if(p.email !== onlyEmail) continue;           // test send: always goes to the caller
+    }else{
+      const mode = modeOf(modes, p.email);
+      if(mode === 'daily'){ if(!hasWork(p)){ out.skipped++; continue; } }
+      else if(mode === 'overdue'){
+        if(!(p.overdue.length || p.reviews.length)){ out.skipped++; continue; }
+        msgP = Object.assign({}, p, { dueToday: [] });
+      }else{ out.skipped++; continue; }
+    }
     const uid = await slackIdFor(p.email);
     if(!uid){ out.noSlackUser.push(p.email); out.slackError = lastLookupError; continue; }
-    const r = await slack('chat.postMessage', Object.assign({ channel: uid, unfurl_links: false }, dmMessage(p, today)));
+    const r = await slack('chat.postMessage', Object.assign({ channel: uid, unfurl_links: false }, dmMessage(msgP, today)));
     if(r.ok) out.dms++; else out.failed.push(p.name + ': ' + r.error);
   }
-  if(!onlyEmail && !pilotOn() && process.env.SLACK_TEAM_CHANNEL){
-    const r = await slack('chat.postMessage', Object.assign({ channel: process.env.SLACK_TEAM_CHANNEL, unfurl_links: false }, channelMessage(people, today)));
+  // The team channel post is separate: it only goes out when SLACK_CHANNEL_POST=true and a channel is set.
+  if(!onlyEmail && process.env.SLACK_TEAM_CHANNEL && String(process.env.SLACK_CHANNEL_POST || '').toLowerCase() === 'true'){
+    const shown = people.filter(p => modeOf(modes, p.email) !== 'off');
+    const r = await slack('chat.postMessage', Object.assign({ channel: process.env.SLACK_TEAM_CHANNEL, unfurl_links: false }, channelMessage(shown, today)));
     out.channel = r.ok ? 'posted' : r.error;
   }
   return out;
 }
-
 
 // DM people when someone assigns them a task. Never throws; returns a small summary. Goes to the whole team (the pilot limit only applies to the daily digest).
 async function notifyAssigned(names, title, sender, senderEmail){
@@ -139,11 +166,13 @@ async function notifyAssigned(names, title, sender, senderEmail){
   try{
     if(!(process.env.SLACK_BOT_TOKEN || process.env.SLACK_OAUTH_TOKEN)) return Object.assign(out, { note: 'Slack not set up' });
     const users = (await sb('appUsers?select=email,name')) || [];
+    const modes = await loadModes();
     const want = new Set((names || []).map(n => String(n).trim().toLowerCase()));
     for(const u of users){
       if(!u.email || !u.name || !want.has(String(u.name).trim().toLowerCase())) continue;
       const email = String(u.email).toLowerCase();
       if(email === String(senderEmail || '').toLowerCase()) continue;
+      if(modeOf(modes, email) === 'off'){ out.skipped++; continue; }
       const uid = await slackIdFor(email);
       if(!uid){ out.skipped++; continue; }
       const head = esc(sender) + ' assigned you a task: *' + esc(title) + '*';
