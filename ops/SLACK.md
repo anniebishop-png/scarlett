@@ -29,3 +29,6 @@ The code is `netlify/lib/slack-common.js`, run on a schedule by `netlify/functio
 ## Matching people
 Scarlett matches each person to Slack by their `@equiratings.com` email (the one in the Scarlett users list). If someone uses a
 different email in Slack they are skipped; the function log lists them under `noSlackUser`.
+
+## Pilot mode (current)
+Until the Netlify variable `SLACK_ALL_TEAM` is set to `true`, only Annie and Ruairi get DMs and the team channel post is skipped. `{test:true}` still DMs whoever runs it. To roll out to everyone, add `SLACK_ALL_TEAM` = `true` in Netlify and trigger a deploy.

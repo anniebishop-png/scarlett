@@ -107,8 +107,13 @@ function channelMessage(people, today){
 }
 
 // ----- run -----
+// Pilot: until SLACK_ALL_TEAM=true is set in Netlify, only these people get DMs and the team channel post is skipped.
+const PILOT = ['annie.bishop@equiratings.com', 'ruairi@equiratings.com'];
+const pilotOn = () => String(process.env.SLACK_ALL_TEAM || '').toLowerCase() !== 'true';
+
 async function runAll(today, onlyEmail){
-  const people = await loadData(today);
+  let people = await loadData(today);
+  if(pilotOn() && !onlyEmail) people = people.filter(p => PILOT.includes(String(p.email || '').toLowerCase()));
   const out = { people: people.length, dms: 0, skipped: 0, noSlackUser: [], failed: [], channel: null };
   for(const p of people){
     if(onlyEmail && p.email !== onlyEmail) continue;
@@ -118,7 +123,7 @@ async function runAll(today, onlyEmail){
     const r = await slack('chat.postMessage', Object.assign({ channel: uid, unfurl_links: false }, dmMessage(p, today)));
     if(r.ok) out.dms++; else out.failed.push(p.name + ': ' + r.error);
   }
-  if(!onlyEmail && process.env.SLACK_TEAM_CHANNEL){
+  if(!onlyEmail && !pilotOn() && process.env.SLACK_TEAM_CHANNEL){
     const r = await slack('chat.postMessage', Object.assign({ channel: process.env.SLACK_TEAM_CHANNEL, unfurl_links: false }, channelMessage(people, today)));
     out.channel = r.ok ? 'posted' : r.error;
   }
