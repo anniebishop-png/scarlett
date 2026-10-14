@@ -10902,7 +10902,7 @@
         rows += `<tr class="pr-click" data-pr-open="${escapeAttr(r.id)}">
           <td class="c">${g.vis.length > 1 ? `<input type="checkbox" data-pr-cmp="${escapeAttr(r.id)}" ${prCmpPick.has(r.id) ? 'checked' : ''} aria-label="Pick ${escapeAttr(r.title)} to compare">` : ''}</td>
           <td><b>${prVersionOf(r)}</b></td>
-          <td><b>${escapeHtml(r.title)}</b><div class="pr-sub">${escapeHtml(r.packageName || 'A la carte')}</div></td>
+          <td><b>${escapeHtml(r.title)}</b><div class="pr-sub">${escapeHtml(r.packageName || 'Bespoke')}</div></td>
           <td><span class="pr-pill ${escapeAttr(r.status || 'draft')}">${escapeHtml(PR_STATUS[r.status] || 'Draft')}</span>${prReviewPill(r)}</td>
           <td class="r"><b>${prMoney(r.total)}</b></td><td class="r">${(+r.totalStd || 0) + (+r.totalSenior || 0)}h</td>
           <td class="pr-sub">${escapeHtml((r.updatedAt || '').slice(0, 10))}${r.createdBy ? ' · ' + escapeHtml(r.createdBy) : ''}</td></tr>`;
@@ -10976,7 +10976,7 @@
         </div>
         <div class="field-row">
           <div class="field"><label for="prqStatus">Status</label><select id="prqStatus" data-pr-q="status">${Object.keys(PR_STATUS).map(k => `<option value="${k}" ${q.status === k ? 'selected' : ''}>${PR_STATUS[k]}</option>`).join('')}</select></div>
-          <div class="field"><label for="prqPkg">Start from a package</label><select id="prqPkg"><option value="">A la carte (choose your own services)</option>${prPackages.map(p => `<option value="${escapeAttr(p.id)}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
+          <div class="field"><label for="prqPkg">Start from a package</label><select id="prqPkg"><option value="">Bespoke (choose your own services)</option>${prPackages.map(p => `<option value="${escapeAttr(p.id)}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
         </div>
       </div>
       <div class="pr-scroll"><table class="pr-table pr-lines"><thead><tr><th></th><th>Service</th><th>Qty</th><th>Price each (€)</th><th class="r">Line total</th><th class="r">Hours</th></tr></thead><tbody id="prLines">${rows || '<tr><td colspan="6" class="pr-sub">The price list is empty.</td></tr>'}</tbody></table></div>
