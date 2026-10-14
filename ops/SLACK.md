@@ -34,6 +34,6 @@ different email in Slack they are skipped; the function log lists them under `no
 Until the Netlify variable `SLACK_ALL_TEAM` is set to `true`, only Annie and Ruairi get DMs and the team channel post is skipped. `{test:true}` still DMs whoever runs it. To roll out to everyone, add `SLACK_ALL_TEAM` = `true` in Netlify and trigger a deploy.
 
 ## Assignment DMs
-When someone assigns a task to another person, `push-assign.js` sends the phone/desktop push as before and also a Slack DM ("Sam assigned you a task: ..."). The sender never gets one for their own assignment. Pilot mode applies, so only Annie and Ruairi receive these until `SLACK_ALL_TEAM=true`. If Slack is not set up the Slack part is silently skipped.
+When someone assigns a task to another person, `push-assign.js` sends the phone/desktop push as before and also a Slack DM ("Sam assigned you a task: ..."). The sender never gets one for their own assignment. These go to the whole team straight away; pilot mode only limits the daily 9am digest. If Slack is not set up the Slack part is silently skipped.
 
 The token variable can be called either `SLACK_BOT_TOKEN` or `SLACK_OAUTH_TOKEN`.

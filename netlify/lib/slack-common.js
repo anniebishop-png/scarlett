@@ -133,7 +133,7 @@ async function runAll(today, onlyEmail){
 }
 
 
-// DM people when someone assigns them a task. Never throws; returns a small summary. Respects pilot mode.
+// DM people when someone assigns them a task. Never throws; returns a small summary. Goes to the whole team (the pilot limit only applies to the daily digest).
 async function notifyAssigned(names, title, sender, senderEmail){
   const out = { dms: 0, skipped: 0, failed: [] };
   try{
@@ -144,7 +144,6 @@ async function notifyAssigned(names, title, sender, senderEmail){
       if(!u.email || !u.name || !want.has(String(u.name).trim().toLowerCase())) continue;
       const email = String(u.email).toLowerCase();
       if(email === String(senderEmail || '').toLowerCase()) continue;
-      if(pilotOn() && !PILOT.includes(email)){ out.skipped++; continue; }
       const uid = await slackIdFor(email);
       if(!uid){ out.skipped++; continue; }
       const head = esc(sender) + ' assigned you a task: *' + esc(title) + '*';
