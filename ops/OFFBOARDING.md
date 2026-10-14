@@ -2,14 +2,13 @@
 
 Use this when someone leaves the team or should lose access. Do it the same day. Takes about 10 minutes.
 
-## 1. Scarlett sign-in (Supabase)
-1. Open Supabase, project Scarlett, **Authentication, Users**.
-2. Find the person by email, open the menu on their row, and choose **Delete user** (or **Ban user** if you may want to restore them).
-3. Their sessions stop working at the next refresh (within about an hour).
+## 1 and 2. Scarlett access (the quick way)
+1. Sign in as Annie or Geogs and click **Access** in the top right of the header.
+2. Find the person and click **Deactivate**, then **Confirm**.
+3. This stops them signing in, removes their role and phone alerts, takes them out of the daily Slack to-dos, and logs it in the change log. Their tasks and history stay. A page they already have open can keep working for up to an hour.
+4. Mistake? The same screen has **Bring back** under Deactivated.
 
-## 2. Scarlett role
-1. Supabase, **Table Editor, appUsers**: delete the person's row (or set `role` to `member` if they are staying but should lose manager access).
-2. Pricing and Hustle access are driven by this table, so this removes manager-only access straight away.
+If the Access button is not available, do it by hand: Supabase, Authentication, Users, delete (or ban) the user; then Table Editor, `appUsers`, delete their row.
 
 ## 3. Their work
 1. In Scarlett, search tasks, delivery items and Hustle opportunities for their name and reassign anything still open.

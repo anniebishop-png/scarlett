@@ -1282,6 +1282,10 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span>Backup</span>
     </button>
+    <button type="button" class="backup-btn" id="accessBtn" hidden title="See who has access to Scarlett, and remove access when someone leaves">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Access</span>
+    </button>
     <div class="notif-wrap" id="notifWrap">
       <button type="button" class="notif-bell" id="notifBellBtn" aria-label="Your due items" title="Your due items">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -1835,6 +1839,13 @@
   </div>
 </div>
 
+<div class="overlay" id="accessOverlay" hidden>
+  <div class="modal" style="max-width:640px;" role="dialog" aria-label="Team access">
+    <h3>Team access</h3>
+    <div id="accessBody" style="font-size:13.5px;">Loading...</div>
+    <div style="display:flex; justify-content:flex-end; margin-top:14px;"><button type="button" class="btn-ghost" id="accessClose">Close</button></div>
+  </div>
+</div>
 <div class="overlay" id="bulkOverlay" hidden>
   <div class="modal modal-wide">
     <h3>Bulk add tasks</h3>
@@ -10891,7 +10902,7 @@
         rows += `<tr class="pr-click" data-pr-open="${escapeAttr(r.id)}">
           <td class="c">${g.vis.length > 1 ? `<input type="checkbox" data-pr-cmp="${escapeAttr(r.id)}" ${prCmpPick.has(r.id) ? 'checked' : ''} aria-label="Pick ${escapeAttr(r.title)} to compare">` : ''}</td>
           <td><b>${prVersionOf(r)}</b></td>
-          <td><b>${escapeHtml(r.title)}</b>${r.packageName ? `<div class="pr-sub">${escapeHtml(r.packageName)}</div>` : ''}</td>
+          <td><b>${escapeHtml(r.title)}</b><div class="pr-sub">${escapeHtml(r.packageName || 'A la carte')}</div></td>
           <td><span class="pr-pill ${escapeAttr(r.status || 'draft')}">${escapeHtml(PR_STATUS[r.status] || 'Draft')}</span>${prReviewPill(r)}</td>
           <td class="r"><b>${prMoney(r.total)}</b></td><td class="r">${(+r.totalStd || 0) + (+r.totalSenior || 0)}h</td>
           <td class="pr-sub">${escapeHtml((r.updatedAt || '').slice(0, 10))}${r.createdBy ? ' · ' + escapeHtml(r.createdBy) : ''}</td></tr>`;
@@ -10965,7 +10976,7 @@
         </div>
         <div class="field-row">
           <div class="field"><label for="prqStatus">Status</label><select id="prqStatus" data-pr-q="status">${Object.keys(PR_STATUS).map(k => `<option value="${k}" ${q.status === k ? 'selected' : ''}>${PR_STATUS[k]}</option>`).join('')}</select></div>
-          <div class="field"><label for="prqPkg">Start from a package</label><select id="prqPkg"><option value="">Choose a package to tick its services</option>${prPackages.map(p => `<option value="${escapeAttr(p.id)}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
+          <div class="field"><label for="prqPkg">Start from a package</label><select id="prqPkg"><option value="">A la carte (choose your own services)</option>${prPackages.map(p => `<option value="${escapeAttr(p.id)}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
         </div>
       </div>
       <div class="pr-scroll"><table class="pr-table pr-lines"><thead><tr><th></th><th>Service</th><th>Qty</th><th>Price each (€)</th><th class="r">Line total</th><th class="r">Hours</th></tr></thead><tbody id="prLines">${rows || '<tr><td colspan="6" class="pr-sub">The price list is empty.</td></tr>'}</tbody></table></div>
@@ -11055,7 +11066,7 @@
     let rows = '', last = null;
     const nv = v => (v === null || v === undefined) ? '' : v;
     prServices.forEach(s => {
-      if(s.section !== last){ last = s.section; rows += `<tr class="pr-sec"><td colspan="${edit ? 14 : 7}">${escapeHtml(s.section || 'Other')}</td></tr>`; }
+      if(s.section !== last){ last = s.section; rows += `<tr class="pr-sec"><td colspan="${edit ? 13 : 7}">${escapeHtml(s.section || 'Other')}</td></tr>`; }
       const t = s.tiers || [];
       if(edit){
         rows += `<tr data-sid="${escapeAttr(s.id)}" class="${s.active === false ? 'pr-off' : ''}">
@@ -11063,7 +11074,6 @@
           <td><input data-pr-s="team" value="${escapeAttr(s.team || '')}"></td>
           <td><input class="pr-n" data-pr-s="stdHours" inputmode="decimal" value="${nv(s.stdHours)}" placeholder="TBD"></td>
           <td><input class="pr-n" data-pr-s="seniorHours" inputmode="decimal" value="${nv(s.seniorHours)}" placeholder="TBD"></td>
-          <td class="pr-fl"><input class="pr-n" data-pr-s="costFloor" inputmode="decimal" value="${nv(s.costFloor)}" placeholder="TBD"><button type="button" class="pr-mini" data-pr-act="calcfloor" title="Work the floor out from the hours and the hourly rates">calc</button></td>
           <td><input class="pr-n" data-pr-s="price" inputmode="decimal" value="${nv(s.price)}" placeholder="TBD"></td>
           <td><select data-pr-s="billing">${PR_BILLING.concat(PR_BILLING.includes(s.billing) ? [] : [s.billing]).map(b => `<option ${b === s.billing ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('')}</select></td>
           ${PR_TIERS.map(tr => `<td class="c"><input type="checkbox" data-pr-s="tier" data-tier="${tr.k}" ${t.includes(tr.k) ? 'checked' : ''} title="${escapeAttr(tr.label)}"></td>`).join('')}
@@ -11078,11 +11088,10 @@
     body.innerHTML = `
       <div class="report-controls">
         <div class="segmented" id="prListTabs"><button type="button" data-prlist="edit" class="${edit ? 'active' : ''}">Price list</button><button type="button" data-prlist="tiers" class="${edit ? '' : 'active'}">Tiers</button></div>
-        <div class="pr-rates"><span>Hourly rates</span><label>Standard €<input class="pr-n" data-pr-rate="stdRate" inputmode="decimal" value="${prRates.stdRate}"></label><label>Senior €<input class="pr-n" data-pr-rate="seniorRate" inputmode="decimal" value="${prRates.seniorRate}"></label></div>
       </div>
       ${edit ? `<div class="pr-addrow"><input id="prNewName" placeholder="New service name"><input id="prNewSec" list="prSecList" placeholder="Section"><datalist id="prSecList">${sections.map(s => `<option value="${escapeAttr(s)}"></option>`).join('')}</datalist><button class="btn-ghost" data-pr-act="addsvc">+ Add service</button></div>
-        <div class="pr-scroll"><table class="pr-table pr-edit"><thead><tr><th>Service</th><th>Team</th><th>Std h</th><th>Senior h</th><th>Cost floor €</th><th>Price €</th><th>Billing</th>${PR_TIERS.map(tr => `<th class="c" title="${escapeAttr(tr.label)}">${escapeHtml(ini(tr))}</th>`).join('')}<th class="c">On</th><th>Notes</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
-        <div class="pr-sub" style="margin-top:8px;">Tier columns: ${PR_TIERS.map(tr => `<b>${escapeHtml(ini(tr))}</b> ${escapeHtml(tr.label)}`).join(', ')}. Cost floor is the least a service should be sold for. Untick On to hide a service from the builder without deleting it. Edits save as you leave each box.</div>`
+        <div class="pr-scroll"><table class="pr-table pr-edit"><thead><tr><th>Service</th><th>Team</th><th>Std h</th><th>Senior h</th><th>Price €</th><th>Billing</th>${PR_TIERS.map(tr => `<th class="c" title="${escapeAttr(tr.label)}">${escapeHtml(ini(tr))}</th>`).join('')}<th class="c">On</th><th>Notes</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="pr-sub" style="margin-top:8px;">Tier columns: ${PR_TIERS.map(tr => `<b>${escapeHtml(ini(tr))}</b> ${escapeHtml(tr.label)}`).join(', ')}. Untick On to hide a service from the builder without deleting it. Edits save as you leave each box.</div>`
       : `<div class="pr-tierinfo">${PR_TIERS.map(tr => `<div><b>${escapeHtml(tr.label)}</b><div class="pr-sub">${escapeHtml(tr.blurb)}</div></div>`).join('')}</div>
         <div class="pr-scroll"><table class="pr-table"><thead><tr><th>Service</th>${PR_TIERS.map(tr => `<th class="c">${escapeHtml(tr.label)}</th>`).join('')}<th class="r">Price</th><th>Billing</th></tr></thead><tbody>${rows}</tbody></table></div>`}`;
   }
@@ -11290,6 +11299,7 @@
     const btn = document.getElementById('backupBtn');
     if(!btn) return;
     btn.hidden = !(currentUserEmail && BACKUP_EMAILS.includes(String(currentUserEmail).toLowerCase()));
+    const ab = document.getElementById('accessBtn'); if(ab) ab.hidden = btn.hidden;
   }
   async function backupFetchTable(name){
     const key = {contractClients:'client', appUsers:'email', clientProfiles:'name'}[name] || 'id';
@@ -11341,6 +11351,58 @@
     }
   }
   document.getElementById('backupBtn').addEventListener('click', runBackup);
+
+  // ---- Team access (Annie and Geogs only): see who has access, remove it when someone leaves, bring them back ----
+  // The real work happens in the access-admin server function, which checks who is asking. This is just the screen for it.
+  function accessCall(payload){
+    return supabaseClient.auth.getSession().then(({data}) => {
+      const tok = data && data.session && data.session.access_token;
+      if(!tok) throw new Error('not signed in');
+      return fetch('/.netlify/functions/access-admin', {method: 'POST', headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + tok}, body: JSON.stringify(payload)});
+    }).then(r => r.json().then(j => { if(!r.ok) throw new Error(j.error || 'Server error'); return j; }));
+  }
+  let accessData = null, accessArm = null, accessMsg = '';
+  function renderAccess(){
+    const box = document.getElementById('accessBody');
+    if(!accessData){ box.textContent = 'Loading...'; return; }
+    const pill = (t, c) => '<span style="display:inline-block; padding:1px 8px; border-radius:99px; font-size:11px; font-weight:700; background:' + c + ';">' + escapeHtml(t) + '</span>';
+    const rowsHtml = accessData.users.map(u => {
+      const st = u.status === 'active' ? pill('Active', '#d9f2e3') : (u.status === 'deactivated' ? pill('Deactivated', '#f9d9d7') : pill('Not signed up yet', '#eceff3'));
+      let act = '';
+      if(u.admin) act = '<span style="color:var(--ink-muted); font-size:12px;">Admin</span>';
+      else if(accessArm === u.email) act = '<button type="button" class="btn-primary" style="background:#d9433f; border-color:#d9433f;" data-acc-act="deactivate" data-email="' + escapeAttr(u.email) + '">Confirm: remove ' + escapeHtml(u.name) + '</button> <button type="button" class="btn-ghost" data-acc-act="cancel">Cancel</button>';
+      else act = '<button type="button" class="btn-ghost" data-acc-act="arm" data-email="' + escapeAttr(u.email) + '">Deactivate</button>';
+      return '<tr><td style="padding:7px 6px;"><b>' + escapeHtml(u.name) + '</b><div style="font-size:11.5px; color:var(--ink-muted);">' + escapeHtml(u.email) + '</div></td><td style="padding:7px 6px;">' + escapeHtml(u.role) + '</td><td style="padding:7px 6px;">' + st + '</td><td style="padding:7px 6px; text-align:right;">' + act + '</td></tr>';
+    }).join('');
+    const gone = (accessData.deactivated || []).map(u => '<tr><td style="padding:7px 6px;"><b>' + escapeHtml(u.name) + '</b><div style="font-size:11.5px; color:var(--ink-muted);">' + escapeHtml(u.email) + '</div></td><td style="padding:7px 6px;">' + escapeHtml(u.role) + '</td><td style="padding:7px 6px;">' + pill('Deactivated', '#f9d9d7') + '</td><td style="padding:7px 6px; text-align:right;"><button type="button" class="btn-ghost" data-acc-act="reactivate" data-email="' + escapeAttr(u.email) + '" data-name="' + escapeAttr(u.name) + '" data-role="' + escapeAttr(u.role) + '">Bring back</button></td></tr>').join('');
+    box.innerHTML = (accessMsg ? '<div class="banner" style="margin-bottom:10px;">' + escapeHtml(accessMsg) + '</div>' : '')
+      + '<div style="color:var(--ink-muted); font-size:12.5px; margin-bottom:8px;">Deactivating stops someone signing in, removes their role and phone alerts, and takes them out of the daily Slack to-dos. Their tasks and history stay. A page they already have open can keep working for up to an hour. Remove them from Slack and shared logins too (see ops/OFFBOARDING.md).</div>'
+      + '<table style="width:100%; border-collapse:collapse;"><tbody>' + rowsHtml + '</tbody></table>'
+      + (gone ? '<div style="margin-top:14px; font-weight:700; font-size:12px; text-transform:uppercase; color:var(--ink-2);">Deactivated</div><table style="width:100%; border-collapse:collapse;"><tbody>' + gone + '</tbody></table>' : '');
+  }
+  function loadAccess(){
+    return accessCall({action: 'list'}).then(d => { accessData = d; renderAccess(); })
+      .catch(e => { document.getElementById('accessBody').textContent = 'Could not load: ' + ((e && e.message) || e); });
+  }
+  document.getElementById('accessBtn').addEventListener('click', () => {
+    accessData = null; accessArm = null; accessMsg = '';
+    document.getElementById('accessOverlay').hidden = false; renderAccess(); loadAccess();
+  });
+  document.getElementById('accessClose').addEventListener('click', () => { document.getElementById('accessOverlay').hidden = true; });
+  document.getElementById('accessOverlay').addEventListener('click', e => { if(e.target.id === 'accessOverlay') e.target.hidden = true; });
+  document.getElementById('accessBody').addEventListener('click', e => {
+    const b = e.target.closest('[data-acc-act]'); if(!b) return;
+    const act = b.getAttribute('data-acc-act'), email = b.getAttribute('data-email');
+    if(act === 'arm'){ accessArm = email; renderAccess(); return; }
+    if(act === 'cancel'){ accessArm = null; renderAccess(); return; }
+    b.disabled = true;
+    const payload = act === 'deactivate' ? {action: 'deactivate', email} : {action: 'reactivate', email, name: b.getAttribute('data-name'), role: b.getAttribute('data-role')};
+    accessCall(payload).then(r => {
+      accessArm = null;
+      accessMsg = act === 'deactivate' ? ((r.plan && r.plan.name) || email) + ' no longer has access.' : ((r.name) || email) + ' has access again.';
+      return loadAccess();
+    }).catch(err => { accessArm = null; accessMsg = 'That did not work: ' + ((err && err.message) || err); renderAccess(); });
+  });
 
   function isTeamEmail(email){ return /^[^@\s]+@equiratings\.com$/i.test(String(email || '').trim()); }
   supabaseClient.auth.onAuthStateChange((event, session) => {

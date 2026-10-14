@@ -18,7 +18,7 @@ Any developer, or any AI coding tool, can pick this up from the repo. There is n
 - `index.html`: the app (HTML, CSS and JavaScript in one file). Pricing, review, Hustle, delivery tracker and the rest are sections inside it.
 - `supabase-firestore-shim.js`: a thin layer that lets the app talk to Supabase using Firestore-style calls (`db.collection('tasks').doc(id).set(...)`). The app was originally written for that style.
 - `sw.js`, `manifest.json`, icons: installable app and push notifications.
-- `netlify/functions/`: small server functions. `push-assign` and `push-digest` (phone notifications), `slack-digest` and `slack-send` (Slack to-dos). Shared code is in `netlify/lib/`.
+- `netlify/functions/`: small server functions. `push-assign` and `push-digest` (phone notifications), `slack-digest` and `slack-send` (Slack to-dos), `access-admin` (deactivate and bring back team members). Shared code is in `netlify/lib/`.
 - `scripts/backup.mjs`: nightly backup of every table. `scripts/stamp-build.js`: runs on each deploy so open copies can offer a refresh.
 - `sql/`: database changes, one file per change, named by month. See below.
 - `ops/`: set-up notes (`BACKUP.md`, `SLACK.md`, `OFFBOARDING.md`).
@@ -66,4 +66,4 @@ Rule going forward: any time SQL is run in Supabase, the same SQL is saved as a 
 
 ## Backups and other people
 - Data is backed up by the Backup button (Annie and Geogs) and a nightly job, see `ops/BACKUP.md`.
-- When someone leaves, follow `ops/OFFBOARDING.md`.
+- When someone leaves, use the **Access** button (Annie and Geogs) and follow `ops/OFFBOARDING.md`.
