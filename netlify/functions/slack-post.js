@@ -4,6 +4,7 @@
 //   { action: 'search', q }                                  find tasks, quotes and shows by name
 //   { action: 'post', channel, summary: true, note? }        the team summary now
 //   { action: 'post', channel, item: {type, id}, note? }     a card for one item (type: task | quote | show)
+//   { action: 'post', channel, message }                     your own message (Slack formatting works: *bold*, _italic_, bullets)
 // The item is looked up again on the server, so the card always shows what Scarlett really holds.
 // Quote cards never include prices.
 const { env, sb, sbHeaders } = require('../lib/push-common');
@@ -103,6 +104,18 @@ exports.handler = async (event) => {
         msg = channelMessage(people.filter(p => modeOf(modes, p.email) !== 'off'), today);
         if(note) msg.blocks.splice(1, 0, { type: 'section', text: { type: 'mrkdwn', text: esc(note) } });
         what = 'team summary';
+      }else if(typeof body.message === 'string' && body.message.trim()){
+        const text = body.message.replace(/\r\n/g, '\n').trim().slice(0, 6000);
+        const blocks = [];
+        let chunk = '';
+        text.split(/\n{2,}/).forEach(par => {
+          while(par.length > 2800){ if(chunk){ blocks.push(chunk); chunk = ''; } blocks.push(par.slice(0, 2800)); par = par.slice(2800); }
+          if(chunk.length + par.length + 2 > 2800){ blocks.push(chunk); chunk = ''; }
+          chunk += (chunk ? '\n\n' : '') + par;
+        });
+        if(chunk) blocks.push(chunk);
+        msg = { text: text.slice(0, 200), blocks: blocks.map(t => ({ type: 'section', text: { type: 'mrkdwn', text: t } })).concat([{ type: 'context', elements: [{ type: 'mrkdwn', text: 'Posted from Scarlett by ' + esc(sender) }] }]) };
+        what = 'note: ' + text.replace(/\s+/g, ' ').slice(0, 60);
       }else if(body.item && ['task', 'quote', 'show'].includes(body.item.type) && body.item.id){
         const { type, id } = body.item;
         const q = encodeURIComponent(String(id));

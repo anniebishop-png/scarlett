@@ -11497,10 +11497,13 @@
       + '<label style="' + lab + '">What to send</label>'
       + '<label style="display:block; margin:3px 0; cursor:pointer;"><input type="radio" name="slpWhat" value="summary" checked> Team summary now (who has what due today and overdue)</label>'
       + '<label style="display:block; margin:3px 0; cursor:pointer;"><input type="radio" name="slpWhat" value="item"> An update on one task, quote or show</label>'
+      + '<label style="display:block; margin:3px 0; cursor:pointer;"><input type="radio" name="slpWhat" value="message"> My own message</label>'
+      + '<div id="slpMsgBox" hidden><textarea id="slpText" rows="9" maxlength="6000" placeholder="Type or paste your message. Slack formatting works: *bold*, _italic_, and \u2022 for bullets." style="' + fld + ' margin-top:6px; resize:vertical;"></textarea></div>'
       + '<div id="slpItemBox" hidden><input id="slpQ" style="' + fld + ' margin-top:6px;" placeholder="Search by name" autocomplete="off"><div id="slpRes" style="margin-top:6px; max-height:180px; overflow:auto;"></div><div id="slpPicked" style="margin-top:6px; font-weight:700;"></div></div>'
-      + '<label style="' + lab + '" for="slpNote">Add a note (optional)</label><textarea id="slpNote" rows="2" maxlength="500" style="' + fld + ' resize:vertical;"></textarea>'
+      + '<div id="slpNoteBox"><label style="' + lab + '" for="slpNote">Add a note (optional)</label><textarea id="slpNote" rows="2" maxlength="500" style="' + fld + ' resize:vertical;"></textarea></div>'
       + '<div id="slpMsg" style="margin-top:10px; font-size:12.5px;"></div>';
-    slpEl('slackSendBody').querySelectorAll('input[name="slpWhat"]').forEach(r => r.addEventListener('change', () => { slpEl('slpItemBox').hidden = slpMode() !== 'item'; slpDisarm(); slpMsg(''); }));
+    slpEl('slackSendBody').querySelectorAll('input[name="slpWhat"]').forEach(r => r.addEventListener('change', () => { const m = slpMode(); slpEl('slpItemBox').hidden = m !== 'item'; slpEl('slpMsgBox').hidden = m !== 'message'; slpEl('slpNoteBox').hidden = m === 'message'; slpDisarm(); slpMsg(''); }));
+    slpEl('slpText').addEventListener('input', slpDisarm);
     slpEl('slpChan').addEventListener('change', slpDisarm);
     slpEl('slpNote').addEventListener('input', slpDisarm);
     slpEl('slpQ').addEventListener('input', () => {
@@ -11537,15 +11540,16 @@
     if(slpBusy) return;
     const channel = slpChannelId();
     if(!channel){ slpMsg('Pick a channel first.', true); return; }
-    const summary = slpMode() === 'summary';
-    if(!summary && !slpPicked){ slpMsg('Search for the task, quote or show to send.', true); return; }
+    const mode = slpMode(), summary = mode === 'summary', own = mode === 'message';
+    if(own && !slpEl('slpText').value.trim()){ slpMsg('Type your message first.', true); return; }
+    if(mode === 'item' && !slpPicked){ slpMsg('Search for the task, quote or show to send.', true); return; }
     if(!slpArmed){ slpArmed = true; slpEl('slackSendGo').textContent = 'Confirm: post to ' + slpChannelLabel(); slpMsg(''); return; }
     slpBusy = true; slpEl('slackSendGo').disabled = true; slpEl('slackSendGo').textContent = 'Sending...';
     const payload = {action: 'post', channel, note: slpEl('slpNote').value.trim()};
-    if(summary) payload.summary = true; else payload.item = {type: slpPicked.type, id: slpPicked.id};
+    if(own){ delete payload.note; payload.message = slpEl('slpText').value; } else if(summary) payload.summary = true; else payload.item = {type: slpPicked.type, id: slpPicked.id};
     slpCall(payload).then(r => {
       slpBusy = false; slpDisarm();
-      if(r.ok){ slpMsg('Posted to ' + slpChannelLabel() + '.'); slpPicked = null; const pk = slpEl('slpPicked'); if(pk) pk.textContent = ''; slpEl('slpNote').value = ''; }
+      if(r.ok){ slpMsg('Posted to ' + slpChannelLabel() + '.'); slpPicked = null; const pk = slpEl('slpPicked'); if(pk) pk.textContent = ''; slpEl('slpNote').value = ''; if(own) slpEl('slpText').value = ''; }
       else slpMsg('Slack said: ' + (r.error || 'something went wrong'), true);
     }).catch(e => { slpBusy = false; slpDisarm(); slpMsg('That did not work: ' + ((e && e.message) || e), true); });
   });
