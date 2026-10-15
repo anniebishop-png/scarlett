@@ -39,7 +39,7 @@ const slackIdFor = async email => {
 async function loadData(today){
   const [users, tasks] = await Promise.all([
     sb('appUsers?select=email,name,role'),
-    sb('tasks?select=id,title,client,dateISO,owners,status&status=neq.done&dateISO=lte.' + today + '&limit=5000'),
+    sb('tasks?select=id,title,client,notes,dateISO,owners,status&status=neq.done&dateISO=lte.' + today + '&limit=5000'),
   ]);
   let reviews = [];
   try{ reviews = (await sb('pricingQuotes?select=id,title,client,event,reviewer,reviewRequestedBy&reviewStatus=eq.pending')) || []; }catch(_){ /* review columns not there yet */ }
@@ -61,6 +61,9 @@ const hasWork = p => p.dueToday.length || p.overdue.length || p.reviews.length;
 function taskLine(t, withDate, today){
   let s = '• ' + esc(t.title || 'Untitled task');
   if(t.client) s += '  _' + esc(t.client) + '_';
+  // Generic titles like "Finance" or "Client comms" say nothing on their own, so show the start of the task's notes.
+  const note = String(t.notes || '').replace(/\s+/g, ' ').trim();
+  if(note) s += ': ' + esc(note.length > 70 ? note.slice(0, 67).trim() + '...' : note);
   if(withDate) s += '  (due ' + esc(dayLabel(t.dateISO)) + ')';
   return s;
 }
@@ -97,7 +100,7 @@ function channelMessage(people, today){
       if(p.dueToday.length) bits.push(p.dueToday.length + ' due today');
       if(p.overdue.length) bits.push(p.overdue.length + ' overdue');
       let line = '*' + esc(p.name) + '*  ' + bits.join(', ');
-      p.dueToday.slice(0, 3).forEach(t => { line += '\n   • ' + esc(t.title || 'Untitled task'); });
+      p.dueToday.slice(0, 3).forEach(t => { line += '\n   • ' + esc(t.title || 'Untitled task') + (t.client ? '  _' + esc(t.client) + '_' : ''); });
       if(p.dueToday.length > 3) line += '\n   _+' + (p.dueToday.length - 3) + ' more_';
       if(chunk.length + line.length > 2700) flush();
       chunk += (chunk ? '\n\n' : '') + line;
