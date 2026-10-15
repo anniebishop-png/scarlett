@@ -1,8 +1,7 @@
 // Scheduled every 30 minutes (see netlify.toml). Sends each person a weekday morning digest at 9:30am in the time zone their
-// device reported: how many of their tasks, delivery items and hustle deals are overdue or due today.
+// device reported: how many of their tasks (Hustle follow-ups are ordinary tasks) and delivery items are overdue or due today.
 const { sb, sendToSubs, inList } = require('../lib/push-common');
 
-const HUSTLE_CLOSED = ['5. Won', '6. Lost', '7. Parked'];
 const DIGEST_HOUR = 9, DIGEST_MINUTE = 30;   // 9:30am local; the scheduler runs on the hour and half hour
 
 function localParts(tz, now){
@@ -16,10 +15,9 @@ function localParts(tz, now){
 
 async function itemsFor(name, today){
   const owner = encodeURIComponent('{"' + name.replace(/"/g, '') + '"}');
-  const [tasks, deliveries, deals] = await Promise.all([
+  const [tasks, deliveries] = await Promise.all([
     sb('tasks?select=id,title,dateISO&owners=cs.' + owner + '&status=neq.done&dateISO=lte.' + today),
     sb('deliveryItems?select=id,title,item,category,date,sourceType&owners=cs.' + owner + '&status=neq.delivered&date=lte.' + today),
-    sb('hustleOpportunities?select=id,opportunity,nextAction,nextActionDate,stage&owner=eq.' + encodeURIComponent(name) + '&nextActionDate=lte.' + today),
   ]);
   const items = [];
   (tasks || []).forEach(t => {
@@ -29,10 +27,6 @@ async function itemsFor(name, today){
   (deliveries || []).forEach(d => {
     if(!d.date || d.sourceType === 'task') return;                    // mirrors of board tasks are counted above
     items.push({ date: d.date, title: d.title || d.item || d.category || 'Delivery item' });
-  });
-  (deals || []).forEach(o => {
-    if(!o.nextActionDate || HUSTLE_CLOSED.includes(o.stage)) return;
-    items.push({ date: o.nextActionDate, title: (o.opportunity || 'Deal') + (o.nextAction ? ': ' + o.nextAction : '') });
   });
   items.sort((a, b) => a.date.localeCompare(b.date));
   const overdue = items.filter(i => i.date < today);
