@@ -831,6 +831,19 @@
   .hs-log-entry{display:grid; grid-template-columns:100px 1fr; gap:8px; padding:7px 0; border-top:1px solid var(--hairline); font-size:12.5px; line-height:1.45;}
   .hs-log-entry .d{color:var(--ink-muted); font-weight:700; font-size:11.5px;}
   .hs-log-empty{color:var(--ink-muted); font-size:12px; padding:4px 0;}
+  .hs-tasklist{border:1px solid var(--hairline); border-radius:10px; overflow:hidden;}
+  .hs-task-row{display:grid; grid-template-columns:78px 1fr auto; gap:10px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--hairline); font-size:12.5px; cursor:pointer;}
+  .hs-task-row:last-child{border-bottom:none;}
+  .hs-task-row:hover{background:var(--surface-2);}
+  .hs-task-row.done{opacity:.6;} .hs-task-row.done .t{text-decoration:line-through;}
+  .hs-task-row .m{color:var(--ink-muted); font-size:11.5px;}
+  .hs-tasklist .hs-log-empty{padding:10px 12px; cursor:default;}
+  .hs-ht-status{font:inherit; font-size:12px; padding:5px 8px; border:1px solid var(--hairline); border-radius:8px; background:var(--surface); color:var(--ink);}
+  .hs-banner{background:var(--surface-2); border:1px solid var(--hairline); border-left:4px solid var(--gold); border-radius:10px; padding:12px 14px; margin:0 0 14px; font-size:12.5px;}
+  .hs-banner details{margin-top:8px;} .hs-banner summary{cursor:pointer; font-weight:700;}
+  .hs-banner li{margin:3px 0;}
+  .hb-row{display:flex; gap:10px; align-items:center; padding:6px 4px; border-bottom:1px solid var(--hairline); font-size:12.5px;}
+  .hb-row span.m{color:var(--ink-muted); margin-left:auto; font-size:11.5px;}
   .hs-link{font-size:11.5px; font-weight:700; color:var(--navy); text-decoration:none;}
   :root[data-theme="dark"] .hs-link{color:var(--gold);}
   .hs-link:hover{text-decoration:underline;}
@@ -1693,7 +1706,7 @@
     <div class="segmented" id="hustleViewTabs">
       <button type="button" data-view="dashboard" class="active">Dashboard</button>
       <button type="button" data-view="opportunities">Opportunities</button>
-      <button type="button" data-view="actions">Actions</button>
+      <button type="button" data-view="tasks">Tasks</button>
     </div>
     <button class="btn-primary" id="addHustleBtn" style="margin-left:auto;">+ Add opportunity</button>
   </div>
@@ -1709,8 +1722,10 @@
       <select id="hoStage" aria-label="Stage"></select>
       <select id="hoDivision" aria-label="Division"></select>
       <select id="hoService" aria-label="Service"></select>
+      <select id="hoDiscipline" aria-label="Discipline"></select>
       <select id="hoClient" aria-label="Client type"></select>
       <button type="button" class="btn-ghost" id="hoClear" hidden>Clear filters</button>
+      <button type="button" class="btn-ghost" id="hoBulk" hidden title="Move several opportunities to another pipeline year at once">Move to another year</button>
     </div>
     <div class="ho-summary" id="hoSummary"></div>
     <div id="hoTable"></div>
@@ -2264,15 +2279,8 @@
         </div>
         <div class="field"><label>Owner</label><select id="h_owner"></select></div>
       </div>
-      <div class="hs-nextblock">
-        <div class="field-row">
-          <div class="field"><label>Next action <span class="hs-req" id="h_reqNote"></span></label>
-            <input id="h_nextAction" placeholder="e.g. Send revised proposal" autocomplete="off">
-          </div>
-          <div class="field"><label>Due date</label><input type="date" id="h_nextActionDate"></div>
-        </div>
-        <div class="field"><label>Expected close <span class="hs-req">(month, optional)</span></label><select id="h_expectedClose"></select></div>
-      </div>
+      <div class="field"><label>Expected close <span class="hs-req">(month, optional)</span></label><select id="h_expectedClose"></select></div>
+      <div class="field" id="h_tasksWrap" hidden><label>Tasks <span class="hs-req">(follow-ups for this deal, click one to open it)</span></label><div id="h_taskList" class="hs-tasklist"></div></div>
       <div id="h_valueWrap" hidden>
         <div class="field-row">
           <div class="field"><label>Value <span class="hs-req">(€, optional)</span></label><input id="h_value" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 25000" autocomplete="off"></div>
@@ -2333,7 +2341,8 @@
       <div class="hs-updated" id="h_updatedNote"></div>
       <div class="modal-actions">
         <div class="left">
-          <button type="button" class="btn-ghost" id="assignHustleTaskBtn" style="display:none;">Assign task</button>
+          <button type="button" class="btn-ghost" id="assignHustleTaskBtn" style="display:none;">Add task</button>
+          <button type="button" class="btn-ghost" id="rolloverHustleBtn" style="display:none;">Roll over</button>
           <button type="button" class="btn-ghost" id="deleteHustleBtn" style="display:none;color:var(--st-blocked-text);border-color:var(--st-blocked-text);">Delete</button>
         </div>
         <div class="right">
@@ -2604,6 +2613,7 @@
   let unsubOps = null;
   let unsubRecurring = null;
   let editingTaskId = null;
+  let pendingHustleLink = null;   // opportunity id a task is being created for (Hustle > Add task)
   let openMenuId = null;
   let openStatusPopId = null;
   let podcastEpisodes = [];   // podcast schedule, loaded when that page is open
@@ -2651,7 +2661,7 @@
   };
   const HUSTLE_DIVISIONS = ['HP & Risk','Sports Promo'];
   const HUSTLE_SERVICES = ['Brand','Event','HP','Media','Risk'];
-  const HUSTLE_DISCIPLINES = ['Eventing','Jumping','Dressage'];
+  const HUSTLE_DISCIPLINES = ['Eventing','Jumping','Dressage','Other'];
   const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
   const DELIVERY_STATUS_META = {
@@ -2722,7 +2732,7 @@
   ];
   const DIVISION_ROSTER = [
     'Business Development','Content - Eventing','Content - Jumping','Content - US Open','Eventing Manager','HP - Eventing',
-    'HP - Jumping','Horse Sourcing','Management','Risk',
+    'HP - Jumping','Horse Sourcing','Hustle','Management','Risk',
   ];
   // Generic internal-ops task titles -- always offered as Task title suggestions (see
   // updateTaskModalHints), alongside whatever content-deliverable items that client/division's
@@ -2969,12 +2979,10 @@
     if(!currentUserName || !db){ dueNotifications = []; renderNotifBadge(); return; }
     const today = toDateStr(new Date());
     const soonCutoff = addDays(today, 3);
-    const HUSTLE_CLOSED = ['5. Won','6. Lost','7. Parked'];
     Promise.all([
       tasksCol().where('owners','array-contains', currentUserName).where('status','!=','done').get(),
       deliveryCol().where('owners','array-contains', currentUserName).where('status','!=','delivered').get(),
-      hustleCol().where('owner','==', currentUserName).get().catch(() => ({docs: []})),
-    ]).then(([taskSnap, delSnap, hustleSnap]) => {
+    ]).then(([taskSnap, delSnap]) => {
       const items = [];
       taskSnap.docs.forEach(d => {
         const t = d.data();
@@ -2985,12 +2993,6 @@
         const it = d.data();
         const reason = classifyDueItem(it.date, today, soonCutoff, it.updated_at, it);
         if(reason) items.push({kind:'delivery', id:d.id, client:it.client||'', title:it.title||it.item||it.category||'(untitled item)', date:it.date||'', reason, by: reason === 'assigned' ? it.assignedBy : ''});
-      });
-      hustleSnap.docs.forEach(d => {
-        const op = d.data();
-        if(HUSTLE_CLOSED.includes(op.stage)) return;
-        const reason = classifyDueItem(op.nextActionDate, today, soonCutoff, op.updated_at, op);
-        if(reason) items.push({kind:'hustle', id:d.id, client:'Hustle · ' + String(op.stage || '').replace(/^\d+\.\s*/, ''), title:(op.opportunity || '(untitled deal)') + (op.nextAction ? ' · ' + op.nextAction : ''), date:op.nextActionDate||'', reason, by: reason === 'assigned' ? op.assignedBy : ''});
       });
       items.sort((a,b) => (DUE_REASON_ORDER[a.reason]-DUE_REASON_ORDER[b.reason]) || (a.date||'').localeCompare(b.date||''));
       dueNotifications = items;
@@ -4206,7 +4208,7 @@
     updateTaskModalHints();
   }
   function openTaskModal(taskId){
-    dupMode = false; dupTitle = '';
+    dupMode = false; dupTitle = ''; pendingHustleLink = null;
     editingTaskId = taskId || null;
     const t = taskId ? tasks.find(x=>x.id===taskId) : null;
     document.getElementById('modalTitle').textContent = t ? 'Edit task' : 'Add task';
@@ -4239,7 +4241,7 @@
     updateTaskModalHints();
     document.getElementById('taskOverlay').hidden = false;
   }
-  function closeTaskModal(){ dupMode = false; attCleanup(); document.getElementById('taskOverlay').hidden = true; editingTaskId = null; document.getElementById('ownersPop').hidden = true; document.getElementById('showPop').hidden = true; }
+  function closeTaskModal(){ dupMode = false; pendingHustleLink = null; attCleanup(); document.getElementById('taskOverlay').hidden = true; editingTaskId = null; document.getElementById('ownersPop').hidden = true; document.getElementById('showPop').hidden = true; }
 
   document.getElementById('cancelTaskBtn').addEventListener('click', closeTaskModal);
   document.getElementById('taskOverlay').addEventListener('click', (e) => { if(e.target.id === 'taskOverlay') closeTaskModal(); });
@@ -4448,6 +4450,7 @@
       notes: document.getElementById('f_notes').value.trim(),
       weekId: mondayOf(dateISO),
     };
+    if(!editingTaskId && pendingHustleLink){ data.sourceType = 'hustle'; data.sourceId = pendingHustleLink; }
     if(attach.busy > 0){ attHint('Hold on, a screenshot is still uploading.', true); return; }
     if(taskFilesReady) data.attachments = attach.cur.slice();
     if(taskCatReady) data.deliveryCategory = (document.getElementById('deliveryCatField').style.display !== 'none' && document.getElementById('f_deliveryCat').value) || null;
@@ -8362,7 +8365,7 @@
   // Stale) is COMPUTED from those fields and from updated_at, never ticked by hand.
   const HUSTLE_OPEN = ['2. Qualify','3. Present','4. Close'];
   const HUSTLE_OWNER_ORDER = ['Diarm','Brayden','Nicole','Annie','Sam'];
-  let hustleView = 'dashboard';    // 'dashboard' (default landing), 'opportunities' or 'actions'
+  let hustleView = 'dashboard';    // 'dashboard' (default landing), 'opportunities' or 'tasks'
   let hustleOwnerFilter = null;    // owner name from a clicked owner card, or null
   let hsNextCtx = null;            // {id, mode:'done'|'set'} for the next-step prompt
   let hsSnoozeId = null;
@@ -8377,11 +8380,36 @@
     const t = new Date(iso).getTime();
     return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000);
   }
-  function hIsOverdue(op, today){ return hOpen(op) && !!op.nextActionDate && op.nextActionDate < today; }
-  // "Due this week" = still ahead of you this Mon-Sun week (today onwards), so an item is never counted as both Overdue and Due this week.
-  function hIsDueWeek(op, today, wkEnd){ return hOpen(op) && !!op.nextActionDate && op.nextActionDate >= today && op.nextActionDate <= wkEnd; }
-  function hNoNext(op){ return hOpen(op) && !op.nextActionDate; }
-  function hIsStale(op){ const d = hDaysSince(op.updated_at); return hOpen(op) && d !== null && d > 30; }
+  // Follow-ups are ordinary Scarlett tasks (tagged Hustle, on the Hustle team, or created from an opportunity).
+  // Everything below that used to read the old next action now reads the open tasks linked to the deal.
+  let hustleTasks = [], unsubHustleTasks = [], hTaskIdx = new Map(), hTaskOpp = new Map();
+  function hTaskDone(t){ return t.status === 'done'; }
+  function hBuildIndex(){
+    const byName = new Map();
+    hustleOpportunities.forEach(o => { const k = String(o.opportunity || '').trim().toLowerCase(); if(k && !byName.has(k)) byName.set(k, o.id); });
+    hTaskIdx = new Map(); hTaskOpp = new Map();
+    hustleTasks.forEach(t => {
+      let oid = (t.sourceType === 'hustle' && t.sourceId) ? t.sourceId : null;
+      if(!oid && t.client) oid = byName.get(String(t.client).trim().toLowerCase()) || null;
+      if(!oid) return;
+      hTaskOpp.set(t.id, oid);
+      if(!hTaskIdx.has(oid)) hTaskIdx.set(oid, []);
+      hTaskIdx.get(oid).push(t);
+    });
+  }
+  function hTasksFor(op){ return hTaskIdx.get(op.id) || []; }
+  function hOpenTasks(op){ return hTasksFor(op).filter(t => !hTaskDone(t)); }
+  function hNextTask(op){
+    const o = hOpenTasks(op).slice().sort((a,b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999') || (a.title || '').localeCompare(b.title || ''));
+    return o[0] || null;
+  }
+  function hIsOverdue(op, today){ return hOpen(op) && hOpenTasks(op).some(t => t.dateISO && t.dateISO < today); }
+  // "Due this week" = a task still ahead of you this Mon-Sun week (today onwards), and nothing already overdue, so a deal is never counted as both.
+  function hIsDueWeek(op, today, wkEnd){ return hOpen(op) && !hIsOverdue(op, today) && hOpenTasks(op).some(t => t.dateISO && t.dateISO >= today && t.dateISO <= wkEnd); }
+  function hNoNext(op){ return hOpen(op) && !hOpenTasks(op).length; }
+  // Last time anyone touched the deal: the deal itself or any of its tasks.
+  function hTouchIso(op){ let best = op.updated_at || ''; hTasksFor(op).forEach(t => { if(t.updated_at && String(t.updated_at) > best) best = String(t.updated_at); }); return best; }
+  function hIsStale(op){ const d = hDaysSince(hTouchIso(op)); return hOpen(op) && d !== null && d > 30; }
   // Won / Lost count for the current calendar year. Older rows have no stageChangedAt, so they count as this year.
   function hClosedThisYear(op){
     if(!op.stageChangedAt) return true;
@@ -8455,17 +8483,36 @@
       hustleOpportunities.sort((a,b) => (a.opportunity||'').localeCompare(b.opportunity||''));
       renderHustleAll();
     }, () => {});
+    // Hustle tasks, from any week: tagged Hustle, on the Hustle team, or created from an opportunity.
+    unsubHustleTasks.forEach(f => { try{ f(); }catch(_){} }); unsubHustleTasks = [];
+    const bag = [[], [], []];
+    const merge = () => {
+      const m = new Map();
+      bag.forEach(list => list.forEach(t => m.set(t.id, t)));
+      hustleTasks = [...m.values()];
+      renderHustleAll();
+    };
+    [['tag','Hustle'], ['division','Hustle'], ['sourceType','hustle']].forEach((q, i) => {
+      unsubHustleTasks.push(tasksCol().where(q[0], '==', q[1]).onSnapshot(snap => {
+        bag[i] = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+        merge();
+      }, () => {}));
+    });
   }
-  function unsubscribeHustle(){ if(unsubHustle){ unsubHustle(); unsubHustle = null; } }
+  function unsubscribeHustle(){
+    if(unsubHustle){ unsubHustle(); unsubHustle = null; }
+    unsubHustleTasks.forEach(f => { try{ f(); }catch(_){} }); unsubHustleTasks = [];
+  }
 
   function renderHustleAll(){
+    hBuildIndex();
     document.getElementById('hustlePermNote').hidden = myRole !== 'member';
     document.getElementById('hustleOppsView').hidden = hustleView !== 'opportunities';
-    document.getElementById('hustleActionsView').hidden = hustleView !== 'actions';
+    document.getElementById('hustleActionsView').hidden = hustleView !== 'tasks';
     document.getElementById('hustleDashboardView').hidden = hustleView !== 'dashboard';
     renderHustleSetup();
     document.querySelectorAll('#hustleViewTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-view') === hustleView));
-    if(hustleView === 'actions'){ renderHustleActions(); return; }
+    if(hustleView === 'tasks'){ renderHustleActions(); return; }
     if(hustleView === 'dashboard'){ renderHustleDashboard(); return; }
     renderHustleOwnerCards();
     renderHustleOpps();
@@ -8584,7 +8631,7 @@
     document.getElementById('hsRecheckBtn').addEventListener('click', () => { probeHustleValue().then(() => renderHustleAll()); });
   }
 
-  let hoYear = null, hoQ = '', hoDivision = '', hoService = '', hoClient = '', hoPage = 0, hoPageSize = 50;
+  let hoYear = null, hoQ = '', hoDivision = '', hoService = '', hoDiscipline = '', hoClient = '', hoPage = 0, hoPageSize = 50;
   let hoSort = {key:'due', dir:1};
   const HO_DIVISIONS = ['HP & Risk', 'Sports Promo'];
   function hoRows(skipYear){
@@ -8601,6 +8648,7 @@
       }
       if(hoDivision && op.division !== hoDivision) return false;
       if(hoService && op.service !== hoService) return false;
+      if(hoDiscipline && !(Array.isArray(op.discipline) ? op.discipline : []).includes(hoDiscipline)) return false;
       if(hoClient && (op.clientType || '') !== hoClient) return false;
       if(q && !((op.opportunity || '').toLowerCase().includes(q) || (op.contact || '').toLowerCase().includes(q))) return false;
       return true;
@@ -8614,8 +8662,8 @@
       division: o => o.division || null,
       service: o => o.service || null,
       value: o => hVal(o),
-      next: o => (o.nextAction || '').toLowerCase() || null,
-      due: o => o.nextActionDate || null,
+      next: o => String((hNextTask(o) || {}).title || '').toLowerCase() || null,
+      due: o => (hNextTask(o) || {}).dateISO || null,
       close: o => o.expectedClose || null,
     }[hoSort.key] || (o => null);
     const byName = (a, b) => (a.opportunity || '').localeCompare(b.opportunity || '');
@@ -8631,14 +8679,15 @@
   function hoRowHtml(op, cols){
     const meta = HUSTLE_STAGE_META[op.stage] || HUSTLE_STAGE_META['1. Prospect'];
     const today = hToday(), wk = hWeekEnd();
+    const nt = hNextTask(op);
     let due = '';
-    if(op.nextActionDate){
-      const f = escapeHtml(hFmtDate(op.nextActionDate));
-      if(hIsOverdue(op, today)) due = `<span class="hs-chip overdue">${f}</span>`;
-      else if(hIsDueWeek(op, today, wk)) due = `<span class="hs-chip soon">${f}</span>`;
+    if(nt && nt.dateISO){
+      const f = escapeHtml(hFmtDate(nt.dateISO));
+      if(nt.dateISO < today) due = `<span class="hs-chip overdue">${f}</span>`;
+      else if(nt.dateISO <= wk) due = `<span class="hs-chip soon">${f}</span>`;
       else due = `<span class="hs-chip">${f}</span>`;
     } else if(hOpen(op)){
-      due = `<span class="hs-chip warn">None set</span>`;
+      due = `<span class="hs-chip warn">No task</span>`;
     }
     const owner = canEdit
       ? (op.owner
@@ -8653,7 +8702,7 @@
       <td>${escapeHtml(op.division || '')}</td>
       <td>${escapeHtml(op.service || '')}</td>
       ${hValueReady ? `<td class="num">${v === null ? '<span class="hs-muted">—</span>' : escapeHtml(hEuroFull(v))}</td>` : ''}
-      <td class="ho-next" title="${escapeAttr(op.nextAction || '')}">${escapeHtml(op.nextAction || '')}</td>
+      <td class="ho-next" title="${escapeAttr(nt ? (nt.title || '') : '')}">${escapeHtml(nt ? (nt.title || '') : '')}</td>
       <td>${due}</td>
       <td>${escapeHtml(hFmtMonth(op.expectedClose))}</td>
       <td class="ho-x">${canEdit ? `<button class="hs-del-btn" data-delete-hustle="${escapeAttr(op.id)}" title="Delete this opportunity" aria-label="Delete this opportunity">×</button>` : ''}</td>
@@ -8684,8 +8733,10 @@
     fill('hoStage', '<option value="">All stages</option><option value="__live">Live (Qualify to Close)</option>' + HUSTLE_STAGES.map(s => `<option value="${s}">${escapeHtml(s)}</option>`).join(''), hustleStageFilter || '');
     fill('hoDivision', '<option value="">All divisions</option>' + HO_DIVISIONS.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join(''), hoDivision);
     fill('hoService', '<option value="">All services</option>' + HUSTLE_SERVICES.map(s => `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join(''), hoService);
+    fill('hoDiscipline', '<option value="">All disciplines</option>' + HUSTLE_DISCIPLINES.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join(''), hoDiscipline);
+    document.getElementById('hoBulk').hidden = !(canEdit && myRole !== 'member' && hValueReady);
     fill('hoClient', '<option value="">New and existing</option><option value="New">New clients</option><option value="Existing">Existing clients</option>', hoClient);
-    const filtered = !!(hustleOwnerFilter || hustleStageFilter || hoDivision || hoService || hoClient || hoQ.trim());
+    const filtered = !!(hustleOwnerFilter || hustleStageFilter || hoDivision || hoService || hoDiscipline || hoClient || hoQ.trim());
     document.getElementById('hoClear').hidden = !filtered;
 
     const rows = hoRows(false).sort(hoCompare());
@@ -8706,7 +8757,7 @@
     }
     const cols = [['name','Opportunity',''],['owner','Owner',''],['stage','Stage',''],['division','Division',''],['service','Service','']]
       .concat(hValueReady ? [['value', 'Value (€)', 'num']] : [])
-      .concat([['next','Next action',''],['due','Due',''],['close','Expected close','']]);
+      .concat([['next','Next task',''],['due','Due',''],['close','Expected close','']]);
     const head = cols.map(c => {
       const on = hoSort.key === c[0];
       return `<th class="${c[2]}" data-sort-key="${c[0]}" aria-sort="${on ? (hoSort.dir > 0 ? 'ascending' : 'descending') : 'none'}" tabindex="0" title="Sort by ${escapeAttr(c[1].toLowerCase())}">${escapeHtml(c[1])}<span class="ho-arrow">${on ? (hoSort.dir > 0 ? ' ▲' : ' ▼') : ''}</span></th>`;
@@ -8743,101 +8794,272 @@
     on('hoStage', 'change', e => { hustleStageFilter = e.target.value || null; hoPage = 0; renderHustleOpps(); });
     on('hoDivision', 'change', e => { hoDivision = e.target.value; hoPage = 0; renderHustleOpps(); });
     on('hoService', 'change', e => { hoService = e.target.value; hoPage = 0; renderHustleOpps(); });
+    on('hoDiscipline', 'change', e => { hoDiscipline = e.target.value; hoPage = 0; renderHustleOpps(); });
     on('hoClient', 'change', e => { hoClient = e.target.value; hoPage = 0; renderHustleOpps(); });
     on('hoClear', 'click', () => {
-      hustleOwnerFilter = null; hustleStageFilter = null; hoDivision = ''; hoService = ''; hoClient = ''; hoQ = ''; hoPage = 0;
+      hustleOwnerFilter = null; hustleStageFilter = null; hoDivision = ''; hoService = ''; hoDiscipline = ''; hoClient = ''; hoQ = ''; hoPage = 0;
       document.getElementById('hoSearch').value = '';
       renderHustleAll();
     });
   })();
 
-  // ---- Actions: every outstanding next action, from any week, by owner and timeframe ----
-  // One next action per live deal (Qualify, Present, Close). Owner and timeframe filters work together
-  // or on their own: pick a person, a timeframe tile, both, or neither.
+  // ---- Tasks: every Hustle task, from any week ----
+  // A Hustle task is an ordinary Scarlett task (tagged Hustle, on the Hustle team, or created from an opportunity), so it also
+  // shows in My tasks and the bell. This tab is the Hustle view of them: pick a person, open or done, and a timeframe.
   let actionsOwner = null;   // null = not chosen yet (starts on you); '' = everyone
-  let actionsFrame = 'all';  // 'all' | 'overdue' | 'week' | 'future' | 'none'
+  let actionsFrame = 'all';  // open tasks: 'all' | 'overdue' | 'week' | 'later'
+  let tasksShow = 'open';    // 'open' | 'done' | 'all'
+  let tasksDoneAll = false;
+  const HUSTLE_MOVED_NOTE = 'Next action moved to a task: ';
+  function hTaskOppOf(t){ const id = hTaskOpp.get(t.id); return id ? hustleOpportunities.find(o => o.id === id) : null; }
+  // Live deals that still carry an old next action and have not been turned into a task yet.
+  function hUnconverted(){
+    return hustleOpportunities.filter(op => hOpen(op) && String(op.nextAction || '').trim()
+      && !hustleTasks.some(t => t.id === 'hustle_na_' + op.id)
+      && !(Array.isArray(op.activityLog) && op.activityLog.some(n => String((n && n.text) || '').indexOf(HUSTLE_MOVED_NOTE) === 0)));
+  }
+  function hConvertNextActions(){
+    const list = hUnconverted();
+    if(!list.length || !canEdit || myRole === 'member') return;
+    const today = hToday();
+    confirmDelete('Create ' + list.length + ' task' + (list.length === 1 ? '' : 's') + ', one for each live deal that has a next action? Each task gets the deal owner, the due date and the Hustle tag, and the deal keeps a note saying it moved. Nobody is notified.', async () => {
+      const res = await Promise.allSettled(list.map(op => {
+        const date = op.nextActionDate || today;
+        const title = String(op.nextAction || '').trim();
+        const task = {client: op.opportunity || '', dateISO: date, title, tag: 'Hustle', division: 'Hustle', owners: op.owner ? [op.owner] : [], status: 'notstarted', notes: '', weekId: mondayOf(date), showId: '', order: 90, calendarSynced: false, sourceType: 'hustle', sourceId: op.id};
+        const log = (Array.isArray(op.activityLog) ? op.activityLog : []).slice();
+        log.unshift({date: today, by: currentUserName ? initials(currentUserName) : '', text: HUSTLE_MOVED_NOTE + title + ' (due ' + date + ')'});
+        return tasksCol().doc('hustle_na_' + op.id).set(task).then(() => hustleCol().doc(op.id).update({activityLog: log}));
+      }));
+      const bad = res.filter(r => r.status === 'rejected').length;
+      if(bad) showSaveError(bad + ' of ' + list.length + " couldn't be created. Run it again to retry just those.");
+      else showToast('Created ' + list.length + ' task' + (list.length === 1 ? '' : 's'));
+    }, {title: 'Turn next actions into tasks?', confirmLabel: 'Create tasks', safe: true});
+  }
+  function openHustleTask(id){
+    const t = hustleTasks.find(x => x.id === id);
+    if(!t) return;
+    const wk = t.weekId || (t.dateISO ? mondayOf(t.dateISO) : currentWeekId);
+    switchApp('board');
+    if(wk === currentWeekId && tasks.some(x => x.id === id)){ openTaskModal(id); return; }
+    pendingOpenTask = {id, weekId: wk};
+    setTimeout(() => { if(pendingOpenTask && pendingOpenTask.id === id) pendingOpenTask = null; }, 10000);
+    if(wk !== currentWeekId) goToWeek(wk);
+  }
+  function hTaskSetStatus(id, status){
+    const t = hustleTasks.find(x => x.id === id);
+    if(!t || !canEdit) return;
+    const prev = t.status;
+    t.status = status;
+    renderHustleActions();
+    tasksCol().doc(id).update({status})
+      .then(() => { syncTaskToDelivery(id, t); })
+      .catch(err => { console.error('Status save failed', id, err); t.status = prev; renderHustleActions(); showSaveError("Couldn't save that status change. Try again, and tell Annie if it keeps happening."); });
+  }
+  function hAddHustleTask(){
+    openTaskModal(null);
+    document.getElementById('f_tag').value = 'Hustle';
+    document.getElementById('f_division').value = 'Hustle';
+    if(currentUserName){ selectedOwners = [currentUserName]; updateOwnersBtnLabel(); }
+  }
   function renderHustleActions(){
     const el = document.getElementById('hustleActionsView');
-    const owners = hOwnerList();
-    if(currentUserName && !owners.includes(currentUserName)) owners.push(currentUserName);
+    const ownerSet = new Set(hOwnerList());
+    hustleTasks.forEach(t => (t.owners || []).forEach(n => ownerSet.add(n)));
+    if(currentUserName) ownerSet.add(currentUserName);
+    const owners = [...ownerSet].sort((a,b) => a.localeCompare(b));
     const scoped = myRole === 'member';
     if(scoped) actionsOwner = currentUserName || '';
-    else if(actionsOwner === null) actionsOwner = (currentUserName && hustleOpportunities.some(o => o.owner === currentUserName)) ? currentUserName : '';
-    const scope = actionsOwner ? hustleOpportunities.filter(o => o.owner === actionsOwner) : hustleOpportunities;
+    else if(actionsOwner === null) actionsOwner = (currentUserName && hustleTasks.some(t => (t.owners || []).includes(currentUserName))) ? currentUserName : '';
+    const scope = actionsOwner ? hustleTasks.filter(t => (t.owners || []).includes(actionsOwner)) : hustleTasks;
     const today = hToday(), wk = hWeekEnd();
-    const byDate = (a,b) => (a.nextActionDate||'').localeCompare(b.nextActionDate||'') || (a.opportunity||'').localeCompare(b.opportunity||'');
-    const live = scope.filter(hOpen);
-    const overdue = scope.filter(o => hIsOverdue(o, today)).sort(byDate);
-    const week = scope.filter(o => hIsDueWeek(o, today, wk)).sort(byDate);
-    const future = live.filter(o => o.nextActionDate && o.nextActionDate > wk).sort(byDate);
-    const noNext = scope.filter(hNoNext).sort((a,b) => {
-      const ad = hDaysSince(a.updated_at), bd = hDaysSince(b.updated_at);
-      return ((bd === null ? -1 : bd) - (ad === null ? -1 : ad)) || (a.opportunity||'').localeCompare(b.opportunity||'');
-    });
+    const byDate = (a,b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999') || (a.title || '').localeCompare(b.title || '');
+    const open = scope.filter(t => !hTaskDone(t));
+    const done = scope.filter(hTaskDone).sort((a,b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+    const overdue = open.filter(t => t.dateISO && t.dateISO < today).sort(byDate);
+    const week = open.filter(t => t.dateISO && t.dateISO >= today && t.dateISO <= wk).sort(byDate);
+    const later = open.filter(t => !t.dateISO || t.dateISO > wk).sort(byDate);
+    const weekAgo = Date.now() - 7 * 86400000;
+    const doneRecent = done.filter(t => t.updated_at && new Date(t.updated_at).getTime() >= weekAgo).length;
     const wkLabel = new Date(mondayOf(today) + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'long'});
 
-    const row = (op) => {
-      const meta = HUSTLE_STAGE_META[op.stage] || HUSTLE_STAGE_META['1. Prospect'];
-      const days = hDaysSince(op.updated_at);
+    const row = (t) => {
+      const opp = hTaskOppOf(t);
+      const isDone = hTaskDone(t);
+      const isOver = !isDone && t.dateISO && t.dateISO < today;
       const bits = [];
-      if(op.nextAction) bits.push(escapeHtml(op.nextAction));
-      if(days !== null && (!op.nextActionDate || hIsStale(op))) bits.push('last touched ' + escapeHtml(hAgo(days)) + (hIsStale(op) ? ' · stale' : ''));
-      const dateCell = op.nextActionDate ? hFmtDate(op.nextActionDate) : '—';
-      const isOver = hIsOverdue(op, today);
-      const who = actionsOwner ? '' : ' · ' + escapeHtml(op.owner ? initials(op.owner) : 'Unassigned');
-      return `<div class="hs-mw-row" data-mw-open="${op.id}">
-        <div class="hs-mw-date ${isOver?'over':''}">${dateCell}</div>
+      if(opp) bits.push(`<button type="button" class="hr-link-btn" data-ht-opp="${escapeAttr(opp.id)}" style="padding:0;">${escapeHtml(opp.opportunity || '(untitled)')}</button> <span class="hs-muted">· ${escapeHtml((HUSTLE_STAGE_META[opp.stage] || {}).short || '')}</span>`);
+      else if(t.client) bits.push(escapeHtml(t.client));
+      const who = (t.owners || []).map(n => initials(n)).join(', ');
+      if(who && !actionsOwner) bits.push(escapeHtml(who));
+      if(isDone && t.updated_at) bits.push('finished ' + escapeHtml(hAgo(hDaysSince(t.updated_at))));
+      const opts = Object.keys(STATUS_META).map(k => `<option value="${k}"${t.status === k ? ' selected' : ''}>${STATUS_META[k].label}</option>`).join('');
+      return `<div class="hs-mw-row" data-ht-open="${escapeAttr(t.id)}">
+        <div class="hs-mw-date ${isOver ? 'over' : ''}">${t.dateISO ? escapeHtml(hFmtDate(t.dateISO)) : '—'}</div>
         <div>
-          <div class="hs-mw-name">${escapeHtml(op.opportunity||'(untitled)')} <span>· ${escapeHtml(meta.short)}${who}</span></div>
-          <div class="hs-mw-next">${bits.join(' · ') || '<span class="hs-muted">No next action yet</span>'}</div>
+          <div class="hs-mw-name">${escapeHtml(t.title || '(untitled)')}</div>
+          <div class="hs-mw-next">${bits.join(' · ') || '<span class="hs-muted">Not linked to a deal</span>'}</div>
         </div>
-        <div class="hs-mw-actions">
-          ${op.nextActionDate
-            ? `<button type="button" class="btn-ghost" data-mw-snooze="${op.id}">Snooze</button><button type="button" class="btn-primary" data-mw-done="${op.id}">Done</button>`
-            : `<button type="button" class="btn-primary" data-mw-set="${op.id}">Set next action</button>`}
-        </div>
+        <div class="hs-mw-actions">${canEdit ? `<select class="hs-ht-status" data-ht-status="${escapeAttr(t.id)}" aria-label="Status">${opts}</select>` : escapeHtml((STATUS_META[t.status] || {}).label || '')}</div>
       </div>`;
     };
-    const group = (title, note, list) => `<div class="report-group">
+    const group = (title, note, list, extra) => `<div class="report-group">
       <div class="report-group-head"><span>${title} <span class="hs-mw-group-note">${note}</span></span><span>${list.length}</span></div>
-      ${list.length ? list.map(op => row(op)).join('') : '<div class="report-empty" style="padding:16px;">Nothing here.</div>'}
+      ${list.length ? list.map(row).join('') : '<div class="report-empty" style="padding:16px;">Nothing here.</div>'}${extra || ''}
     </div>`;
-    const tile = (key, cls, n, label) => `<button type="button" class="hs-tile ${cls} ${actionsFrame === key ? 'sel' : ''}" data-af="${key}" aria-pressed="${actionsFrame === key}"><b>${n}</b><span>${label}</span></button>`;
+    const tile = (key, cls, n, label) => `<button type="button" class="hs-tile ${cls} ${actionsFrame === key && tasksShow !== 'done' ? 'sel' : ''}" data-af="${key}" aria-pressed="${actionsFrame === key}"><b>${n}</b><span>${label}</span></button>`;
+    const doneShown = tasksDoneAll ? done : done.slice(0, 30);
+    const doneGroup = group('Done', 'most recently finished first', doneShown, done.length > doneShown.length ? `<button type="button" class="hr-link-btn" id="htDoneMore" style="padding:10px 16px;">Show all ${done.length}</button>` : '');
     const groups = {
       overdue: group('Overdue', '', overdue),
       week: group('Due this week', 'from ' + escapeHtml(wkLabel), week),
-      future: group('Future', 'due after this week', future),
-      none: group('Open with no next action', 'these are the ones that slip', noNext),
+      later: group('Later', 'due after this week', later),
     };
-    const shown = actionsFrame === 'all' ? ['overdue','week','future','none'] : [actionsFrame];
+    const openFrames = actionsFrame === 'all' ? ['overdue','week','later'] : [actionsFrame];
+    let body = '';
+    if(tasksShow !== 'done') body += openFrames.map(k => groups[k]).join('');
+    if(tasksShow !== 'open') body += doneGroup;
+
+    const stale = (!scoped && canEdit) ? hUnconverted() : [];
+    const banner = stale.length ? `<div class="hs-banner"><b>${stale.length} live deal${stale.length === 1 ? ' still has' : 's still have'} an old next action that is not a task yet.</b>
+      <button type="button" class="btn-primary" id="htConvert" style="margin-left:10px;padding:6px 12px;font-size:12px;">Turn into tasks</button>
+      <details><summary>See the list</summary><ul>${stale.map(op => `<li>${escapeHtml(op.opportunity || '(untitled)')} · ${escapeHtml(op.owner || 'Unassigned')} · ${escapeHtml(op.nextAction)} · ${op.nextActionDate ? escapeHtml(hFmtDate(op.nextActionDate)) : 'no date'}</li>`).join('')}</ul></details></div>` : '';
 
     el.innerHTML = `
+      ${banner}
       <div class="report-controls">
         <label style="font-size:12.5px;font-weight:700;color:var(--ink-2);${scoped ? 'display:none;' : ''}">Owner
-          <select id="hustleActionsOwner" style="margin-left:6px;"><option value="">Everyone</option>${owners.map(n => `<option value="${escapeAttr(n)}" ${n===actionsOwner?'selected':''}>${escapeHtml(n)}</option>`).join('')}</select>
+          <select id="hustleActionsOwner" style="margin-left:6px;"><option value="">Everyone</option>${owners.map(n => `<option value="${escapeAttr(n)}" ${n === actionsOwner ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('')}</select>
         </label>
-        <span class="hs-muted">Every live deal's next action, from any week, soonest first. Done asks for the next step; Snooze pushes the date.</span>
+        <div class="segmented" id="htShow">
+          <button type="button" data-ts="open" class="${tasksShow === 'open' ? 'active' : ''}">Open</button>
+          <button type="button" data-ts="done" class="${tasksShow === 'done' ? 'active' : ''}">Done</button>
+          <button type="button" data-ts="all" class="${tasksShow === 'all' ? 'active' : ''}">All</button>
+        </div>
+        <span class="hs-muted">Every Hustle task, from any week. Click a task to open it, change its status here, or click the deal name to open the deal.</span>
+        <button type="button" class="btn-primary" id="htAdd" style="margin-left:auto;">+ Add task</button>
       </div>
       <div class="hs-tiles">
-        ${tile('overdue','over',overdue.length,'Overdue')}
-        ${tile('week','due',week.length,'Due this week')}
-        ${tile('future','',future.length,'Future')}
-        ${tile('none','',noNext.length,'No next action set')}
-        ${tile('all','',live.length,'All outstanding')}
+        ${tile('overdue', 'over', overdue.length, 'Overdue')}
+        ${tile('week', 'due', week.length, 'Due this week')}
+        ${tile('later', '', later.length, 'Later')}
+        ${tile('all', '', open.length, 'All open')}
+        <div class="hs-tile"><b>${doneRecent}</b><span>Done in the last 7 days</span></div>
       </div>
-      ${shown.map(k => groups[k]).join('')}`;
+      ${body}`;
 
-    document.getElementById('hustleActionsOwner').addEventListener('change', e => { actionsOwner = e.target.value; renderHustleActions(); });
-    el.querySelectorAll('[data-af]').forEach(b => b.addEventListener('click', () => { actionsFrame = b.getAttribute('data-af'); renderHustleActions(); }));
-    el.querySelectorAll('[data-mw-open]').forEach(r => r.addEventListener('click', e => {
-      if(e.target.closest('button')) return;
-      const op = hustleOpportunities.find(x => x.id === r.getAttribute('data-mw-open'));
+    const on = (id, ev, fn) => { const n = document.getElementById(id); if(n) n.addEventListener(ev, fn); };
+    on('hustleActionsOwner', 'change', e => { actionsOwner = e.target.value; renderHustleActions(); });
+    on('htAdd', 'click', hAddHustleTask);
+    on('htConvert', 'click', hConvertNextActions);
+    on('htDoneMore', 'click', () => { tasksDoneAll = true; renderHustleActions(); });
+    el.querySelectorAll('[data-ts]').forEach(b => b.addEventListener('click', () => { tasksShow = b.getAttribute('data-ts'); renderHustleActions(); }));
+    el.querySelectorAll('[data-af]').forEach(b => b.addEventListener('click', () => { actionsFrame = b.getAttribute('data-af'); if(tasksShow === 'done') tasksShow = 'open'; renderHustleActions(); }));
+    el.querySelectorAll('[data-ht-open]').forEach(r => r.addEventListener('click', e => {
+      if(e.target.closest('button, select, a')) return;
+      openHustleTask(r.getAttribute('data-ht-open'));
+    }));
+    el.querySelectorAll('[data-ht-opp]').forEach(b => b.addEventListener('click', () => {
+      const op = hustleOpportunities.find(x => x.id === b.getAttribute('data-ht-opp'));
       if(op) openHustleModal(op);
     }));
-    el.querySelectorAll('[data-mw-snooze]').forEach(b => b.addEventListener('click', () => openHsSnooze(b.getAttribute('data-mw-snooze'))));
-    el.querySelectorAll('[data-mw-done]').forEach(b => b.addEventListener('click', () => openHsNext(b.getAttribute('data-mw-done'), 'done')));
-    el.querySelectorAll('[data-mw-set]').forEach(b => b.addEventListener('click', () => openHsNext(b.getAttribute('data-mw-set'), 'set')));
+    el.querySelectorAll('[data-ht-status]').forEach(sel => sel.addEventListener('change', () => hTaskSetStatus(sel.getAttribute('data-ht-status'), sel.value)));
   }
+
+  // ---- Move several opportunities to another pipeline year ----
+  let hbSel = new Set();
+  function hbBuild(){
+    if(document.getElementById('hbOverlay')) return;
+    const cy = new Date().getFullYear();
+    const yrs = [cy - 1, cy, cy + 1, cy + 2];
+    const yo = (sel) => yrs.map(y => `<option value="${y}"${y === sel ? ' selected' : ''}>${y}</option>`).join('');
+    const ov = document.createElement('div');
+    ov.className = 'overlay'; ov.id = 'hbOverlay'; ov.style.zIndex = '25'; ov.hidden = true;
+    ov.innerHTML = `<div class="modal" style="max-width:660px;">
+      <h3>Move to another pipeline year</h3>
+      <p class="hs-modal-sub">Choose what to show, tick the ones to move, then pick the year they go to. Only the pipeline year changes.</p>
+      <div class="field-row">
+        <div class="field"><label>From</label><select id="hbFrom">${yo(cy)}</select></div>
+        <div class="field"><label>Stage</label><select id="hbStage"><option value="1. Prospect">Prospect</option><option value="__live">Qualify to Close</option><option value="">Any stage</option></select></div>
+        <div class="field"><label>Owner</label><select id="hbOwner"></select></div>
+      </div>
+      <label class="checkbox-row" style="margin:4px 0 6px;"><input type="checkbox" id="hbAll"> <span style="font-size:12.5px;font-weight:600;">Select all shown</span></label>
+      <div id="hbList" style="max-height:290px; overflow:auto; border:1px solid var(--hairline); border-radius:10px; padding:2px 10px;"></div>
+      <div class="field-row" style="margin-top:12px;"><div class="field"><label>Move to</label><select id="hbTo">${yo(cy + 1)}</select></div></div>
+      <div class="modal-actions"><div class="left"><span class="hs-muted" id="hbCount"></span></div>
+        <div class="right"><button type="button" class="btn-ghost" id="hbCancel">Cancel</button><button type="button" class="btn-primary" id="hbGo">Move selected</button></div></div>
+    </div>`;
+    document.body.appendChild(ov);
+    const close = () => { ov.hidden = true; };
+    document.getElementById('hbCancel').addEventListener('click', close);
+    ov.addEventListener('click', e => { if(e.target === ov) close(); });
+    ['hbFrom','hbStage','hbOwner'].forEach(id => document.getElementById(id).addEventListener('change', () => { hbSel = new Set(); hbRender(); }));
+    document.getElementById('hbAll').addEventListener('change', e => { const rows = hbRows(); hbSel = e.target.checked ? new Set(rows.map(o => o.id)) : new Set(); hbRender(); });
+    document.getElementById('hbList').addEventListener('change', e => {
+      const cb = e.target.closest('[data-hb]'); if(!cb) return;
+      const id = cb.getAttribute('data-hb'); if(cb.checked) hbSel.add(id); else hbSel.delete(id);
+      hbRender();
+    });
+    document.getElementById('hbGo').addEventListener('click', () => {
+      const to = parseInt(document.getElementById('hbTo').value, 10);
+      const ids = [...hbSel];
+      if(!ids.length || !to || !canEdit) return;
+      close();
+      Promise.allSettled(ids.map(id => hustleCol().doc(id).update({pipelineYear: to}))).then(res => {
+        const bad = res.filter(r => r.status === 'rejected').length;
+        if(bad) showSaveError(bad + ' of ' + ids.length + " couldn't be moved. Try again.");
+        else showToast('Moved ' + ids.length + ' to ' + to);
+      });
+    });
+  }
+  function hbRows(){
+    const from = parseInt(document.getElementById('hbFrom').value, 10);
+    const stage = document.getElementById('hbStage').value, owner = document.getElementById('hbOwner').value;
+    return hustleOpportunities.filter(o => hYear(o) === from
+      && (!stage || (stage === '__live' ? hOpen(o) : o.stage === stage))
+      && (!owner || (owner === '__none' ? !o.owner : o.owner === owner)));
+  }
+  function hbRender(){
+    const rows = hbRows();
+    document.getElementById('hbList').innerHTML = rows.length
+      ? rows.map(o => `<label class="hb-row"><input type="checkbox" data-hb="${escapeAttr(o.id)}"${hbSel.has(o.id) ? ' checked' : ''}> <span>${escapeHtml(o.opportunity || '(untitled)')}</span><span class="m">${escapeHtml(o.owner || 'Unassigned')} · ${escapeHtml((HUSTLE_STAGE_META[o.stage] || {}).short || '')}</span></label>`).join('')
+      : '<div class="hs-log-empty" style="padding:12px 0;">Nothing matches.</div>';
+    document.getElementById('hbCount').textContent = hbSel.size + ' of ' + rows.length + ' selected';
+    document.getElementById('hbAll').checked = rows.length > 0 && rows.every(o => hbSel.has(o.id));
+    document.getElementById('hbGo').disabled = !hbSel.size;
+  }
+  function hOpenBulk(){
+    if(!canEdit || myRole === 'member' || !hValueReady) return;
+    hbBuild();
+    hbSel = new Set();
+    const owners = hOwnerList();
+    document.getElementById('hbOwner').innerHTML = '<option value="">Everyone</option>' + owners.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('') + '<option value="__none">Unassigned</option>';
+    hbRender();
+    document.getElementById('hbOverlay').hidden = false;
+  }
+  document.getElementById('hoBulk').addEventListener('click', hOpenBulk);
+
+  // ---- Roll an opportunity over to next year's pipeline (keeps the details and notes, starts again at Prospect) ----
+  function hRollover(op){
+    if(!op || !canEdit || !hValueReady) return;
+    const from = hYear(op), to = from + 1;
+    confirmDelete('Create a ' + to + ' copy of ' + quoted(op.opportunity, 'this opportunity') + '? It starts at Prospect in the ' + to + ' pipeline with the same owner, details, value and notes. The ' + from + ' one is left as it is, and no tasks are copied.', () => {
+      const log = (Array.isArray(op.activityLog) ? op.activityLog : []).slice();
+      log.unshift({date: hToday(), by: currentUserName ? initials(currentUserName) : '', text: 'Rolled over from the ' + from + ' pipeline'});
+      const v = hVal(op);
+      const copy = {opportunity: op.opportunity, stage: '1. Prospect', owner: op.owner || '', division: op.division || '', service: op.service || '',
+        discipline: (Array.isArray(op.discipline) ? op.discipline : []).slice(), clientType: op.clientType || null, contact: op.contact || null,
+        proposalLink: op.proposalLink || null, activityLog: log, start: op.start || '', end: op.end || '', engage: op.engage || '',
+        value: v, pipelineYear: to, stageChangedAt: new Date().toISOString()};
+      hustleCol().add(copy).then(() => showToast('Created the ' + to + ' copy')).catch(hSaveError);
+    }, {title: 'Roll over to ' + to + '?', confirmLabel: 'Create ' + to + ' copy', safe: true});
+  }
+  document.getElementById('rolloverHustleBtn').addEventListener('click', () => {
+    const op = hustleOpportunities.find(x => x.id === editingHustleId);
+    if(!op) return;
+    closeHustleModal();
+    hRollover(op);
+  });
 
   // ---- optional fields (client type, contact, proposal link, expected close) + activity log ----
   function hSafeUrl(u){
@@ -8890,20 +9112,23 @@
   document.getElementById('h_logInput').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); addHLogNote(); } });
 
   // ---- Reports ----
-  function hrPeriodStart(){
-    const n = new Date();
-    if(hrPeriod === 'ytd') return new Date(n.getFullYear(), 0, 1).getTime();
-    if(hrPeriod === 'quarter') return new Date(n.getFullYear(), Math.floor(n.getMonth()/3)*3, 1).getTime();
-    if(hrPeriod === '12m') return Date.now() - 365*86400000;
+  function hrRange(){
+    const y = new Date().getFullYear();
+    const q = {q1:[0,3], q2:[3,6], q3:[6,9], q4:[9,12]}[hrPeriod];
+    if(q) return [new Date(y, q[0], 1).getTime(), new Date(y, q[1], 1).getTime()];
+    if(hrPeriod === 'full') return [new Date(y, 0, 1).getTime(), new Date(y + 1, 0, 1).getTime()];
+    if(hrPeriod === 'ytd') return [new Date(y, 0, 1).getTime(), Infinity];
+    if(hrPeriod === '12m') return [Date.now() - 365*86400000, Infinity];
     return null;
   }
   // Won / Lost / Parked are dated by stageChangedAt. Older rows have no date, so they count as this year
-  // (and in "All time" and "Last 12 months"), but not as "This quarter" because we can't know.
+  // (and in "Full year", "Last 12 months" and "All time"), but not in a single quarter because we can't know.
   function hrInPeriod(op){
-    const start = hrPeriodStart();
-    if(start === null) return true;
-    if(!op.stageChangedAt) return hrPeriod !== 'quarter';
-    return new Date(op.stageChangedAt).getTime() >= start;
+    const r = hrRange();
+    if(r === null) return true;
+    if(!op.stageChangedAt) return ['ytd','full','12m'].includes(hrPeriod);
+    const t = new Date(op.stageChangedAt).getTime();
+    return t >= r[0] && t < r[1];
   }
   function hrExpectedThisQuarter(op){
     if(!hOpen(op) || !op.expectedClose) return false;
@@ -8929,7 +9154,8 @@
     const stale = live.filter(hIsStale);
     const attn = new Set(overdue.concat(stale).map(o => o.id)).size;
     const quarter = list.filter(hrExpectedThisQuarter);
-    const periodLabel = {ytd: new Date().getFullYear() + ' year to date', quarter: 'This quarter', '12m': 'Last 12 months', all: 'All time'}[hrPeriod];
+    const cyr = new Date().getFullYear();
+    const periodLabel = {ytd: cyr + ' year to date', full: cyr + ' full year', q1: 'Q1 ' + cyr, q2: 'Q2 ' + cyr, q3: 'Q3 ' + cyr, q4: 'Q4 ' + cyr, '12m': 'Last 12 months', all: 'All time'}[hrPeriod] || 'All time';
 
     const stageCounts = {
       qualify: list.filter(o => o.stage === '2. Qualify').length,
@@ -8962,12 +9188,12 @@
         + svcRows.map(r => `<tr><td>${escapeHtml(r.sv)}</td><td>${r.l}</td><td>${r.w}</td><td>${r.x}</td><td>${r.rate}</td></tr>`).join('') + `</tbody></table>`
       : '<div class="hr-note">No deals match.</div>';
 
-    const staleSorted = stale.slice().sort((a,b) => (hDaysSince(b.updated_at)||0) - (hDaysSince(a.updated_at)||0));
+    const staleSorted = stale.slice().sort((a,b) => (hDaysSince(hTouchIso(b))||0) - (hDaysSince(hTouchIso(a))||0));
     const staleShown = hrShowAllStale ? staleSorted : staleSorted.slice(0, 8);
     const staleHtml = staleSorted.length
-      ? staleShown.map(o => `<div class="hr-stale-row" data-hr-open="${o.id}"><span>${escapeHtml(o.opportunity||'(untitled)')} <span class="hs-muted" style="color:var(--ink-muted);font-weight:500;">· ${escapeHtml((HUSTLE_STAGE_META[o.stage]||{}).short||'')}${o.owner ? ' · ' + escapeHtml(initials(o.owner)) : ''}</span></span><span>${hDaysSince(o.updated_at)} days</span></div>`).join('')
+      ? staleShown.map(o => `<div class="hr-stale-row" data-hr-open="${o.id}"><span>${escapeHtml(o.opportunity||'(untitled)')} <span class="hs-muted" style="color:var(--ink-muted);font-weight:500;">· ${escapeHtml((HUSTLE_STAGE_META[o.stage]||{}).short||'')}${o.owner ? ' · ' + escapeHtml(initials(o.owner)) : ''}</span></span><span>${hDaysSince(hTouchIso(o))} days</span></div>`).join('')
         + (staleSorted.length > 8 ? `<button type="button" class="hr-link-btn" id="hrStaleToggle">${hrShowAllStale ? 'Show fewer' : 'See all ' + staleSorted.length}</button>` : '')
-        + '<div class="hr-note">Rule of thumb: anything here either gets a next action this week or moves to Parked with a reason.</div>'
+        + '<div class="hr-note">Rule of thumb: anything here either gets a task this week or moves to Parked with a reason.</div>'
       : '<div class="hr-note">Nothing has gone quiet. Every live deal was touched in the last 30 days.</div>';
 
     // ---- euro value panels (only once the value column exists). Each panel is {title, sub, html}; add more here later. ----
@@ -8995,10 +9221,11 @@
 
     el.innerHTML = `
       <div class="hr-filters">
-        <label>Period <select id="hrPeriod">
-          <option value="ytd">${new Date().getFullYear()} year to date</option><option value="quarter">This quarter</option>
-          <option value="12m">Last 12 months</option><option value="all">All time</option></select></label>
         <label>Pipeline year <select id="hrYear"><option value="">All years</option>${[0,1,2].map(i => { const y = new Date().getFullYear() + i; return `<option value="${y}">${y}</option>`; }).join('')}</select></label>
+        <label>Period <select id="hrPeriod">
+          <option value="ytd">${new Date().getFullYear()} year to date</option><option value="full">${new Date().getFullYear()} full year</option>
+          <option value="q1">Q1</option><option value="q2">Q2</option><option value="q3">Q3</option><option value="q4">Q4</option>
+          <option value="12m">Last 12 months</option><option value="all">All time</option></select></label>
         <label${scoped ? ' style="display:none;"' : ''}>Owner <select id="hrOwner"><option value="">Everyone</option>${owners.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('')}</select></label>
         <span class="hs-muted">Won, Lost and Parked follow the period. Live counts are always as of today.</span>
       </div>
@@ -9102,14 +9329,10 @@
     });
   }
 
-  // Stage rules for the edit form: Qualify to Close need a next action + date; Lost / Parked need a closed reason.
+  // Stage rules for the edit form: Lost / Parked need a closed reason.
   function applyHustleStageRules(){
     const stage = document.getElementById('h_stage').value;
-    const live = HUSTLE_OPEN.includes(stage);
     const closed = stage === '6. Lost' || stage === '7. Parked';
-    document.getElementById('h_nextAction').required = live;
-    document.getElementById('h_nextActionDate').required = live;
-    document.getElementById('h_reqNote').textContent = live ? '(required while the deal is live)' : '';
     document.getElementById('h_closedReasonWrap').hidden = !closed;
     document.getElementById('h_closedReason').required = closed;
     if(stage === '7. Parked' && !document.getElementById('h_closedReason').value) document.getElementById('h_closedReason').value = 'Parked';
@@ -9136,8 +9359,6 @@
     document.getElementById('h_stage').value = op && op.stage ? op.stage : (hustleStageFilter && HUSTLE_STAGES.includes(hustleStageFilter) ? hustleStageFilter : '1. Prospect');
     hFillOwnerSelect();
     document.getElementById('h_owner').value = op ? (op.owner||'') : (myRole === 'member' ? (currentUserName || '') : (hustleOwnerFilter && hustleOwnerFilter !== '__none' ? hustleOwnerFilter : ''));
-    document.getElementById('h_nextAction').value = op ? (op.nextAction||'') : '';
-    document.getElementById('h_nextActionDate').value = op ? (op.nextActionDate||'') : '';
     document.getElementById('h_closedReason').value = op ? (op.closedReason||'') : '';
     hFillExpectedClose(op ? (op.expectedClose||'') : '');
     hFillValueFields(op);
@@ -9159,6 +9380,15 @@
       : '';
     document.getElementById('deleteHustleBtn').style.display = op ? 'inline-block' : 'none';
     document.getElementById('assignHustleTaskBtn').style.display = op ? 'inline-block' : 'none';
+    document.getElementById('rolloverHustleBtn').style.display = (op && hValueReady && canEdit) ? 'inline-block' : 'none';
+    if(op) document.getElementById('rolloverHustleBtn').textContent = 'Roll over to ' + (hYear(op) + 1);
+    {
+      const tl = document.getElementById('h_taskList');
+      document.getElementById('h_tasksWrap').hidden = !op;
+      const ts = op ? hTasksFor(op).slice().sort((a,b) => (hTaskDone(a) - hTaskDone(b)) || (a.dateISO || '9999').localeCompare(b.dateISO || '9999')) : [];
+      tl.innerHTML = ts.length ? ts.map(t => `<div class="hs-task-row ${hTaskDone(t) ? 'done' : ''}" data-h-task="${escapeAttr(t.id)}"><span class="m">${t.dateISO ? escapeHtml(hFmtDate(t.dateISO)) : ''}</span><span class="t">${escapeHtml(t.title || '(untitled)')}</span><span class="m">${escapeHtml((t.owners || []).map(n => initials(n)).join(', '))} · ${escapeHtml((STATUS_META[t.status] || {}).label || '')}</span></div>`).join('')
+        : '<div class="hs-log-empty">No tasks yet. Use Add task below to create one.</div>';
+    }
     applyHustleStageRules();
     document.getElementById('hustleOverlay').hidden = false;
   }
@@ -9177,8 +9407,6 @@
       opportunity: document.getElementById('h_opportunity').value.trim(),
       stage,
       owner: document.getElementById('h_owner').value,
-      nextAction: document.getElementById('h_nextAction').value.trim(),
-      nextActionDate: document.getElementById('h_nextActionDate').value || null,
       closedReason: closed ? (document.getElementById('h_closedReason').value || null) : null,
       expectedClose: document.getElementById('h_expectedClose').value || null,
       clientType: hClientType || null,
@@ -9233,16 +9461,21 @@
     const opportunity = document.getElementById('h_opportunity').value.trim();
     if(!opportunity) return;
     const owner = document.getElementById('h_owner').value;
-    const nextAction = document.getElementById('h_nextAction').value;
-    const nextDate = document.getElementById('h_nextActionDate').value;
+    const oppId = editingHustleId;
     closeHustleModal();
     openTaskModal(null);
     document.getElementById('f_client').value = opportunity;
-    document.getElementById('f_title').value = nextAction || 'Follow up';
+    document.getElementById('f_title').value = '';
     document.getElementById('f_tag').value = 'Hustle';
-    if(nextDate) document.getElementById('f_date').value = nextDate;
-    document.getElementById('f_division').value = 'Business Development';
+    document.getElementById('f_division').value = 'Hustle';
     if(owner){ selectedOwners = [owner]; updateOwnersBtnLabel(); }
+    pendingHustleLink = oppId;
+  });
+  document.getElementById('h_taskList').addEventListener('click', e => {
+    const r = e.target.closest('[data-h-task]'); if(!r) return;
+    const id = r.getAttribute('data-h-task');
+    closeHustleModal();
+    openHustleTask(id);
   });
 
   // populate the Owner / Start / End / Engage selects once, up front
