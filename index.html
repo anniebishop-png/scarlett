@@ -306,9 +306,9 @@
   .hs-row-top{display:flex; align-items:center; gap:10px;}
   .hs-stage{display:inline-flex; align-items:center; flex-shrink:0; padding:3px 9px; border-radius:999px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap;}
   .hs-stage.prospect{background:var(--surface-2); color:var(--ink-2); border:1px solid var(--hairline-strong);}
-  .hs-stage.qualify{background:#E3E9FB; color:#2a3a8c;}
-  :root[data-theme="dark"] .hs-stage.qualify{background:#2a3a6c; color:#c9d4ff;}
-  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .hs-stage.qualify{background:#2a3a6c; color:#c9d4ff;}}
+  .hs-stage.engage{background:#E3E9FB; color:#2a3a8c;}
+  :root[data-theme="dark"] .hs-stage.engage{background:#2a3a6c; color:#c9d4ff;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .hs-stage.engage{background:#2a3a6c; color:#c9d4ff;}}
   .hs-stage.present{background:var(--st-review-bg); color:var(--st-review-text);}
   .hs-stage.close{background:var(--gold); color:#3A2A06;}
   .hs-stage.won{background:var(--st-done-bg); color:var(--st-done-text);}
@@ -790,6 +790,18 @@
   .hs-chip.extra{background:var(--st-done-bg); color:var(--st-done-text); margin-left:6px;}
   .hs-chip.warn{background:var(--hs-warn-bg); color:var(--hs-warn);}
   .hs-muted{color:var(--ink-muted); font-size:11.5px;}
+  .hrp-bar{display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:10px;}
+  .hrp-date{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--ink-2);}
+  .hrp-sum{font-size:13px; color:var(--ink-2); margin-bottom:6px;}
+  .hrp-legend{font-size:11.5px; color:var(--ink-muted); margin-bottom:12px; line-height:1.6;}
+  .hrp-key{display:inline-block; width:14px; height:10px; border-radius:3px; vertical-align:middle; background:rgba(201,162,39,.30); border:1px solid rgba(201,162,39,.7); margin-right:3px;}
+  .hrp-new{display:inline-block; padding:1px 7px; border-radius:999px; font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; background:var(--st-done-bg); color:var(--st-done-text); vertical-align:middle;}
+  .hrp-table{min-width:760px;}
+  .hrp-table tr.hrp-moved td{background:rgba(201,162,39,.15);}
+  .hrp-table tr[data-open-hustle]{cursor:pointer;}
+  .hrp-table tr[data-open-hustle]:hover td{background:var(--surface-2);}
+  .hrp-table td.hrp-note{max-width:420px; line-height:1.4;}
+  .hrp-table tfoot td{padding:10px; background:var(--surface-2); border-top:2px solid var(--hairline-strong);}
   .hs-next b{font-weight:800;}
   .hs-nextblock{background:var(--surface-2); border:1px solid var(--hairline); border-left:4px solid var(--gold); border-radius:12px; padding:12px 12px 2px; margin-bottom:13px;}
   .hs-req{text-transform:none; font-weight:600; color:var(--ink-muted); letter-spacing:normal;}
@@ -831,6 +843,18 @@
   .hs-log-entry{display:grid; grid-template-columns:100px 1fr; gap:8px; padding:7px 0; border-top:1px solid var(--hairline); font-size:12.5px; line-height:1.45;}
   .hs-log-entry .d{color:var(--ink-muted); font-weight:700; font-size:11.5px;}
   .hs-log-empty{color:var(--ink-muted); font-size:12px; padding:4px 0;}
+  .hs-tasks-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;}
+  .hs-tasks-head label{margin:0;}
+  .ms{position:relative; display:inline-block;}
+  .ms[hidden]{display:none;}
+  .ms-btn{font:inherit; font-size:13px; padding:8px 12px; border:1px solid var(--hairline); border-radius:10px; background:var(--surface); color:var(--ink); cursor:pointer; white-space:nowrap;}
+  .ms-btn.on{border-color:var(--gold); font-weight:700;}
+  .ms-caret{font-size:10px; opacity:.6; margin-left:4px;}
+  .ms-pop{position:absolute; z-index:30; top:calc(100% + 4px); left:0; min-width:190px; max-height:300px; overflow:auto; background:var(--surface); border:1px solid var(--hairline); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:6px;}
+  .ms-opt{display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; font-size:13px; cursor:pointer; color:var(--ink);}
+  .ms-opt:hover{background:var(--surface-2);}
+  .ms-clear{display:block; width:100%; margin-top:4px; padding:6px; border:none; border-top:1px solid var(--hairline); background:none; color:var(--navy); font:inherit; font-size:12px; font-weight:700; cursor:pointer;}
+  :root[data-theme="dark"] .ms-clear{color:var(--gold);}
   .hs-tasklist{border:1px solid var(--hairline); border-radius:10px; overflow:hidden;}
   .hs-task-row{display:grid; grid-template-columns:78px 1fr auto; gap:10px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--hairline); font-size:12.5px; cursor:pointer;}
   .hs-task-row:last-child{border-bottom:none;}
@@ -1707,6 +1731,7 @@
       <button type="button" data-view="dashboard" class="active">Dashboard</button>
       <button type="button" data-view="opportunities">Opportunities</button>
       <button type="button" data-view="tasks">Tasks</button>
+      <button type="button" data-view="reporting">Reporting</button>
     </div>
     <button class="btn-primary" id="addHustleBtn" style="margin-left:auto;">+ Add opportunity</button>
   </div>
@@ -1714,16 +1739,15 @@
   <div id="hustleSetup" hidden></div>
   <div class="shows-hint" id="hustlePermNote" style="margin:0 0 12px; font-size:12px;" hidden>You are seeing the opportunities you own. Management can see the whole pipeline.</div>
   <div id="hustleOppsView" hidden>
-    <div id="hustleOwnerCards"></div>
     <div class="ho-toolbar">
       <div class="segmented" id="hoYears" aria-label="Pipeline year"></div>
       <input type="search" id="hoSearch" placeholder="Search name or contact" autocomplete="off" aria-label="Search opportunities">
-      <select id="hoOwner" aria-label="Owner"></select>
-      <select id="hoStage" aria-label="Stage"></select>
-      <select id="hoDivision" aria-label="Division"></select>
-      <select id="hoService" aria-label="Service"></select>
-      <select id="hoDiscipline" aria-label="Discipline"></select>
-      <select id="hoClient" aria-label="Client type"></select>
+      <div class="ms" id="hoOwner" data-label="Owner"></div>
+      <div class="ms" id="hoStage" data-label="Stage"></div>
+      <div class="ms" id="hoDivision" data-label="Division"></div>
+      <div class="ms" id="hoService" data-label="Service"></div>
+      <div class="ms" id="hoDiscipline" data-label="Discipline"></div>
+      <div class="ms" id="hoClient" data-label="Client type"></div>
       <button type="button" class="btn-ghost" id="hoClear" hidden>Clear filters</button>
       <button type="button" class="btn-ghost" id="hoBulk" hidden title="Move several opportunities to another pipeline year at once">Move to another year</button>
     </div>
@@ -1732,6 +1756,7 @@
     <div class="ho-pager" id="hoPager"></div>
   </div>
   <div id="hustleActionsView" hidden></div>
+  <div id="hustleReportingView" hidden></div>
   <div id="hustleDashboardView"></div>
   <footer class="note">New-business pipeline — prospects through won/lost, by stage. Values are in euro and only show for the opportunities you can see.</footer>
 </div>
@@ -2269,7 +2294,7 @@
         <div class="field"><label>Stage</label>
           <select id="h_stage">
             <option value="1. Prospect">1. Prospect</option>
-            <option value="2. Qualify">2. Qualify</option>
+            <option value="2. Engage">2. Engage</option>
             <option value="3. Present">3. Present</option>
             <option value="4. Close">4. Close</option>
             <option value="5. Won">5. Won</option>
@@ -2280,7 +2305,9 @@
         <div class="field"><label>Owner</label><select id="h_owner"></select></div>
       </div>
       <div class="field"><label>Expected close <span class="hs-req">(month, optional)</span></label><select id="h_expectedClose"></select></div>
-      <div class="field" id="h_tasksWrap" hidden><label>Tasks <span class="hs-req">(follow-ups for this deal, click one to open it)</span></label><div id="h_taskList" class="hs-tasklist"></div></div>
+      <div class="field" id="h_tasksWrap" hidden>
+        <div class="hs-tasks-head"><label>Tasks <span class="hs-req">(follow-ups for this deal, click one to open it)</span></label><button type="button" class="btn-ghost" id="assignHustleTaskBtn">+ Add task</button></div>
+        <div id="h_taskList" class="hs-tasklist"></div></div>
       <div id="h_valueWrap" hidden>
         <div class="field-row">
           <div class="field"><label>Value <span class="hs-req">(€, optional)</span></label><input id="h_value" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 25000" autocomplete="off"></div>
@@ -2341,7 +2368,6 @@
       <div class="hs-updated" id="h_updatedNote"></div>
       <div class="modal-actions">
         <div class="left">
-          <button type="button" class="btn-ghost" id="assignHustleTaskBtn" style="display:none;">Add task</button>
           <button type="button" class="btn-ghost" id="rolloverHustleBtn" style="display:none;">Roll over</button>
           <button type="button" class="btn-ghost" id="deleteHustleBtn" style="display:none;color:var(--st-blocked-text);border-color:var(--st-blocked-text);">Delete</button>
         </div>
@@ -2627,7 +2653,7 @@
   let hustleOpportunities = []; // new-business pipeline, loaded when that page is open
   let unsubHustle = null;
   let editingHustleId = null;
-  let hustleStageFilter = null; // one of HUSTLE_STAGES, '__live', or null for all
+  let hoStages = [];   // stage filter: any of HUSTLE_STAGES (empty = all)
   let selectedDisciplines = []; // disciplines checked in the open hustle-opportunity form
   let deliveryItems = [];    // client deliverables/contract-fulfillment tracker, loaded when that page is open
   let unsubDelivery = null;
@@ -2649,10 +2675,10 @@
   const PODCAST_LEADS = ['Nicole','Annie','Diarm','Spike','Sam','Charlotte','Guest Lead'];
 
   // ---------- Hustle pipeline (new-business tracker — mirrors the "27 Pipeline" sheet, minus value/pricing) ----------
-  const HUSTLE_STAGES = ['1. Prospect','2. Qualify','3. Present','4. Close','5. Won','6. Lost','7. Parked'];
+  const HUSTLE_STAGES = ['1. Prospect','2. Engage','3. Present','4. Close','5. Won','6. Lost','7. Parked'];
   const HUSTLE_STAGE_META = {
     '1. Prospect': {short:'Prospect', cls:'prospect'},
-    '2. Qualify':  {short:'Qualify',  cls:'qualify'},
+    '2. Engage':  {short:'Engage',  cls:'engage'},
     '3. Present':  {short:'Present',  cls:'present'},
     '4. Close':    {short:'Close',    cls:'close'},
     '5. Won':      {short:'Won',      cls:'won'},
@@ -6630,7 +6656,7 @@
   // the Trash tab restores from. Until the one-off SQL has been run, nothing is logged and the
   // Trash and Activity tabs show the setup steps instead.
   const AUDIT_COLLS = {tasks:'Task', shows:'Show', clientOps:'Client Ops', clientProfiles:'Client', podcastEpisodes:'Podcast', hustleOpportunities:'Hustle', deliveryItems:'Delivery', contractClients:'Delivery client', recurringTasks:'Repeating task'};
-  const AUDIT_NOISE = new Set(['order','calendarSynced','updated_at','created_at','assignedAt','stageChangedAt','deliveredAt','activityLog','archivedBy']);
+  const AUDIT_NOISE = new Set(['order','calendarSynced','updated_at','created_at','assignedAt','stageChangedAt','stageHistory','deliveredAt','activityLog','archivedBy']);
   const AUDIT_SKIP_ID = /^(sync_|spawn_del_)/;
   const FIELD_LABELS = {dateISO:'date', weekId:'week', owners:'owners', status:'status', title:'title', notes:'notes', client:'client', division:'team', tag:'tag', eventName:'event', clients:'clients', archivedAt:'archived', opportunity:'name', nextAction:'next action', nextActionDate:'next action date', expectedClose:'expected close', recordDate:'record date'};
   const CHANGELOG_SQL = [
@@ -8360,13 +8386,13 @@
   });
 
   // ---------------- hustle pipeline page ----------------
-  // Follow-up model (from the Hustle build brief): every live deal (Qualify, Present, Close) carries a
+  // Follow-up model (from the Hustle build brief): every live deal (Engage, Present, Close) carries a
   // next action + a due date, and everything below (owner cards, My week, Overdue / Due this week /
   // Stale) is COMPUTED from those fields and from updated_at, never ticked by hand.
-  const HUSTLE_OPEN = ['2. Qualify','3. Present','4. Close'];
+  const HUSTLE_OPEN = ['2. Engage','3. Present','4. Close'];
   const HUSTLE_OWNER_ORDER = ['Diarm','Brayden','Nicole','Annie','Sam'];
-  let hustleView = 'dashboard';    // 'dashboard' (default landing), 'opportunities' or 'tasks'
-  let hustleOwnerFilter = null;    // owner name from a clicked owner card, or null
+  let hustleView = 'dashboard';    // 'dashboard' (default landing), 'opportunities', 'tasks' or 'reporting'
+  let hoOwners = [];               // owner filter: names, or '__none' for unassigned (empty = all)
   let hsNextCtx = null;            // {id, mode:'done'|'set'} for the next-step prompt
   let hsSnoozeId = null;
   let hClientType = '', hLog = [];   // working copies for the open edit form
@@ -8448,7 +8474,7 @@
     const s = {open:0, due:0, overdue:0, noNext:0, stale:0, won:0, lost:0, parked:0, prospect:0, qualify:0, present:0, close:0};
     list.forEach(op => {
       if(op.stage === '1. Prospect') s.prospect++;
-      if(op.stage === '2. Qualify') s.qualify++;
+      if(op.stage === '2. Engage') s.qualify++;
       if(op.stage === '3. Present') s.present++;
       if(op.stage === '4. Close') s.close++;
       if(hOpen(op)){
@@ -8480,6 +8506,7 @@
     if(!hValueChecked) probeHustleValue().then(() => renderHustleAll());
     unsubHustle = hustleCol().onSnapshot(snap => {
       hustleOpportunities = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+      hustleOpportunities.forEach(o => { if(o.stage === '2. Qualify') o.stage = '2. Engage'; });
       hustleOpportunities.sort((a,b) => (a.opportunity||'').localeCompare(b.opportunity||''));
       renderHustleAll();
     }, () => {});
@@ -8509,42 +8536,14 @@
     document.getElementById('hustlePermNote').hidden = myRole !== 'member';
     document.getElementById('hustleOppsView').hidden = hustleView !== 'opportunities';
     document.getElementById('hustleActionsView').hidden = hustleView !== 'tasks';
+    document.getElementById('hustleReportingView').hidden = hustleView !== 'reporting';
     document.getElementById('hustleDashboardView').hidden = hustleView !== 'dashboard';
     renderHustleSetup();
     document.querySelectorAll('#hustleViewTabs button').forEach(b => b.classList.toggle('active', b.getAttribute('data-view') === hustleView));
     if(hustleView === 'tasks'){ renderHustleActions(); return; }
+    if(hustleView === 'reporting'){ renderHustleReporting(); return; }
     if(hustleView === 'dashboard'){ renderHustleDashboard(); return; }
-    renderHustleOwnerCards();
     renderHustleOpps();
-  }
-
-  function renderHustleOwnerCards(){
-    const el = document.getElementById('hustleOwnerCards');
-    const owners = hOwnerList();
-    if(!owners.length){ el.innerHTML = ''; return; }
-    el.innerHTML = `<div class="hs-section-head"><h3>By owner</h3><span>Click a card to filter the list. Open means Qualify to Close; Prospects are counted separately.</span></div>
-      <div class="hs-cards">` + owners.map(name => {
-        const s = hOwnerStats(hustleOpportunities.filter(o => o.owner === name));
-        return `<button type="button" class="hs-card ${hustleOwnerFilter===name?'selected':''}" data-owner-card="${escapeAttr(name)}" aria-pressed="${hustleOwnerFilter===name}">
-          <span class="hs-card-top"><span class="hs-avatar" style="color:${ownerColor(name)}">${escapeHtml(initials(name))}</span><span class="hs-card-name">${escapeHtml(name)}</span></span>
-          <span class="hs-card-open"><b>${s.open}</b> open</span>
-          <span class="hs-card-grid">
-            <span><i>Due this week</i><b class="due">${s.due}</b></span>
-            <span><i>Overdue</i><b class="over">${s.overdue}</b></span>
-            <span><i>Won ${new Date().getFullYear()}</i><b class="won">${s.won}</b></span>
-            <span><i>Lost ${new Date().getFullYear()}</i><b class="lost">${s.lost}</b></span>
-          </span>
-          <span class="hs-card-foot"><i>Win rate</i><b>${s.winRate === null ? '—' : s.winRate + '%'}</b></span>
-        </button>`;
-      }).join('') + `</div>`;
-    el.querySelectorAll('[data-owner-card]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const n = btn.getAttribute('data-owner-card');
-        hustleOwnerFilter = hustleOwnerFilter === n ? null : n;
-        hoPage = 0;
-        renderHustleAll();
-      });
-    });
   }
 
   function bindHustleRowEvents(container, list){
@@ -8567,6 +8566,41 @@
       });
     });
   }
+
+  // ---- Tick-box dropdown used by the Opportunities filters ----
+  const MS = {};
+  function msSet(id, cfg){
+    const old = MS[id] || {open: false};
+    MS[id] = Object.assign({}, cfg, {open: old.open});
+    const valid = new Set(cfg.options.map(o => o.v));
+    const cur = cfg.get();
+    if(cur.some(v => !valid.has(v))) cfg.set(cur.filter(v => valid.has(v)));
+    msRender(id);
+  }
+  function msRender(id){
+    const m = MS[id], el = document.getElementById(id);
+    if(!m || !el) return;
+    const sel = m.get();
+    const txt = sel.length === 0 ? m.all : (sel.length === 1 ? ((m.options.find(o => o.v === sel[0]) || {}).t || sel[0]) : sel.length + ' ' + m.plural);
+    el.innerHTML = `<button type="button" class="ms-btn ${sel.length ? 'on' : ''}" aria-haspopup="true" aria-expanded="${m.open}" aria-label="${escapeAttr(el.getAttribute('data-label') || '')}">${escapeHtml(txt)} <span class="ms-caret">&#9662;</span></button>`
+      + (m.open ? `<div class="ms-pop">${m.options.map(o => `<label class="ms-opt"><input type="checkbox" value="${escapeAttr(o.v)}"${sel.includes(o.v) ? ' checked' : ''}> <span>${escapeHtml(o.t)}</span></label>`).join('')}${sel.length ? '<button type="button" class="ms-clear">Clear</button>' : ''}</div>` : '');
+    el.querySelector('.ms-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      const was = m.open;
+      Object.keys(MS).forEach(k => { if(MS[k].open){ MS[k].open = false; msRender(k); } });
+      m.open = !was; msRender(id);
+    });
+    el.querySelectorAll('.ms-opt input').forEach(cb => cb.addEventListener('change', () => {
+      const cur = m.get().slice(), v = cb.value, i = cur.indexOf(v);
+      if(cb.checked && i < 0) cur.push(v); else if(!cb.checked && i >= 0) cur.splice(i, 1);
+      m.set(cur); hoPage = 0; renderHustleOpps();
+    }));
+    const clr = el.querySelector('.ms-clear');
+    if(clr) clr.addEventListener('click', () => { m.set([]); hoPage = 0; renderHustleOpps(); });
+    const pop = el.querySelector('.ms-pop');
+    if(pop) pop.addEventListener('click', e => e.stopPropagation());
+  }
+  document.addEventListener('click', () => { Object.keys(MS).forEach(k => { if(MS[k].open){ MS[k].open = false; msRender(k); } }); });
 
   // ---- Opportunities: a spreadsheet-style table for one pipeline year ----
   // Year switcher, name search and filters work together; headers sort; pages of 50 or 100 rows.
@@ -8631,25 +8665,19 @@
     document.getElementById('hsRecheckBtn').addEventListener('click', () => { probeHustleValue().then(() => renderHustleAll()); });
   }
 
-  let hoYear = null, hoQ = '', hoDivision = '', hoService = '', hoDiscipline = '', hoClient = '', hoPage = 0, hoPageSize = 50;
+  let hoYear = null, hoQ = '', hoDivisions = [], hoServices = [], hoDisciplines = [], hoClients = [], hoPage = 0, hoPageSize = 50;
   let hoSort = {key:'due', dir:1};
   const HO_DIVISIONS = ['HP & Risk', 'Sports Promo'];
   function hoRows(skipYear){
     const q = hoQ.trim().toLowerCase();
     return hustleOpportunities.filter(op => {
       if(!skipYear && hYear(op) !== hoYear) return false;
-      if(hustleOwnerFilter){
-        if(hustleOwnerFilter === '__none'){ if(op.owner) return false; }
-        else if(op.owner !== hustleOwnerFilter) return false;
-      }
-      if(hustleStageFilter){
-        if(hustleStageFilter === '__live'){ if(!hOpen(op)) return false; }
-        else if(op.stage !== hustleStageFilter) return false;
-      }
-      if(hoDivision && op.division !== hoDivision) return false;
-      if(hoService && op.service !== hoService) return false;
-      if(hoDiscipline && !(Array.isArray(op.discipline) ? op.discipline : []).includes(hoDiscipline)) return false;
-      if(hoClient && (op.clientType || '') !== hoClient) return false;
+      if(hoOwners.length && !hoOwners.some(v => v === '__none' ? !op.owner : op.owner === v)) return false;
+      if(hoStages.length && !hoStages.includes(op.stage)) return false;
+      if(hoDivisions.length && !hoDivisions.includes(op.division)) return false;
+      if(hoServices.length && !hoServices.includes(op.service)) return false;
+      if(hoDisciplines.length && !(Array.isArray(op.discipline) ? op.discipline : []).some(d => hoDisciplines.includes(d))) return false;
+      if(hoClients.length && !hoClients.includes(op.clientType || '')) return false;
       if(q && !((op.opportunity || '').toLowerCase().includes(q) || (op.contact || '').toLowerCase().includes(q))) return false;
       return true;
     });
@@ -8724,19 +8752,19 @@
       return `<button type="button" data-y="${y}" class="${hoYear === y ? 'active' : ''}">${y} (${n})</button>`;
     }).join('');
     yearsEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { hoYear = Number(b.getAttribute('data-y')); hoPage = 0; renderHustleOpps(); }));
-    // filter dropdowns (the search box is left alone so typing never loses focus)
-    const fill = (id, html, val) => { const s = document.getElementById(id); s.innerHTML = html; s.value = val; if(s.value !== val) s.value = ''; };
+    // filter dropdowns: tick-box lists (the search box is left alone so typing never loses focus)
     const owners = hOwnerList();
     const anyNone = hustleOpportunities.some(o => !o.owner);
-    fill('hoOwner', '<option value="">All owners</option>' + owners.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('') + (anyNone ? '<option value="__none">Unassigned</option>' : ''), hustleOwnerFilter || '');
+    const opt = (list) => list.map(v => ({v, t: v}));
+    msSet('hoOwner', {all: 'All owners', plural: 'owners', options: opt(owners).concat(anyNone ? [{v: '__none', t: 'Unassigned'}] : []), get: () => hoOwners, set: v => { hoOwners = v; }});
     document.getElementById('hoOwner').hidden = myRole === 'member';
-    fill('hoStage', '<option value="">All stages</option><option value="__live">Live (Qualify to Close)</option>' + HUSTLE_STAGES.map(s => `<option value="${s}">${escapeHtml(s)}</option>`).join(''), hustleStageFilter || '');
-    fill('hoDivision', '<option value="">All divisions</option>' + HO_DIVISIONS.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join(''), hoDivision);
-    fill('hoService', '<option value="">All services</option>' + HUSTLE_SERVICES.map(s => `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join(''), hoService);
-    fill('hoDiscipline', '<option value="">All disciplines</option>' + HUSTLE_DISCIPLINES.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join(''), hoDiscipline);
+    msSet('hoStage', {all: 'All stages', plural: 'stages', options: HUSTLE_STAGES.map(v => ({v, t: v})), get: () => hoStages, set: v => { hoStages = v; }});
+    msSet('hoDivision', {all: 'All divisions', plural: 'divisions', options: opt(HO_DIVISIONS), get: () => hoDivisions, set: v => { hoDivisions = v; }});
+    msSet('hoService', {all: 'All services', plural: 'services', options: opt(HUSTLE_SERVICES), get: () => hoServices, set: v => { hoServices = v; }});
+    msSet('hoDiscipline', {all: 'All disciplines', plural: 'disciplines', options: opt(HUSTLE_DISCIPLINES), get: () => hoDisciplines, set: v => { hoDisciplines = v; }});
+    msSet('hoClient', {all: 'New and existing', plural: 'client types', options: [{v: 'New', t: 'New clients'}, {v: 'Existing', t: 'Existing clients'}], get: () => hoClients, set: v => { hoClients = v; }});
     document.getElementById('hoBulk').hidden = !(canEdit && myRole !== 'member' && hValueReady);
-    fill('hoClient', '<option value="">New and existing</option><option value="New">New clients</option><option value="Existing">Existing clients</option>', hoClient);
-    const filtered = !!(hustleOwnerFilter || hustleStageFilter || hoDivision || hoService || hoDiscipline || hoClient || hoQ.trim());
+    const filtered = !!(hoOwners.length || hoStages.length || hoDivisions.length || hoServices.length || hoDisciplines.length || hoClients.length || hoQ.trim());
     document.getElementById('hoClear').hidden = !filtered;
 
     const rows = hoRows(false).sort(hoCompare());
@@ -8790,14 +8818,8 @@
   (function bindHoToolbar(){
     const on = (id, ev, fn) => document.getElementById(id).addEventListener(ev, fn);
     on('hoSearch', 'input', e => { hoQ = e.target.value; hoPage = 0; renderHustleOpps(); });
-    on('hoOwner', 'change', e => { hustleOwnerFilter = e.target.value || null; hoPage = 0; renderHustleAll(); });
-    on('hoStage', 'change', e => { hustleStageFilter = e.target.value || null; hoPage = 0; renderHustleOpps(); });
-    on('hoDivision', 'change', e => { hoDivision = e.target.value; hoPage = 0; renderHustleOpps(); });
-    on('hoService', 'change', e => { hoService = e.target.value; hoPage = 0; renderHustleOpps(); });
-    on('hoDiscipline', 'change', e => { hoDiscipline = e.target.value; hoPage = 0; renderHustleOpps(); });
-    on('hoClient', 'change', e => { hoClient = e.target.value; hoPage = 0; renderHustleOpps(); });
     on('hoClear', 'click', () => {
-      hustleOwnerFilter = null; hustleStageFilter = null; hoDivision = ''; hoService = ''; hoDiscipline = ''; hoClient = ''; hoQ = ''; hoPage = 0;
+      hoOwners = []; hoStages = []; hoDivisions = []; hoServices = []; hoDisciplines = []; hoClients = []; hoQ = ''; hoPage = 0;
       document.getElementById('hoSearch').value = '';
       renderHustleAll();
     });
@@ -8862,6 +8884,153 @@
     document.getElementById('f_division').value = 'Hustle';
     if(currentUserName){ selectedOwners = [currentUserName]; updateOwnersBtnLabel(); }
   }
+  // ---- Reporting: weekly internal updates and board reporting ----
+  // Lists everything in Present or Close, plus Won / Lost / Parked deals that moved in the chosen period.
+  // Moves come from stageHistory (a dated entry for every stage change). Deals that pre-date the history column
+  // fall back to stageChangedAt, which only knows the latest move.
+  let hrpRange = '7', hrpFrom = '', hrpTo = '';
+  const HRP_STAGES = ['3. Present', '4. Close', '5. Won', '6. Lost', '7. Parked'];
+  function hHistReady(){ return hustleOpportunities.some(o => Object.prototype.hasOwnProperty.call(o, 'stageHistory')); }
+  function hStageNum(s){ const n = parseInt(String(s || ''), 10); return isFinite(n) ? n : 0; }
+  function hStageEntries(op){
+    const h = Array.isArray(op.stageHistory) ? op.stageHistory.filter(e => e && e.stage) : [];
+    if(h.length) return h;
+    return op.stageChangedAt ? [{stage: op.stage, at: op.stageChangedAt, from: null, seed: true}] : [];
+  }
+  function hrpPeriod(){
+    const day = 86400000, now = new Date();
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
+    if(hrpRange === 'custom'){
+      const f = hrpFrom ? new Date(hrpFrom + 'T00:00:00').getTime() : null;
+      const t = hrpTo ? new Date(hrpTo + 'T23:59:59.999').getTime() : null;
+      if(f === null || t === null || !isFinite(f) || !isFinite(t) || f > t) return null;
+      return {from: f, to: t};
+    }
+    const n = parseInt(hrpRange, 10) || 7;
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - n, 0, 0, 0, 0).getTime();
+    return {from: start, to: endOfToday};
+  }
+  function hrpIn(iso, p){
+    if(!iso) return false;
+    const t = new Date(iso).getTime();
+    return isFinite(t) && t >= p.from && t <= p.to;
+  }
+  function hrpLatestNote(op){
+    const log = Array.isArray(op.activityLog) ? op.activityLog.filter(n => n && n.text) : [];
+    if(!log.length) return null;
+    let best = log[0];
+    log.forEach(n => { if(String(n.date || '') > String(best.date || '')) best = n; });
+    return best;
+  }
+  function hrpFmtDay(iso){
+    if(!iso) return '';
+    const d = new Date(iso);
+    return isFinite(d.getTime()) ? d.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) : '';
+  }
+  function hrpFmtNoteDate(s){
+    if(!s) return '';
+    const d = new Date(String(s).slice(0, 10) + 'T12:00:00');
+    return isFinite(d.getTime()) ? d.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) : String(s);
+  }
+  // Works out the report rows for the chosen period. moved = changed stage in the period; isNew = first reached Present
+  // or later in the period (from Prospect or Engage). A Present to Close move alone is "moved", not "new".
+  function hrpBuild(p){
+    const out = [];
+    hustleOpportunities.forEach(op => {
+      if(!HRP_STAGES.includes(op.stage)) return;
+      const ents = hStageEntries(op);
+      const moved = ents.some(e => hrpIn(e.at, p));
+      const lastIso = op.stageChangedAt || (ents.length ? ents[ents.length - 1].at : null);
+      const closedOut = hStageNum(op.stage) >= 5;
+      if(closedOut && !(lastIso && hrpIn(lastIso, p))) return;
+      let isNew = false;
+      const firstLate = ents.find(e => hStageNum(e.stage) >= 3);
+      if(firstLate && hrpIn(firstLate.at, p)){
+        // A seeded or fallback entry does not know where the deal came from, so only a Present entry counts as new.
+        isNew = firstLate.seed ? hStageNum(firstLate.stage) === 3 : true;
+      }
+      const lastEnt = ents.length ? ents[ents.length - 1] : null;
+      out.push({op, moved: moved || closedOut, isNew, stageIso: lastIso, from: lastEnt && !lastEnt.seed ? lastEnt.from : null, note: hrpLatestNote(op)});
+    });
+    out.sort((a, b) => (hStageNum(a.op.stage) - hStageNum(b.op.stage)) || ((hVal(b.op) || 0) - (hVal(a.op) || 0)) || String(a.op.opportunity || '').localeCompare(String(b.op.opportunity || '')));
+    return out;
+  }
+  function hrpCsv(rows, p){
+    const q = v => {
+      let s = String(v == null ? '' : v);
+      if(/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
+    const head = ['Opportunity', 'Owner', 'Stage', 'Stage updated', 'Moved in period', 'New in period', 'Value (EUR)', 'Latest note', 'Note date', 'Expected close'];
+    const lines = [head.map(q).join(',')];
+    rows.forEach(r => {
+      const o = r.op, v = hVal(o);
+      lines.push([o.opportunity || '', o.owner || '', o.stage || '', r.stageIso ? toDateStr(new Date(r.stageIso)) : '', r.moved ? 'Yes' : '', r.isNew ? 'Yes' : '',
+        v === null ? '' : String(Math.round(v)), r.note ? r.note.text : '', r.note ? String(r.note.date || '').slice(0, 10) : '', o.expectedClose || ''].map((c, i) => i === 6 ? '"' + c + '"' : q(c)).join(','));
+    });
+    if(hValueReady) lines.push(['Total', '', '', '', '', '', String(Math.round(hSum(rows.map(r => r.op)))), '', '', ''].map(q).join(','));
+    const blob = new Blob(['﻿' + lines.join('\r\n')], {type: 'text/csv;charset=utf-8'});
+    const name = 'hustle-report-' + toDateStr(new Date(p.from)) + '-to-' + toDateStr(new Date(p.to)) + '.csv';
+    try{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch(e){ showToast('Could not download the CSV'); }
+  }
+  function renderHustleReporting(){
+    const el = document.getElementById('hustleReportingView');
+    if(!el) return;
+    const p = hrpPeriod();
+    const rows = p ? hrpBuild(p) : [];
+    const movedN = rows.filter(r => r.moved).length, newN = rows.filter(r => r.isNew).length;
+    const rangeBtn = (k, t) => `<button type="button" data-hrp-range="${k}" class="${hrpRange === k ? 'active' : ''}">${t}</button>`;
+    const periodTxt = p ? hrpFmtDay(new Date(p.from).toISOString()) + ' to ' + hrpFmtDay(new Date(p.to).toISOString()) : '';
+    let body;
+    if(!p){
+      body = '<div class="report-empty">Pick a start and end date to build the report.</div>';
+    } else if(!rows.length){
+      body = '<div class="report-empty">Nothing in Present, Close, Won, Lost or Parked for this period.</div>';
+    } else {
+      const total = hValueReady ? hEuroFull(hSum(rows.map(r => r.op))) : '';
+      const trs = rows.map(r => {
+        const o = r.op, meta = HUSTLE_STAGE_META[o.stage] || HUSTLE_STAGE_META['1. Prospect'], v = hVal(o);
+        const fromMeta = r.from ? HUSTLE_STAGE_META[r.from] : null;
+        const dateTxt = r.stageIso ? hrpFmtDay(r.stageIso) : 'Date not recorded';
+        return `<tr data-open-hustle="${escapeAttr(o.id)}" class="${r.moved ? 'hrp-moved' : ''}">
+          <td><div class="ho-name">${escapeHtml(o.opportunity || '(untitled)')}${r.isNew ? ' <span class="hrp-new">New</span>' : ''}</div><div class="ho-sub">${escapeHtml(o.owner || 'Unassigned')}${o.division ? ' · ' + escapeHtml(o.division) : ''}</div></td>
+          ${hValueReady ? `<td class="num">${v === null ? '<span class="hs-muted">—</span>' : escapeHtml(hEuroFull(v))}</td>` : ''}
+          <td><span class="hs-stage ${meta.cls}">${escapeHtml(meta.short)}</span><div class="ho-sub">${escapeHtml(dateTxt)}${r.moved && fromMeta ? ' · from ' + escapeHtml(fromMeta.short) : ''}</div></td>
+          <td class="hrp-note">${r.note ? `<span class="hs-muted">${escapeHtml(hrpFmtNoteDate(r.note.date))}${r.note.by ? ' · ' + escapeHtml(r.note.by) : ''}</span> ${escapeHtml(r.note.text)}` : '<span class="hs-muted">No notes yet</span>'}</td>
+          <td>${escapeHtml(hFmtMonth(o.expectedClose))}</td>
+        </tr>`;
+      }).join('');
+      body = `<div class="ho-wrap"><table class="ho-table hrp-table"><thead><tr><th>Opportunity</th>${hValueReady ? '<th class="num">Value</th>' : ''}<th>Stage</th><th>Note</th><th>Expected close</th></tr></thead>
+        <tbody>${trs}</tbody>
+        ${hValueReady ? `<tfoot><tr><td><b>Total (${rows.length})</b></td><td class="num"><b>${escapeHtml(total)}</b></td><td></td><td></td><td></td></tr></tfoot>` : ''}</table></div>`;
+    }
+    el.innerHTML = `<div class="hrp-bar">
+        <div class="segmented" id="hrpRange">${rangeBtn('7', 'Last 7 days')}${rangeBtn('30', 'Last 30 days')}${rangeBtn('90', 'Last 90 days')}${rangeBtn('custom', 'Custom')}</div>
+        ${hrpRange === 'custom' ? `<label class="hrp-date">From <input type="date" id="hrpFrom" value="${escapeAttr(hrpFrom)}"></label><label class="hrp-date">To <input type="date" id="hrpTo" value="${escapeAttr(hrpTo)}"></label>` : ''}
+        <button type="button" class="btn-ghost" id="hrpCsv" style="margin-left:auto;" ${rows.length ? '' : 'disabled'}>Download CSV</button>
+      </div>
+      <div class="hrp-sum">${p ? `<b>${escapeHtml(periodTxt)}</b> · ${rows.length} ${rows.length === 1 ? 'opportunity' : 'opportunities'} · ${movedN} moved · ${newN} new` : ''}</div>
+      <div class="hrp-legend"><span class="hrp-key"></span> Moved stage in this period <span class="hrp-new">New</span> reached Present or later for the first time in this period. Won, Lost and Parked show only if they moved in the period. Stage dates are recorded in full from the day this report launched, so older deals show only their latest move.</div>
+      ${body}`;
+    el.querySelectorAll('[data-hrp-range]').forEach(b => b.addEventListener('click', () => {
+      hrpRange = b.getAttribute('data-hrp-range');
+      if(hrpRange === 'custom' && !hrpFrom && !hrpTo){ hrpTo = toDateStr(new Date()); hrpFrom = toDateStr(new Date(Date.now() - 30 * 86400000)); }
+      renderHustleReporting();
+    }));
+    const f = document.getElementById('hrpFrom'), t = document.getElementById('hrpTo');
+    if(f) f.addEventListener('change', e => { hrpFrom = e.target.value; renderHustleReporting(); });
+    if(t) t.addEventListener('change', e => { hrpTo = e.target.value; renderHustleReporting(); });
+    const csv = document.getElementById('hrpCsv');
+    if(csv) csv.addEventListener('click', () => { if(p && rows.length) hrpCsv(rows, p); });
+    bindHustleRowEvents(el, hustleOpportunities);
+  }
+
   function renderHustleActions(){
     const el = document.getElementById('hustleActionsView');
     const ownerSet = new Set(hOwnerList());
@@ -8980,7 +9149,7 @@
       <p class="hs-modal-sub">Choose what to show, tick the ones to move, then pick the year they go to. Only the pipeline year changes.</p>
       <div class="field-row">
         <div class="field"><label>From</label><select id="hbFrom">${yo(cy)}</select></div>
-        <div class="field"><label>Stage</label><select id="hbStage"><option value="1. Prospect">Prospect</option><option value="__live">Qualify to Close</option><option value="">Any stage</option></select></div>
+        <div class="field"><label>Stage</label><select id="hbStage"><option value="1. Prospect">Prospect</option><option value="__live">Engage to Close</option><option value="">Any stage</option></select></div>
         <div class="field"><label>Owner</label><select id="hbOwner"></select></div>
       </div>
       <label class="checkbox-row" style="margin:4px 0 6px;"><input type="checkbox" id="hbAll"> <span style="font-size:12.5px;font-weight:600;">Select all shown</span></label>
@@ -9051,6 +9220,7 @@
         discipline: (Array.isArray(op.discipline) ? op.discipline : []).slice(), clientType: op.clientType || null, contact: op.contact || null,
         proposalLink: op.proposalLink || null, activityLog: log, start: op.start || '', end: op.end || '', engage: op.engage || '',
         value: v, pipelineYear: to, stageChangedAt: new Date().toISOString()};
+      if(hHistReady()) copy.stageHistory = [{stage: '1. Prospect', at: copy.stageChangedAt, from: null}];
       hustleCol().add(copy).then(() => showToast('Created the ' + to + ' copy')).catch(hSaveError);
     }, {title: 'Roll over to ' + to + '?', confirmLabel: 'Create ' + to + ' copy', safe: true});
   }
@@ -9116,17 +9286,14 @@
     const y = new Date().getFullYear();
     const q = {q1:[0,3], q2:[3,6], q3:[6,9], q4:[9,12]}[hrPeriod];
     if(q) return [new Date(y, q[0], 1).getTime(), new Date(y, q[1], 1).getTime()];
-    if(hrPeriod === 'full') return [new Date(y, 0, 1).getTime(), new Date(y + 1, 0, 1).getTime()];
-    if(hrPeriod === 'ytd') return [new Date(y, 0, 1).getTime(), Infinity];
-    if(hrPeriod === '12m') return [Date.now() - 365*86400000, Infinity];
-    return null;
+    return [new Date(y, 0, 1).getTime(), Infinity];   // year to date
   }
   // Won / Lost / Parked are dated by stageChangedAt. Older rows have no date, so they count as this year
   // (and in "Full year", "Last 12 months" and "All time"), but not in a single quarter because we can't know.
   function hrInPeriod(op){
     const r = hrRange();
     if(r === null) return true;
-    if(!op.stageChangedAt) return ['ytd','full','12m'].includes(hrPeriod);
+    if(!op.stageChangedAt) return hrPeriod === 'ytd';
     const t = new Date(op.stageChangedAt).getTime();
     return t >= r[0] && t < r[1];
   }
@@ -9155,15 +9322,15 @@
     const attn = new Set(overdue.concat(stale).map(o => o.id)).size;
     const quarter = list.filter(hrExpectedThisQuarter);
     const cyr = new Date().getFullYear();
-    const periodLabel = {ytd: cyr + ' year to date', full: cyr + ' full year', q1: 'Q1 ' + cyr, q2: 'Q2 ' + cyr, q3: 'Q3 ' + cyr, q4: 'Q4 ' + cyr, '12m': 'Last 12 months', all: 'All time'}[hrPeriod] || 'All time';
+    const periodLabel = {ytd: cyr + ' year to date', q1: 'Q1 ' + cyr, q2: 'Q2 ' + cyr, q3: 'Q3 ' + cyr, q4: 'Q4 ' + cyr}[hrPeriod] || (cyr + ' year to date');
 
     const stageCounts = {
-      qualify: list.filter(o => o.stage === '2. Qualify').length,
+      qualify: list.filter(o => o.stage === '2. Engage').length,
       present: list.filter(o => o.stage === '3. Present').length,
       close: list.filter(o => o.stage === '4. Close').length,
     };
     const prospects = list.filter(o => o.stage === '1. Prospect').length;
-    const funnel = [['Qualify', stageCounts.qualify, ''], ['Present', stageCounts.present, ''], ['Close', stageCounts.close, ''], ['Won', won.length, 'won'], ['Lost', lost.length, 'lost'], ['Parked', parked.length, 'parked']];
+    const funnel = [['Engage', stageCounts.qualify, ''], ['Present', stageCounts.present, ''], ['Close', stageCounts.close, ''], ['Won', won.length, 'won'], ['Lost', lost.length, 'lost'], ['Parked', parked.length, 'parked']];
     const fmax = Math.max(1, ...funnel.map(f => f[1]));
     const funnelHtml = `<div class="hr-bar-row muted"><span class="lbl">Prospect</span><span class="hr-bar"><i style="width:0"></i></span><span class="num">${prospects}</span></div>`
       + funnel.map(f => `<div class="hr-bar-row"><span class="lbl">${f[0]}</span><span class="hr-bar ${f[2]}"><i style="width:${Math.round(100*f[1]/fmax)}%"></i></span><span class="num">${f[1]}</span></div>`).join('');
@@ -9203,7 +9370,7 @@
       const liveVal = hSum(live), wonVal = hSum(won);
       valueTiles.push(`<div class="hs-tile"><b>${escapeHtml(hEuro(liveVal))}</b><span>Live pipeline value · ${live.filter(nv).length} of ${live.length} live deals have a value</span></div>`);
       valueTiles.push(`<div class="hs-tile"><b>${escapeHtml(hEuro(wonVal))}</b><span>Won value · ${won.filter(nv).length} of ${won.length} won deals · ${escapeHtml(periodLabel)}</span></div>`);
-      const stageRows = [['Prospect', list.filter(o => o.stage === '1. Prospect'), 'muted', ''], ['Qualify', list.filter(o => o.stage === '2. Qualify'), '', ''], ['Present', list.filter(o => o.stage === '3. Present'), '', ''], ['Close', list.filter(o => o.stage === '4. Close'), '', ''], ['Won', won, '', 'won'], ['Lost', lost, '', 'lost'], ['Parked', parked, '', 'parked']];
+      const stageRows = [['Prospect', list.filter(o => o.stage === '1. Prospect'), 'muted', ''], ['Engage', list.filter(o => o.stage === '2. Engage'), '', ''], ['Present', list.filter(o => o.stage === '3. Present'), '', ''], ['Close', list.filter(o => o.stage === '4. Close'), '', ''], ['Won', won, '', 'won'], ['Lost', lost, '', 'lost'], ['Parked', parked, '', 'parked']];
       const smax = Math.max(1, ...stageRows.map(r => hSum(r[1])));
       const stageHtml = stageRows.map(r => `<div class="hr-bar-row val ${r[2]}"><span class="lbl">${r[0]}<span class="cnt">${r[1].length}</span></span><span class="hr-bar ${r[3]}"><i style="width:${Math.round(100 * hSum(r[1]) / smax)}%"></i></span><span class="num">${escapeHtml(hEuro(hSum(r[1])))}</span></div>`).join('');
       const noVal = live.length - live.filter(nv).length;
@@ -9223,15 +9390,14 @@
       <div class="hr-filters">
         <label>Pipeline year <select id="hrYear"><option value="">All years</option>${[0,1,2].map(i => { const y = new Date().getFullYear() + i; return `<option value="${y}">${y}</option>`; }).join('')}</select></label>
         <label>Period <select id="hrPeriod">
-          <option value="ytd">${new Date().getFullYear()} year to date</option><option value="full">${new Date().getFullYear()} full year</option>
-          <option value="q1">Q1</option><option value="q2">Q2</option><option value="q3">Q3</option><option value="q4">Q4</option>
-          <option value="12m">Last 12 months</option><option value="all">All time</option></select></label>
+          <option value="ytd">Year to date</option>
+          <option value="q1">Q1</option><option value="q2">Q2</option><option value="q3">Q3</option><option value="q4">Q4</option></select></label>
         <label${scoped ? ' style="display:none;"' : ''}>Owner <select id="hrOwner"><option value="">Everyone</option>${owners.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('')}</select></label>
         <span class="hs-muted">Won, Lost and Parked follow the period. Live counts are always as of today.</span>
       </div>
       <div class="hs-tiles">
         ${valueTiles.join('')}
-        <div class="hs-tile"><b>${live.length}</b><span>Live pipeline (Qualify to Close)</span></div>
+        <div class="hs-tile"><b>${live.length}</b><span>Live pipeline (Engage to Close)</span></div>
         <div class="hs-tile"><b>${winRate === null ? '—' : winRate + '%'}</b><span>Win rate · ${won.length} won · ${lost.length} lost · parked excluded</span></div>
         <div class="hs-tile due"><b>${quarter.length}</b><span>Expected to close this quarter</span></div>
         <div class="hs-tile over"><b>${attn}</b><span>Needs attention · ${overdue.length} overdue · ${stale.length} stale 30d+</span></div>
@@ -9356,9 +9522,9 @@
     editingHustleId = op ? op.id : null;
     document.getElementById('hustleModalTitle').textContent = op ? 'Edit opportunity' : 'Add opportunity';
     document.getElementById('h_opportunity').value = op ? (op.opportunity||'') : '';
-    document.getElementById('h_stage').value = op && op.stage ? op.stage : (hustleStageFilter && HUSTLE_STAGES.includes(hustleStageFilter) ? hustleStageFilter : '1. Prospect');
+    document.getElementById('h_stage').value = op && op.stage ? op.stage : (hoStages.length === 1 ? hoStages[0] : '1. Prospect');
     hFillOwnerSelect();
-    document.getElementById('h_owner').value = op ? (op.owner||'') : (myRole === 'member' ? (currentUserName || '') : (hustleOwnerFilter && hustleOwnerFilter !== '__none' ? hustleOwnerFilter : ''));
+    document.getElementById('h_owner').value = op ? (op.owner||'') : (myRole === 'member' ? (currentUserName || '') : (hoOwners.length === 1 && hoOwners[0] !== '__none' ? hoOwners[0] : ''));
     document.getElementById('h_closedReason').value = op ? (op.closedReason||'') : '';
     hFillExpectedClose(op ? (op.expectedClose||'') : '');
     hFillValueFields(op);
@@ -9375,11 +9541,14 @@
     document.getElementById('h_start').value = op ? (op.start||'') : '';
     document.getElementById('h_end').value = op ? (op.end||'') : '';
     document.getElementById('h_engage').value = op ? (op.engage||'') : '';
-    document.getElementById('h_updatedNote').textContent = op && op.updated_at
-      ? 'Last updated ' + new Date(op.updated_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) + ' · set automatically'
-      : '';
+    {
+      const fd = v => new Date(v).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+      const bits = [];
+      if(op && op.created_at) bits.push('Created ' + fd(op.created_at));
+      if(op && op.updated_at) bits.push('Last updated ' + fd(op.updated_at));
+      document.getElementById('h_updatedNote').textContent = bits.length ? bits.join(' · ') + ' · set automatically' : '';
+    }
     document.getElementById('deleteHustleBtn').style.display = op ? 'inline-block' : 'none';
-    document.getElementById('assignHustleTaskBtn').style.display = op ? 'inline-block' : 'none';
     document.getElementById('rolloverHustleBtn').style.display = (op && hValueReady && canEdit) ? 'inline-block' : 'none';
     if(op) document.getElementById('rolloverHustleBtn').textContent = 'Roll over to ' + (hYear(op) + 1);
     {
@@ -9387,7 +9556,7 @@
       document.getElementById('h_tasksWrap').hidden = !op;
       const ts = op ? hTasksFor(op).slice().sort((a,b) => (hTaskDone(a) - hTaskDone(b)) || (a.dateISO || '9999').localeCompare(b.dateISO || '9999')) : [];
       tl.innerHTML = ts.length ? ts.map(t => `<div class="hs-task-row ${hTaskDone(t) ? 'done' : ''}" data-h-task="${escapeAttr(t.id)}"><span class="m">${t.dateISO ? escapeHtml(hFmtDate(t.dateISO)) : ''}</span><span class="t">${escapeHtml(t.title || '(untitled)')}</span><span class="m">${escapeHtml((t.owners || []).map(n => initials(n)).join(', '))} · ${escapeHtml((STATUS_META[t.status] || {}).label || '')}</span></div>`).join('')
-        : '<div class="hs-log-empty">No tasks yet. Use Add task below to create one.</div>';
+        : '<div class="hs-log-empty">No tasks yet. Use + Add task above to create one.</div>';
     }
     applyHustleStageRules();
     document.getElementById('hustleOverlay').hidden = false;
@@ -9429,7 +9598,17 @@
     }
     const before = editingHustleId ? hustleOpportunities.find(x => x.id === editingHustleId) : null;
     // stageChangedAt feeds "Won / Lost this year": stamp it when a deal is created or its stage actually changes.
-    if(!before || before.stage !== stage) data.stageChangedAt = new Date().toISOString();
+    // stageHistory keeps a dated entry for every stage change, which is what the Reporting tab reads.
+    if(!before || before.stage !== stage){
+      const nowIso = new Date().toISOString();
+      data.stageChangedAt = nowIso;
+      if(hHistReady()){
+        const hist = before && Array.isArray(before.stageHistory) ? before.stageHistory.slice() : [];
+        if(!hist.length && before) hist.push({stage: before.stage, at: before.stageChangedAt || null, from: null, seed: true});
+        hist.push({stage, at: nowIso, from: before ? before.stage : null});
+        data.stageHistory = hist;
+      }
+    }
     stampAssign(data, before && before.owner ? [before.owner] : [], data.owner ? [data.owner] : [], data.opportunity);
     if(editingHustleId){
       hustleCol().doc(editingHustleId).update(data).catch(hSaveError);
