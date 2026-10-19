@@ -4291,6 +4291,8 @@
   // explodes) creates one task per FULL_GRAPHICS_PACKAGE item for that show week instead of a
   // single task, each dated on its matching day. `base` is the date-agnostic Add task form data;
   // its own title/date/weekId are overridden per item.
+  // Writes started by the task form, so that after saving a new task the board can follow it to its week.
+  let addWrites = [];
   function spawnFullGraphicsPackage(base){
     if(!canEdit) return;
     const monday = mondayOf(base.dateISO);
@@ -4304,10 +4306,10 @@
         order: tasks.length + i,
         calendarSynced: false,
       });
-      tasksCol().add(data).then(ref => {
+      addWrites.push(tasksCol().add(data).then(ref => {
         if(data.weekId === currentWeekId){ data.id = ref.id; tasks.push(data); renderGroups(); }
         syncTaskToDelivery(ref.id, data);
-      }).catch(()=>{});
+      }).catch(()=>{}));
     });
   }
 
@@ -4326,10 +4328,10 @@
         order: tasks.length + i,
         calendarSynced: false,
       });
-      tasksCol().add(data).then(ref => {
+      addWrites.push(tasksCol().add(data).then(ref => {
         if(data.weekId === currentWeekId){ data.id = ref.id; tasks.push(data); renderGroups(); }
         syncTaskToDelivery(ref.id, data);
-      }).catch(()=>{});
+      }).catch(()=>{}));
     });
   }
 
@@ -4340,10 +4342,10 @@
     data.order = tasks.length;
     data.calendarSynced = false;
     if(canEdit){
-      tasksCol().add(data).then(ref => {
+      addWrites.push(tasksCol().add(data).then(ref => {
         if(data.weekId === currentWeekId){ data.id = ref.id; tasks.push(data); renderGroups(); }
         syncTaskToDelivery(ref.id, data);
-      }).catch(()=>{});
+      }).catch(()=>{}));
     } else {
       data.id = 'local-' + Date.now() + '-' + Math.random().toString(16).slice(2);
       if(data.weekId === currentWeekId){ tasks.push(data); renderGroups(); }
@@ -4508,6 +4510,8 @@
       if(!recurPicked.length){ alert('Pick at least one day for the repeat.'); return; }
     }
 
+    addWrites = [];
+    const wasEdit = !!editingTaskId;
     if(!editingTaskId && !dupMode && data.title === 'Graphics - Full'){
       spawnFullGraphicsPackage(data);
     } else if(!editingTaskId && !dupMode && data.client === 'Clip'){
@@ -4553,14 +4557,14 @@
         template.type = 'days:' + (repeatMode === 'weekdays' ? '0,1,2,3,4' : recurPicked.slice().sort().join(',')) + ':' + dateISO;
         template.startWeek = '9999-12-31';
       } else if(recurStartCol) template.startWeek = data.weekId;
-      recurCol().add(template).then(ref => {
+      addWrites.push(recurCol().add(template).then(ref => {
         const occId = recurOccId(Object.assign({id: ref.id}, template), data.weekId, dateISO);
         const occData = Object.assign({}, data, {recurringId: ref.id, order: tasks.length, calendarSynced:false});
         return tasksCol().doc(occId).set(occData).then(() => {
           if(data.weekId === currentWeekId){ occData.id = occId; tasks.push(occData); renderGroups(); }
           syncTaskToDelivery(occId, occData);
         });
-      }).catch(()=>{});
+      }).catch(()=>{}));
     } else {
       addOneTask(data);
     }
@@ -4576,6 +4580,17 @@
       else addOneTask(extraData);
     });
 
+    // A new task dated in another week is saved there, so it vanishes from the week on screen and looks unsaved.
+    // Once the writes land, jump the board to that week and say so (plus a nudge when no owner was chosen).
+    if(!wasEdit){
+      const landWeek = data.weekId, noOwner = !(data.owners && data.owners.length);
+      Promise.all(addWrites).then(() => {
+        const away = landWeek && landWeek !== currentWeekId;
+        if(away) goToWeek(landWeek);
+        const wk = new Date(landWeek + 'T12:00:00').toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
+        if(away || noOwner) showToast('Saved' + (away ? ' on the week of ' + wk : '') + (noOwner ? '. No owner chosen, so it will not show in anyone\'s list' : ''));
+      });
+    }
     closeTaskModal();
   });
 
