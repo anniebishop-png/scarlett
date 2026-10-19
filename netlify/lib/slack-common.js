@@ -134,7 +134,8 @@ function modeOf(modes, email){
   return ['daily', 'overdue', 'assigned', 'off'].includes(v) ? v : 'assigned';
 }
 
-async function runAll(today, onlyEmail){
+async function runAll(today, onlyEmail, opts){
+  opts = opts || {};
   const [people, modes] = await Promise.all([loadData(today), loadModes()]);
   const out = { people: people.length, dms: 0, skipped: 0, noSlackUser: [], failed: [], channel: null };
   for(const p of people){
@@ -143,10 +144,13 @@ async function runAll(today, onlyEmail){
       if(p.email !== onlyEmail) continue;           // test send: always goes to the caller
     }else{
       const mode = modeOf(modes, p.email);
-      if(mode === 'daily'){ if(!hasWork(p)){ out.skipped++; continue; } }
+      // On Mondays the overdue list goes out in the Monday alert instead, so it is left out of the digest.
+      const base = opts.monday ? Object.assign({}, p, { overdue: [] }) : p;
+      msgP = base;
+      if(mode === 'daily'){ if(!hasWork(base)){ out.skipped++; continue; } }
       else if(mode === 'overdue'){
-        if(!(p.overdue.length || p.reviews.length)){ out.skipped++; continue; }
-        msgP = Object.assign({}, p, { dueToday: [] });
+        if(!(base.overdue.length || base.reviews.length)){ out.skipped++; continue; }
+        msgP = Object.assign({}, base, { dueToday: [] });
       }else{ out.skipped++; continue; }
     }
     const uid = await slackIdFor(p.email);
@@ -154,6 +158,7 @@ async function runAll(today, onlyEmail){
     const r = await slack('chat.postMessage', Object.assign({ channel: uid, unfurl_links: false }, dmMessage(msgP, today)));
     if(r.ok) out.dms++; else out.failed.push(p.name + ': ' + r.error);
   }
+  if(opts.monday && !onlyEmail) out.monday = await sendMonday(people, today);
   // The team channel post is separate: it only goes out when SLACK_CHANNEL_POST=true and a channel is set.
   if(!onlyEmail && process.env.SLACK_TEAM_CHANNEL && String(process.env.SLACK_CHANNEL_POST || '').toLowerCase() === 'true'){
     const shown = people.filter(p => modeOf(modes, p.email) !== 'off');
@@ -161,6 +166,92 @@ async function runAll(today, onlyEmail){
     out.channel = r.ok ? 'posted' : r.error;
   }
   return out;
+}
+
+// ----- Monday overdue alert and manager summary -----
+// Every Monday morning (same run as the digest) everyone with overdue tasks gets a DM that cannot be switched off,
+// and the managers listed in SLACK_MANAGER_EMAILS (default Annie and Ruairi) get a roll-up of who has what.
+const MANAGERS_DEFAULT = ['annie.bishop@equiratings.com', 'ruairi@equiratings.com'];
+const managerEmails = () => (process.env.SLACK_MANAGER_EMAILS ? String(process.env.SLACK_MANAGER_EMAILS).split(',') : MANAGERS_DEFAULT).map(s => s.trim().toLowerCase()).filter(Boolean);
+function daysLate(iso, today){
+  const a = Date.parse(iso + 'T12:00:00Z'), b = Date.parse(today + 'T12:00:00Z');
+  return Math.max(0, Math.round((b - a) / 86400000));
+}
+function lateLine(t, today){
+  let s = taskLine(t, false, today);
+  const n = daysLate(t.dateISO, today);
+  return s + '  (due ' + esc(dayLabel(t.dateISO)) + ', ' + n + (n === 1 ? ' day' : ' days') + ' ago)';
+}
+function mondayAlert(p, today, isTest){
+  const n = p.overdue.length;
+  const head = 'Overdue tasks, ' + dayLabel(today);
+  const blocks = [{ type: 'header', text: { type: 'plain_text', text: head } }];
+  if(n){
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: 'Good morning ' + esc(p.name) + '. You have ' + n + (n === 1 ? ' task' : ' tasks') + ' overdue from last week or earlier.' } });
+    const shown = p.overdue.slice(0, MAX_LIST), more = n - shown.length;
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: (shown.map(t => lateLine(t, today)).join('\n') + (more > 0 ? '\n_+' + more + ' more in Scarlett_' : '')).slice(0, 2900) } });
+    blocks.push({ type: 'context', elements: [{ type: 'mrkdwn', text: 'Please mark them done or move the date in Scarlett. This Monday reminder goes to everyone with overdue tasks.' }] });
+  }else{
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: 'Test message. You have nothing overdue, so on a real Monday you would not get this alert.' } });
+  }
+  blocks.push({ type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'Open Scarlett' }, url: SITE }] });
+  return { text: n ? 'You have ' + n + ' overdue ' + (n === 1 ? 'task' : 'tasks') + ' on Scarlett' : head, blocks };
+}
+function managerSummary(people, today){
+  const withOverdue = people.filter(p => p.overdue.length).sort((a, b) => b.overdue.length - a.overdue.length || a.name.localeCompare(b.name));
+  const ids = new Set();
+  withOverdue.forEach(p => p.overdue.forEach(t => ids.add(t.id)));
+  const head = 'Team overdue summary, ' + dayLabel(today);
+  const blocks = [{ type: 'header', text: { type: 'plain_text', text: head } }];
+  if(!withOverdue.length){
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: 'Nobody has any overdue tasks this Monday.' } });
+  }else{
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: '*' + ids.size + ' overdue ' + (ids.size === 1 ? 'task' : 'tasks') + ' across ' + withOverdue.length + (withOverdue.length === 1 ? ' person' : ' people') + '*' } });
+    let chunk = '';
+    const flush = () => { if(chunk){ blocks.push({ type: 'section', text: { type: 'mrkdwn', text: chunk } }); chunk = ''; } };
+    withOverdue.forEach(p => {
+      const oldest = p.overdue[0];
+      let line = '*' + esc(p.name) + '*  ' + p.overdue.length + ' overdue (oldest ' + esc(dayLabel(oldest.dateISO)) + ')';
+      p.overdue.slice(0, 4).forEach(t => { line += '\n   • ' + esc(t.title || 'Untitled task') + (t.client ? '  _' + esc(t.client) + '_' : '') + '  (due ' + esc(dayLabel(t.dateISO)) + ')'; });
+      if(p.overdue.length > 4) line += '\n   _+' + (p.overdue.length - 4) + ' more_';
+      if(chunk.length + line.length > 2700) flush();
+      chunk += (chunk ? '\n\n' : '') + line;
+    });
+    flush();
+  }
+  blocks.push({ type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'Open Scarlett' }, url: SITE }] });
+  return { text: head, blocks: blocks.slice(0, 50) };
+}
+// testEmail: send only to that person (their own alert, even with nothing overdue, plus the manager summary).
+async function sendMonday(people, today, testEmail){
+  const out = { alerts: 0, summaries: 0, noSlackUser: [], failed: [] };
+  for(const p of people){
+    if(testEmail ? p.email !== testEmail : !p.overdue.length) continue;
+    const uid = await slackIdFor(p.email);
+    if(!uid){ out.noSlackUser.push(p.email); continue; }
+    const r = await slack('chat.postMessage', Object.assign({ channel: uid, unfurl_links: false }, mondayAlert(p, today, !!testEmail)));
+    if(r.ok) out.alerts++; else out.failed.push(p.name + ': ' + r.error);
+  }
+  const msg = managerSummary(people, today);
+  for(const e of (testEmail ? [testEmail] : managerEmails())){
+    const uid = await slackIdFor(e);
+    if(!uid){ out.noSlackUser.push(e); continue; }
+    const r = await slack('chat.postMessage', Object.assign({ channel: uid, unfurl_links: false }, msg));
+    if(r.ok) out.summaries++; else out.failed.push(e + ': ' + r.error);
+  }
+  return out;
+}
+// Who has chosen what, and whether each person can be found in Slack (no messages are sent).
+async function optInReport(){
+  const [users, modes] = await Promise.all([sb('appUsers?select=email,name,role'), loadModes()]);
+  const rows = [];
+  for(const u of (users || [])){
+    if(!u.email) continue;
+    const e = String(u.email).toLowerCase();
+    const chosen = modes.ok ? modes.map[e] : null;
+    rows.push({ name: u.name, email: e, chosen: chosen || null, effective: modeOf(modes, e), inSlack: !!(await slackIdFor(e)) });
+  }
+  return { prefsTable: modes.ok, slackLookupError: lastLookupError, people: rows };
 }
 
 // DM people when someone assigns them a task. Never throws; returns a small summary. Goes to the whole team (the pilot limit only applies to the daily digest).
@@ -192,4 +283,4 @@ async function notifyAssigned(names, title, sender, senderEmail){
   return out;
 }
 
-module.exports = { localParts, runAll, notifyAssigned, slack, loadData, loadModes, modeOf, channelMessage, SITE, esc, dayLabel };
+module.exports = { localParts, runAll, sendMonday, optInReport, notifyAssigned, slack, loadData, loadModes, modeOf, channelMessage, SITE, esc, dayLabel };
