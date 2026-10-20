@@ -1821,6 +1821,9 @@
         <div class="field"><label>Team</label><select id="f_division" required><option value="">—</option></select></div>
         <div class="field"><label>Date</label><input type="date" id="f_date" required></div>
       </div>
+      <div class="field"><label>Task title</label><input list="titleOptions" id="f_title" required placeholder="Pick a common one or type your own"></div>
+      <div class="shows-hint" id="titleCmhHint" style="display:none;"></div>
+      <datalist id="titleOptions"></datalist>
       <div class="field"><label>Tag <span style="text-transform:none;font-weight:500;">(optional)</span></label><input id="f_tag" placeholder="e.g. Storytelling Graphic"></div>
       <div class="field" id="deliveryCatField" style="display:none;">
         <label>Counts toward <span style="text-transform:none;font-weight:500;">(this client's contract)</span></label>
@@ -1847,9 +1850,6 @@
         </div>
       </div>
       <div class="recur-note" id="recurNote" style="display:none;"></div>
-      <div class="field"><label>Task title</label><input list="titleOptions" id="f_title" required placeholder="Pick a common one or type your own"></div>
-      <div class="shows-hint" id="titleCmhHint" style="display:none;"></div>
-      <datalist id="titleOptions"></datalist>
       <div class="field" id="extraTasksField">
         <label>Add more tasks <span style="text-transform:none;font-weight:500;">(optional — same client/team/owners, own title &amp; date each)</span></label>
         <div id="extraTasksList"></div>
@@ -4255,7 +4255,8 @@
     selectedShowId = t ? (t.showId||'') : '';
     updateShowBtnLabel();
     document.getElementById('showPop').hidden = true;
-    selectedOwners = t ? (t.owners||[]).slice() : [];
+    // A new task starts owned by whoever is adding it; they can add or remove people.
+    selectedOwners = t ? (t.owners||[]).slice() : (currentUserName ? [currentUserName] : []);
     updateOwnersBtnLabel();
     document.getElementById('ownersPop').hidden = true;
     document.getElementById('f_status').value = t ? t.status : 'notstarted';
