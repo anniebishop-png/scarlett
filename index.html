@@ -3015,12 +3015,12 @@
       taskSnap.docs.forEach(d => {
         const t = d.data();
         const reason = classifyDueItem(t.dateISO, today, soonCutoff, t.updated_at, t);
-        if(reason) items.push({kind:'task', id:d.id, client:t.client||'', title:t.title||'(untitled task)', date:t.dateISO||'', week:t.weekId||'', reason, by: reason === 'assigned' ? t.assignedBy : ''});
+        if(reason) items.push({kind:'task', id:d.id, client:t.client||'', title:t.title||'(untitled task)', date:t.dateISO||'', week:t.weekId||'', reason, newlyAssigned: isAssignedToMe(t), by: (reason === 'assigned' || isAssignedToMe(t)) ? t.assignedBy : ''});
       });
       delSnap.docs.forEach(d => {
         const it = d.data();
         const reason = classifyDueItem(it.date, today, soonCutoff, it.updated_at, it);
-        if(reason) items.push({kind:'delivery', id:d.id, client:it.client||'', title:it.title||it.item||it.category||'(untitled item)', date:it.date||'', reason, by: reason === 'assigned' ? it.assignedBy : ''});
+        if(reason) items.push({kind:'delivery', id:d.id, client:it.client||'', title:it.title||it.item||it.category||'(untitled item)', date:it.date||'', reason, newlyAssigned: isAssignedToMe(it), by: (reason === 'assigned' || isAssignedToMe(it)) ? it.assignedBy : ''});
       });
       items.sort((a,b) => (DUE_REASON_ORDER[a.reason]-DUE_REASON_ORDER[b.reason]) || (a.date||'').localeCompare(b.date||''));
       dueNotifications = items;
@@ -3086,9 +3086,9 @@
   function renderNotifBadge(){
     const badge = document.getElementById('notifBadge');
     if(!badge) return;
-    // The badge counts overdue items only, so clearing the overdue ones clears the badge. Due today / soon /
-    // assigned items are still listed in the panel.
-    const n = dueNotifications.filter(it => it.reason === 'overdue').length;
+    // The badge counts overdue items plus tasks newly given to you, so finishing the overdue ones clears it.
+    // Due today / soon items are still listed in the panel.
+    const n = dueNotifications.filter(it => it.reason === 'overdue' || it.newlyAssigned).length;
     badge.hidden = n === 0;
     badge.textContent = n > 9 ? '9+' : String(n);
   }
