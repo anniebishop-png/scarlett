@@ -3086,7 +3086,9 @@
   function renderNotifBadge(){
     const badge = document.getElementById('notifBadge');
     if(!badge) return;
-    const n = dueNotifications.length;
+    // The badge counts overdue items only, so clearing the overdue ones clears the badge. Due today / soon /
+    // assigned items are still listed in the panel.
+    const n = dueNotifications.filter(it => it.reason === 'overdue').length;
     badge.hidden = n === 0;
     badge.textContent = n > 9 ? '9+' : String(n);
   }
@@ -5799,19 +5801,19 @@
       applyHustleNav();
     }, () => {});
   }
-  // Count badge on every "My tasks" button: how many open tasks are assigned to me across all
-  // weeks, turning red when any are overdue. It is what tells people the page has something in it.
+  // Count badge on every "My tasks" button: how many of my tasks are overdue, across all weeks. It only shows when
+  // something is overdue, so finishing the overdue ones clears it.
   let mineBadgeRows = [], unsubMineBadge = null;
   function updateMineBadge(){
     const today = toDateStr(new Date());
     const late = mineBadgeRows.filter(t => t.dateISO && t.dateISO < today).length;
     document.querySelectorAll('[data-nav="mytasks"]').forEach(b => {
       let badge = b.querySelector('.nav-badge');
-      if(!mineBadgeRows.length){ if(badge) badge.remove(); return; }
-      if(!badge){ badge = document.createElement('span'); b.appendChild(badge); }
-      badge.className = 'nav-badge' + (late ? ' late' : '');
-      badge.textContent = mineBadgeRows.length;
       b.title = `${mineBadgeRows.length} open task${mineBadgeRows.length === 1 ? '' : 's'} assigned to you${late ? ', ' + late + ' overdue' : ''}, from every week`;
+      if(!late){ if(badge) badge.remove(); return; }
+      if(!badge){ badge = document.createElement('span'); b.appendChild(badge); }
+      badge.className = 'nav-badge late';
+      badge.textContent = late;
     });
   }
   function subscribeMineBadge(){
