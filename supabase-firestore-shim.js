@@ -48,6 +48,23 @@ function createFirestoreShim(supabaseClient) {
     }, 120);
   }
 
+  // Coming back to a tab that sat idle for hours (or the network returning): the live link and the
+  // sign-in token are both likely stale. Refresh the session first, then re-read every open screen,
+  // so what you see is current without a manual reload.
+  function refreshAllLive() {
+    Promise.resolve(supabaseClient.auth.getSession()).catch(() => {}).then(() => {
+      Object.keys(liveRefresh).forEach(t => (liveRefresh[t] || []).forEach(fn => { try { fn(); } catch (e) {} }));
+    });
+  }
+  if (typeof document !== 'undefined') {
+    let wakeTimer = null;
+    let lastWake = 0;
+    const wake = () => { clearTimeout(wakeTimer); wakeTimer = setTimeout(() => { if (Date.now() - lastWake < 20000) return; lastWake = Date.now(); refreshAllLive(); }, 400); };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+    window.addEventListener('online', wake);
+    window.addEventListener('focus', wake);
+  }
+
   function applyCondition(query, field, op, value) {
     switch (op) {
       case '==': return query.eq(field, value);
@@ -88,23 +105,34 @@ function createFirestoreShim(supabaseClient) {
       },
 
       onSnapshot(onNext, onError) {
-        let cancelled = false;
-        const deliver = () => {
-          runSelect().then(({ data, error }) => {
+        let cancelled = false, subscribedOnce = false;
+        // Read the rows over plain REST. A failed read (token mid-refresh, wifi blip, a laptop just
+        // woken from sleep) is retried twice before the screen is told, so a hiccup shows nothing.
+        const load = attempt => {
+          const fail = err => {
             if (cancelled) return;
-            if (error) { if (onError) onError(error); return; }
+            if (attempt < 2) { setTimeout(() => { if (!cancelled) load(attempt + 1); }, 1500 * (attempt + 1)); return; }
+            if (onError) onError(err);
+          };
+          Promise.resolve(runSelect()).then(({ data, error }) => {
+            if (cancelled) return;
+            if (error) { fail(error); return; }
             onNext({ docs: makeDocSnapshotList(data, table) });
-          });
+          }, fail);
         };
+        const deliver = () => load(0);
         const channel = supabaseClient
           .channel('shim_' + table + '_' + (++channelCounter))
           .on('postgres_changes', { event: '*', schema: 'public', table }, deliver)
           .subscribe(status => {
-            if (status === 'SUBSCRIBED') deliver(); // initial load, once the channel is actually live
-            else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') { if (onError) onError(new Error('Realtime subscription failed: ' + status)); }
+            if (status === 'SUBSCRIBED') { subscribedOnce = true; deliver(); } // first load, and again after any reconnect (changes may have been missed)
+            else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') deliver(); // the live link is down: still show the data; it re-links itself
           });
+        // Do not wait on the live link to show data: after a long idle the link can take 20 to 30
+        // seconds to come back, and the screen would sit blank or on "could not load" meanwhile.
+        const fallback = setTimeout(() => { if (!subscribedOnce && !cancelled) deliver(); }, 1500);
         const unregister = registerLive(table, deliver);
-        return () => { cancelled = true; unregister(); supabaseClient.removeChannel(channel); };
+        return () => { cancelled = true; clearTimeout(fallback); unregister(); supabaseClient.removeChannel(channel); };
       },
     };
   }
@@ -162,23 +190,30 @@ function createFirestoreShim(supabaseClient) {
       },
 
       onSnapshot(onNext, onError) {
-        let cancelled = false;
-        const deliver = () => {
-          supabaseClient.from(table).select('*').eq(keyOf(table), id).maybeSingle().then(({ data, error }) => {
+        let cancelled = false, subscribedOnce = false;
+        const load = attempt => {
+          const fail = err => {
             if (cancelled) return;
-            if (error) { if (onError) onError(error); return; }
+            if (attempt < 2) { setTimeout(() => { if (!cancelled) load(attempt + 1); }, 1500 * (attempt + 1)); return; }
+            if (onError) onError(err);
+          };
+          Promise.resolve(supabaseClient.from(table).select('*').eq(keyOf(table), id).maybeSingle()).then(({ data, error }) => {
+            if (cancelled) return;
+            if (error) { fail(error); return; }
             onNext({ exists: !!data, id, data: () => data || {} });
-          });
+          }, fail);
         };
+        const deliver = () => load(0);
         const channel = supabaseClient
           .channel('shim_doc_' + table + '_' + id + '_' + (++channelCounter))
           .on('postgres_changes', { event: '*', schema: 'public', table, filter: keyOf(table) + '=eq.' + id }, deliver)
           .subscribe(status => {
-            if (status === 'SUBSCRIBED') deliver();
-            else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') { if (onError) onError(new Error('Realtime subscription failed: ' + status)); }
+            if (status === 'SUBSCRIBED') { subscribedOnce = true; deliver(); }
+            else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') deliver();
           });
+        const fallback = setTimeout(() => { if (!subscribedOnce && !cancelled) deliver(); }, 1500);
         const unregister = registerLive(table, deliver);
-        return () => { cancelled = true; unregister(); supabaseClient.removeChannel(channel); };
+        return () => { cancelled = true; clearTimeout(fallback); unregister(); supabaseClient.removeChannel(channel); };
       },
     };
   }
