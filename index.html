@@ -3291,8 +3291,10 @@
   function removeClientWork(showId, client){
     // cascade-delete a client's spawned delivery tasks + client ops when they're unflagged from a show
     if(!canEdit) return;
+    // Only the tasks Scarlett spawned itself (ids "dt_..." and "opstask_..."): anything a person added by hand
+    // to that show, with an owner and notes of their own, stays.
     tasksCol().where('showId','==',showId).where('client','==',client).get().then(snap => {
-      snap.docs.forEach(d => { tasksCol().doc(d.id).delete().catch(()=>{}); removeDeliverySync('sync_task_' + d.id); });
+      snap.docs.filter(d => /^(dt_|opstask_)/.test(String(d.id))).forEach(d => { tasksCol().doc(d.id).delete().catch(()=>{}); removeDeliverySync('sync_task_' + d.id); });
     }).catch(()=>{});
     opsCol().where('showId','==',showId).where('client','==',client).get().then(snap => {
       snap.docs.forEach(d => opsCol().doc(d.id).delete().catch(()=>{}));
@@ -4310,7 +4312,7 @@
         calendarSynced: false,
       });
       addWrites.push(tasksCol().add(data).then(ref => {
-        if(data.weekId === currentWeekId){ data.id = ref.id; tasks.push(data); renderGroups(); }
+        if(data.weekId === currentWeekId){ data.id = ref.id; if(!tasks.some(x => x.id === ref.id)) tasks.push(data); renderGroups(); }
         syncTaskToDelivery(ref.id, data);
       }).catch(()=>{}));
     });
@@ -4332,7 +4334,7 @@
         calendarSynced: false,
       });
       addWrites.push(tasksCol().add(data).then(ref => {
-        if(data.weekId === currentWeekId){ data.id = ref.id; tasks.push(data); renderGroups(); }
+        if(data.weekId === currentWeekId){ data.id = ref.id; if(!tasks.some(x => x.id === ref.id)) tasks.push(data); renderGroups(); }
         syncTaskToDelivery(ref.id, data);
       }).catch(()=>{}));
     });
@@ -4346,7 +4348,7 @@
     data.calendarSynced = false;
     if(canEdit){
       addWrites.push(tasksCol().add(data).then(ref => {
-        if(data.weekId === currentWeekId){ data.id = ref.id; tasks.push(data); renderGroups(); }
+        if(data.weekId === currentWeekId){ data.id = ref.id; if(!tasks.some(x => x.id === ref.id)) tasks.push(data); renderGroups(); }
         syncTaskToDelivery(ref.id, data);
       }).catch(()=>{}));
     } else {
@@ -5386,7 +5388,9 @@
     // Clip used to land as a single task for the week (first on the Monday, briefly on the
     // Wednesday) -- replace any of those legacy single tasks (ids without the "_d<offset>" suffix
     // spawnClipDayTasks() now always adds) with the full Wed-Sun set of one-per-day tasks.
-    tasks.filter(t => t.client === 'Clip' && t.showId && !/_d\d+$/.test(t.id)).forEach(t => {
+    // Only ones Scarlett itself spawned (ids start "dt_"). Tasks typed in through the Add task form (even with
+    // a show picked) and the single "Reporting due" task ("opstask_...") are the team's own and are left alone.
+    tasks.filter(t => t.client === 'Clip' && t.showId && /^dt_/.test(t.id) && !/_d\d+$/.test(t.id)).forEach(t => {
       const show = showsWeek.find(s => s.id === t.showId) || upcomingShows.find(s => s.id === t.showId);
       if(!show) return;
       tasksCol().doc(t.id).delete().catch(()=>{});
