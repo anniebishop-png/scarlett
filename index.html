@@ -3221,13 +3221,9 @@
     const items = (show.deliverables||'').split(',').map(d=>d.trim()).filter(Boolean);
     const list = items.length ? items : DEFAULT_DELIVERY_TASKS;
     const division = deriveShowDivision(show, client);
+    // Clip (ClipMyHorse.TV) tasks are added by hand by the team, so flagging a show to Clip creates none.
+    if(client === 'Clip') return;
     list.forEach((title, i) => {
-      if(client === 'Clip'){
-        // Clip (ClipMyHorse.TV) needs coverage every day of the show's Wed-Sun run, not just one
-        // task for the whole week.
-        spawnClipDayTasks(show, client, division, title, 95 + i * 10);
-        return;
-      }
       // FEI - Nations Cup's items each carry their own day (see NATIONS_CUP_DAY_OFFSETS) instead of
       // all landing on the show week's Monday like every other client's delivery items do.
       const dayOffset = client === 'FEI - Nations Cup' ? NATIONS_CUP_DAY_OFFSETS[title] : null;
@@ -5385,18 +5381,8 @@
       tasksCol().doc(t.id).update({dateISO: correctDate, weekId: correctWeekId}).catch(()=>{});
       syncTaskToDelivery(t.id, {client: t.client, dateISO: correctDate, title: t.title, division: t.division, status: t.status, deliveryCategory: t.deliveryCategory});
     });
-    // Clip used to land as a single task for the week (first on the Monday, briefly on the
-    // Wednesday) -- replace any of those legacy single tasks (ids without the "_d<offset>" suffix
-    // spawnClipDayTasks() now always adds) with the full Wed-Sun set of one-per-day tasks.
-    // Only ones Scarlett itself spawned (ids start "dt_"). Tasks typed in through the Add task form (even with
-    // a show picked) and the single "Reporting due" task ("opstask_...") are the team's own and are left alone.
-    tasks.filter(t => t.client === 'Clip' && t.showId && /^dt_/.test(t.id) && !/_d\d+$/.test(t.id)).forEach(t => {
-      const show = showsWeek.find(s => s.id === t.showId) || upcomingShows.find(s => s.id === t.showId);
-      if(!show) return;
-      tasksCol().doc(t.id).delete().catch(()=>{});
-      removeDeliverySync('sync_task_' + t.id);
-      spawnClipDayTasks(show, t.client, t.division, t.title, 95);
-    });
+    // Clip is deliberately NOT tidied here any more: the team adds Clip tasks by hand, and Scarlett leaves
+    // them exactly as they were saved.
   }
   function subscribeWeekPodcast(){
     if(unsubWeekPodcast) unsubWeekPodcast();
